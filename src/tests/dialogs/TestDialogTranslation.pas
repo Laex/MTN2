@@ -17,6 +17,7 @@ type
     [TearDown] procedure TearDown;
     [Test] procedure TestEveryCaptionHasId;
     [Test] procedure TestTranslatedCaptionsStayInsideTheFrame;
+    [Test] procedure TestEveryDialogIsTranslated;
     [Test] procedure TestDropDownItems;
     [Test] procedure TestAlignedHeaderKeepsInputs;
   end;
@@ -164,6 +165,48 @@ begin
   SetLocale('');
   Assert.IsTrue(N >= 60, 'dialogs loaded: ' + IntToStr(N));
   Assert.IsTrue(Bad = '', 'captions outside their box or against the frame:' + Bad);
+end;
+
+// A dialog without a block in a language pack shows English there.
+procedure TTestDialogTranslation.TestEveryDialogIsTranslated;
+const
+  cLocales: array[0..2] of string = ('ru', 'de', 'zh');
+var
+  F, Loc, Bad, Name: string;
+  En, Tr: TDialogDeclaration;
+  I: Integer;
+  Same: Boolean;
+  N: Integer;
+begin
+  Bad := '';
+  N := 0;
+  for F in TDirectory.GetFiles(TPath.GetFullPath('../../dialogs'), '*.json',
+    TSearchOption.soAllDirectories) do
+  begin
+    Name := 'DIALOG_' + UpperCase(TPath.GetFileNameWithoutExtension(F));
+    SetLocale('');
+    if not TryLoadDialogResource(Name, En) then
+      Continue;
+    for Loc in cLocales do
+    begin
+      SetLocale(Loc);
+      try
+        if not TryLoadDialogResource(Name, Tr) then
+          Continue;
+      finally
+        SetLocale('');
+      end;
+      Inc(N);
+      Same := Tr.Title = En.Title;
+      for I := 0 to High(En.Controls) do
+        if (I <= High(Tr.Controls)) and (Tr.Controls[I].Text <> En.Controls[I].Text) then
+          Same := False;
+      if Same then
+        Bad := Bad + ' ' + Loc + '/' + Name;
+    end;
+  end;
+  Assert.IsTrue(N > 150, 'dialog translations checked: ' + IntToStr(N));
+  Assert.AreEqual('', Bad, 'dialogs shown in English in a translated interface');
 end;
 
 procedure TTestDialogTranslation.TestDropDownItems;

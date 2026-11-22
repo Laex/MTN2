@@ -815,9 +815,14 @@ end;
 
 function BuildSetAttributesDialog(const ASummary, AOwnerNow, AOwnerEdit: string;
   const ACreated, AModified, AAccessed: string): TDialogDeclaration;
+var
+  I: Integer;
 begin
   RequireDialogResource(cResDialogSetAttr, Result);
   DialogSetLabelText(Result, 'summary', ASummary);
+  for I := 0 to High(Result.Controls) do
+    if Result.Controls[I].Id = 'summary' then
+      Result.Controls[I].Accent := True;
   DialogSetLabelText(Result, 'owner_now', AOwnerNow);
   DialogSetInputValue(Result, 'owner', AOwnerEdit);
   DialogSetCheckbox(Result, 'change_owner', False);
@@ -830,9 +835,14 @@ end;
 
 function BuildSetModeDialog(const ASummary, AOwner, AGroup: string;
   AMode: Integer; AImmutable, AAppendOnly, ANoDump: Boolean): TDialogDeclaration;
+var
+  I: Integer;
 begin
   RequireDialogResource(cResDialogSetMode, Result);
   DialogSetLabelText(Result, 'summary', ASummary);
+  for I := 0 to High(Result.Controls) do
+    if Result.Controls[I].Id = 'summary' then
+      Result.Controls[I].Accent := True;
   DialogSetInputValue(Result, 'mode', FileModeToOctal(AMode));
   DialogSetLabelText(Result, 'mode_now', FileModeToSymbolic(AMode));
   DialogSetLabelText(Result, 'mode_error', '');
@@ -1359,8 +1369,10 @@ function BuildPluginPermissionsDialog(const ATitle, AIntro, AOverrideText: strin
   const AGranted: TArray<Boolean>): TDialogDeclaration;
 const
   cSlots: array[0..2] of string = ('perm_override', 'perm_0', 'perm_1');
+  cFirstRuleRow = 5;
+  cSecondRuleRow = 7;
 var
-  Slot, I, J, Row: Integer;
+  Slot, I, J, Row, Shift: Integer;
   Keep: Boolean;
   Text: string;
   On_: Boolean;
@@ -1408,14 +1420,35 @@ begin
     if Keep then
       Inc(Row);
   end;
+  // The block under the checkboxes (rule, note, rule, buttons) follows the
+  // last checkbox row. Without the replacement note it shrinks to one rule,
+  // a blank row and the buttons.
+  Shift := cFirstRuleRow - Row;
+  // Without checkboxes the intro is the only text: a blank row separates it
+  // from the top border.
+  if Row = 3 then
+    for I := 0 to High(Result.Controls) do
+      if SameText(Result.Controls[I].Id, 'intro') then
+        Result.Controls[I].Row := 1;
   if not AHasOverride then
+  begin
     for I := High(Result.Controls) downto 0 do
-      if SameText(Result.Controls[I].Id, 'hint') then
+      if SameText(Result.Controls[I].Id, 'hint') or
+         ((Result.Controls[I].Kind = dckLabel) and (Result.Controls[I].Row = cSecondRuleRow)) then
       begin
         for J := I to High(Result.Controls) - 1 do
           Result.Controls[J] := Result.Controls[J + 1];
         SetLength(Result.Controls, Length(Result.Controls) - 1);
       end;
+    for I := 0 to High(Result.Controls) do
+      if (Result.Controls[I].Kind <> dckCheckbox) and (Result.Controls[I].Row > cSecondRuleRow) then
+        Dec(Result.Controls[I].Row, 2);
+    Dec(Result.Height, 2);
+  end;
+  for I := 0 to High(Result.Controls) do
+    if (Result.Controls[I].Kind <> dckCheckbox) and (Result.Controls[I].Row >= cFirstRuleRow) then
+      Dec(Result.Controls[I].Row, Shift);
+  Dec(Result.Height, Shift);
 end;
 
 function BuildPluginInfoDialog(const ATitle: string; const ALines: TArray<string>;

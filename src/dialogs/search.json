@@ -3,16 +3,37 @@
   "version": "2.0",
   "title": "Find file",
   "width": 66,
-  "height": 26,
+  "height": 21,
   "children": [
+    {
+      "type": "tabs",
+      "id": "tabs",
+      "items": [
+        "Search",
+        "Filters"
+      ],
+      "selected": 0,
+      "col": 1,
+      "row": 1,
+      "width": 62,
+      "height": 1
+    },
+    {
+      "type": "separator",
+      "col": 0,
+      "row": 2,
+      "width": 64,
+      "height": 1
+    },
     {
       "type": "label",
       "text": "A file mask or several file masks:",
       "id": "lbl_mask",
       "col": 1,
-      "row": 0,
+      "row": 3,
       "width": 62,
-      "height": 1
+      "height": 1,
+      "tab": 0
     },
     {
       "type": "input",
@@ -20,18 +41,20 @@
       "value": "*.*",
       "history": "findmask",
       "col": 1,
-      "row": 1,
+      "row": 4,
       "width": 62,
-      "height": 1
+      "height": 1,
+      "tab": 0
     },
     {
       "type": "label",
       "text": "Containing text:",
       "id": "lbl_text",
       "col": 1,
-      "row": 2,
+      "row": 5,
       "width": 62,
-      "height": 1
+      "height": 1,
+      "tab": 0
     },
     {
       "type": "input",
@@ -39,18 +62,20 @@
       "value": "",
       "history": "findtext",
       "col": 1,
-      "row": 3,
+      "row": 6,
       "width": 62,
-      "height": 1
+      "height": 1,
+      "tab": 0
     },
     {
       "type": "label",
       "text": "Hex bytes:",
       "id": "lbl_hex",
       "col": 1,
-      "row": 4,
+      "row": 7,
       "width": 62,
-      "height": 1
+      "height": 1,
+      "tab": 0
     },
     {
       "type": "input",
@@ -58,16 +83,10 @@
       "value": "",
       "history": "findhex",
       "col": 1,
-      "row": 5,
+      "row": 8,
       "width": 62,
-      "height": 1
-    },
-    {
-      "type": "separator",
-      "col": 0,
-      "row": 6,
-      "width": 64,
-      "height": 1
+      "height": 1,
+      "tab": 0
     },
     {
       "type": "checkbox",
@@ -75,9 +94,10 @@
       "text": "&Case sensitive",
       "checked": false,
       "col": 1,
-      "row": 7,
+      "row": 10,
       "width": 22,
-      "height": 1
+      "height": 1,
+      "tab": 0
     },
     {
       "type": "checkbox",
@@ -85,9 +105,10 @@
       "text": "&Whole words",
       "checked": false,
       "col": 39,
-      "row": 7,
+      "row": 10,
       "width": 25,
-      "height": 1
+      "height": 1,
+      "tab": 0
     },
     {
       "type": "checkbox",
@@ -95,9 +116,10 @@
       "text": "Search for &folders",
       "checked": false,
       "col": 1,
-      "row": 8,
+      "row": 11,
       "width": 25,
-      "height": 1
+      "height": 1,
+      "tab": 0
     },
     {
       "type": "checkbox",
@@ -105,9 +127,10 @@
       "text": "&Regex",
       "checked": false,
       "col": 39,
-      "row": 8,
+      "row": 11,
       "width": 25,
-      "height": 1
+      "height": 1,
+      "tab": 0
     },
     {
       "type": "checkbox",
@@ -115,9 +138,10 @@
       "text": "Search in &subfolders",
       "checked": true,
       "col": 1,
-      "row": 9,
+      "row": 12,
       "width": 25,
-      "height": 1
+      "height": 1,
+      "tab": 0
     },
     {
       "type": "checkbox",
@@ -125,18 +149,20 @@
       "text": "Search in arch&ives",
       "checked": false,
       "col": 39,
-      "row": 9,
+      "row": 12,
       "width": 25,
-      "height": 1
+      "height": 1,
+      "tab": 0
     },
     {
       "type": "label",
       "text": "Code &page:",
       "id": "lbl_encoding",
       "col": 1,
-      "row": 10,
+      "row": 13,
       "width": 15,
-      "height": 1
+      "height": 1,
+      "tab": 0
     },
     {
       "type": "dropdown",
@@ -146,115 +172,120 @@
         "Auto-detect"
       ],
       "col": 17,
-      "row": 10,
+      "row": 13,
       "width": 20,
-      "height": 1
+      "height": 1,
+      "tab": 0
     },
     {
       "type": "button",
       "id": "pipeline",
       "text": "Pipeli&ne: Auto",
       "col": 39,
-      "row": 10,
+      "row": 13,
       "width": 25,
-      "height": 1
-    },
-    {
-      "type": "separator",
-      "col": 0,
-      "row": 12,
-      "width": 64,
-      "height": 1
+      "height": 1,
+      "tab": 0
     },
     {
       "type": "label",
       "text": "Size from:",
       "id": "lbl_size",
       "col": 1,
-      "row": 13,
+      "row": 3,
       "width": 15,
-      "height": 1
+      "height": 1,
+      "tab": 1
     },
     {
       "type": "input",
       "id": "filter_size_min",
       "value": "",
       "col": 17,
-      "row": 13,
+      "row": 3,
       "width": 16,
-      "height": 1
+      "height": 1,
+      "tab": 1
     },
     {
       "type": "label",
       "text": "to:",
       "id": "lbl_size_to",
       "col": 34,
-      "row": 13,
+      "row": 3,
       "width": 3,
-      "height": 1
+      "height": 1,
+      "tab": 1
     },
     {
       "type": "input",
       "id": "filter_size_max",
       "value": "",
       "col": 38,
-      "row": 13,
+      "row": 3,
       "width": 16,
-      "height": 1
+      "height": 1,
+      "tab": 1
     },
     {
       "type": "label",
       "text": "Modified from:",
       "id": "lbl_date",
       "col": 1,
-      "row": 14,
+      "row": 4,
       "width": 15,
-      "height": 1
+      "height": 1,
+      "tab": 1
     },
     {
       "type": "input",
       "id": "filter_date_from",
       "value": "",
       "col": 17,
-      "row": 14,
+      "row": 4,
       "width": 16,
-      "height": 1
+      "height": 1,
+      "tab": 1
     },
     {
       "type": "label",
       "text": "to:",
       "id": "lbl_date_to",
       "col": 34,
-      "row": 14,
+      "row": 4,
       "width": 3,
-      "height": 1
+      "height": 1,
+      "tab": 1
     },
     {
       "type": "input",
       "id": "filter_date_to",
       "value": "",
       "col": 38,
-      "row": 14,
+      "row": 4,
       "width": 16,
-      "height": 1
+      "height": 1,
+      "tab": 1
     },
     {
       "type": "label",
       "text": "Size: 10K, 1.5M",
       "id": "lbl_format",
       "col": 1,
-      "row": 15,
+      "row": 5,
       "width": 62,
-      "height": 1
+      "height": 1,
+      "tab": 1
     },
     {
       "type": "label",
       "text": "Attributes:",
       "id": "lbl_attr",
       "col": 1,
-      "row": 16,
+      "row": 7,
       "width": 15,
-      "height": 1
+      "height": 1,
+      "tab": 1
     },
     {
       "type": "checkbox",
@@ -264,9 +295,10 @@
       "unknown": true,
       "checked": false,
       "col": 17,
-      "row": 16,
+      "row": 7,
       "width": 24,
-      "height": 1
+      "height": 1,
+      "tab": 1
     },
     {
       "type": "checkbox",
@@ -276,9 +308,10 @@
       "unknown": true,
       "checked": false,
       "col": 17,
-      "row": 17,
+      "row": 8,
       "width": 24,
-      "height": 1
+      "height": 1,
+      "tab": 1
     },
     {
       "type": "checkbox",
@@ -288,9 +321,10 @@
       "unknown": true,
       "checked": false,
       "col": 17,
-      "row": 18,
+      "row": 9,
       "width": 24,
-      "height": 1
+      "height": 1,
+      "tab": 1
     },
     {
       "type": "checkbox",
@@ -300,14 +334,15 @@
       "unknown": true,
       "checked": false,
       "col": 17,
-      "row": 19,
+      "row": 10,
       "width": 24,
-      "height": 1
+      "height": 1,
+      "tab": 1
     },
     {
       "type": "separator",
       "col": 0,
-      "row": 20,
+      "row": 15,
       "width": 64,
       "height": 1
     },
@@ -317,7 +352,7 @@
       "text": "Find",
       "default": true,
       "col": 8,
-      "row": 22,
+      "row": 17,
       "width": 12,
       "height": 1
     },
@@ -326,7 +361,7 @@
       "id": "background",
       "text": "&Background",
       "col": 22,
-      "row": 22,
+      "row": 17,
       "width": 16,
       "height": 1
     },
@@ -336,7 +371,7 @@
       "text": "Cancel",
       "cancel": true,
       "col": 40,
-      "row": 22,
+      "row": 17,
       "width": 12,
       "height": 1
     }

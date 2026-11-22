@@ -2,16 +2,16 @@
   "type": "dialog",
   "version": "2.0",
   "title": "Set attributes",
-  "width": 80,
-  "height": 23,
+  "width": 78,
+  "height": 21,
   "children": [
     {
       "type": "label",
       "text": "item",
       "id": "summary",
       "col": 1,
-      "row": 0,
-      "width": 76,
+      "row": 1,
+      "width": 74,
       "height": 1
     },
     {
@@ -19,7 +19,7 @@
       "id": "lbl_volume",
       "text": "Volume:",
       "col": 1,
-      "row": 1,
+      "row": 2,
       "width": 8,
       "height": 1
     },
@@ -29,7 +29,7 @@
       "value": "",
       "readonly": true,
       "col": 16,
-      "row": 1,
+      "row": 2,
       "width": 60,
       "height": 1
     },
@@ -38,7 +38,7 @@
       "id": "lbl_device",
       "text": "Device:",
       "col": 1,
-      "row": 2,
+      "row": 3,
       "width": 8,
       "height": 1
     },
@@ -48,126 +48,28 @@
       "value": "",
       "readonly": true,
       "col": 16,
-      "row": 2,
+      "row": 3,
       "width": 60,
       "height": 1
     },
     {
-      "type": "label",
-      "id": "lbl_created",
-      "text": "Created",
-      "col": 1,
-      "row": 4,
-      "width": 10,
-      "height": 1
-    },
-    {
-      "type": "input",
-      "id": "date_created",
-      "value": "",
-      "col": 16,
-      "row": 4,
-      "width": 21,
-      "height": 1
-    },
-    {
-      "type": "label",
-      "id": "lbl_modified",
-      "text": "Modified",
-      "col": 1,
-      "row": 5,
-      "width": 10,
-      "height": 1
-    },
-    {
-      "type": "input",
-      "id": "date_modified",
-      "value": "",
-      "col": 16,
-      "row": 5,
-      "width": 21,
-      "height": 1
-    },
-    {
-      "type": "label",
-      "id": "lbl_accessed",
-      "text": "Accessed",
-      "col": 1,
-      "row": 6,
-      "width": 10,
-      "height": 1
-    },
-    {
-      "type": "input",
-      "id": "date_accessed",
-      "value": "",
-      "col": 16,
-      "row": 6,
-      "width": 21,
-      "height": 1
-    },
-    {
-      "type": "label",
-      "text": "Owner:",
-      "id": "lbl_owner",
-      "col": 40,
-      "row": 4,
-      "width": 12,
-      "height": 1
-    },
-    {
-      "type": "label",
-      "text": "",
-      "id": "owner_now",
-      "col": 53,
-      "row": 4,
-      "width": 23,
-      "height": 1
-    },
-    {
-      "type": "checkbox",
-      "id": "change_owner",
-      "text": "&Change owner",
-      "checked": false,
-      "col": 40,
-      "row": 5,
-      "width": 36,
-      "height": 1
-    },
-    {
-      "type": "dropdown",
-      "id": "owner",
-      "col": 40,
-      "row": 6,
-      "width": 36,
-      "height": 1,
+      "type": "tabs",
+      "id": "tabs",
+      "items": [
+        "Attributes",
+        "Dates",
+        "Owner"
+      ],
       "selected": 0,
-      "items": []
-    },
-    {
-      "type": "button",
-      "id": "dates_now",
-      "text": "C&urrent",
-      "col": 20,
-      "row": 8,
-      "width": 14,
-      "height": 1
-    },
-    {
-      "type": "button",
-      "id": "dates_orig",
-      "text": "&Original",
-      "col": 40,
-      "row": 8,
-      "width": 14,
-      "height": 1
-    },
-    {
-      "type": "label",
-      "text": "",
-      "id": "date_error",
       "col": 1,
-      "row": 9,
+      "row": 5,
+      "width": 74,
+      "height": 1
+    },
+    {
+      "type": "separator",
+      "col": 0,
+      "row": 6,
       "width": 76,
       "height": 1
     },
@@ -178,9 +80,10 @@
       "tristate": true,
       "unknown": true,
       "col": 1,
-      "row": 10,
+      "row": 7,
       "width": 36,
-      "height": 1
+      "height": 1,
+      "tab": 0
     },
     {
       "type": "checkbox",
@@ -189,9 +92,10 @@
       "tristate": true,
       "unknown": true,
       "col": 38,
-      "row": 10,
+      "row": 7,
       "width": 36,
-      "height": 1
+      "height": 1,
+      "tab": 0
     },
     {
       "type": "checkbox",
@@ -200,9 +104,10 @@
       "tristate": true,
       "unknown": true,
       "col": 1,
-      "row": 11,
+      "row": 8,
       "width": 36,
-      "height": 1
+      "height": 1,
+      "tab": 0
     },
     {
       "type": "checkbox",
@@ -211,9 +116,10 @@
       "tristate": true,
       "unknown": true,
       "col": 38,
-      "row": 11,
+      "row": 8,
       "width": 36,
-      "height": 1
+      "height": 1,
+      "tab": 0
     },
     {
       "type": "checkbox",
@@ -222,9 +128,10 @@
       "tristate": true,
       "unknown": true,
       "col": 1,
-      "row": 12,
+      "row": 9,
       "width": 36,
-      "height": 1
+      "height": 1,
+      "tab": 0
     },
     {
       "type": "checkbox",
@@ -233,9 +140,10 @@
       "tristate": true,
       "unknown": true,
       "col": 38,
-      "row": 12,
+      "row": 9,
       "width": 36,
-      "height": 1
+      "height": 1,
+      "tab": 0
     },
     {
       "type": "checkbox",
@@ -244,9 +152,10 @@
       "tristate": true,
       "unknown": true,
       "col": 1,
-      "row": 13,
+      "row": 10,
       "width": 36,
-      "height": 1
+      "height": 1,
+      "tab": 0
     },
     {
       "type": "checkbox",
@@ -255,9 +164,10 @@
       "tristate": true,
       "unknown": true,
       "col": 38,
-      "row": 13,
+      "row": 10,
       "width": 36,
-      "height": 1
+      "height": 1,
+      "tab": 0
     },
     {
       "type": "checkbox",
@@ -266,9 +176,10 @@
       "tristate": true,
       "unknown": true,
       "col": 1,
-      "row": 14,
+      "row": 11,
       "width": 36,
-      "height": 1
+      "height": 1,
+      "tab": 0
     },
     {
       "type": "checkbox",
@@ -277,9 +188,142 @@
       "tristate": true,
       "unknown": true,
       "col": 38,
-      "row": 14,
+      "row": 11,
       "width": 36,
-      "height": 1
+      "height": 1,
+      "tab": 0
+    },
+    {
+      "type": "label",
+      "id": "lbl_created",
+      "text": "Created",
+      "col": 1,
+      "row": 7,
+      "width": 10,
+      "height": 1,
+      "tab": 1
+    },
+    {
+      "type": "input",
+      "id": "date_created",
+      "value": "",
+      "col": 16,
+      "row": 7,
+      "width": 21,
+      "height": 1,
+      "tab": 1
+    },
+    {
+      "type": "label",
+      "id": "lbl_modified",
+      "text": "Modified",
+      "col": 1,
+      "row": 8,
+      "width": 10,
+      "height": 1,
+      "tab": 1
+    },
+    {
+      "type": "input",
+      "id": "date_modified",
+      "value": "",
+      "col": 16,
+      "row": 8,
+      "width": 21,
+      "height": 1,
+      "tab": 1
+    },
+    {
+      "type": "label",
+      "id": "lbl_accessed",
+      "text": "Accessed",
+      "col": 1,
+      "row": 9,
+      "width": 10,
+      "height": 1,
+      "tab": 1
+    },
+    {
+      "type": "input",
+      "id": "date_accessed",
+      "value": "",
+      "col": 16,
+      "row": 9,
+      "width": 21,
+      "height": 1,
+      "tab": 1
+    },
+    {
+      "type": "button",
+      "id": "dates_now",
+      "text": "C&urrent",
+      "col": 20,
+      "row": 11,
+      "width": 14,
+      "height": 1,
+      "tab": 1
+    },
+    {
+      "type": "button",
+      "id": "dates_orig",
+      "text": "&Original",
+      "col": 40,
+      "row": 11,
+      "width": 14,
+      "height": 1,
+      "tab": 1
+    },
+    {
+      "type": "label",
+      "text": "",
+      "id": "date_error",
+      "col": 1,
+      "row": 12,
+      "width": 74,
+      "height": 1,
+      "tab": 1
+    },
+    {
+      "type": "label",
+      "text": "Owner:",
+      "id": "lbl_owner",
+      "col": 1,
+      "row": 7,
+      "width": 12,
+      "height": 1,
+      "tab": 2
+    },
+    {
+      "type": "label",
+      "text": "",
+      "id": "owner_now",
+      "col": 14,
+      "row": 7,
+      "width": 60,
+      "height": 1,
+      "tab": 2
+    },
+    {
+      "type": "checkbox",
+      "id": "change_owner",
+      "text": "&Change owner",
+      "checked": false,
+      "col": 1,
+      "row": 8,
+      "width": 36,
+      "height": 1,
+      "tab": 2
+    },
+    {
+      "type": "dropdown",
+      "id": "owner",
+      "col": 1,
+      "row": 9,
+      "width": 36,
+      "height": 1,
+      "selected": 0,
+      "items": [],
+      "tab": 2
     },
     {
       "type": "checkbox",
@@ -287,15 +331,15 @@
       "text": "Process su&bfolders",
       "checked": false,
       "col": 1,
-      "row": 16,
-      "width": 76,
+      "row": 14,
+      "width": 74,
       "height": 1
     },
     {
       "type": "separator",
       "col": 0,
-      "row": 17,
-      "width": 78,
+      "row": 15,
+      "width": 76,
       "height": 1
     },
     {
@@ -303,8 +347,8 @@
       "id": "ok",
       "text": "Set",
       "default": true,
-      "col": 17,
-      "row": 19,
+      "col": 15,
+      "row": 17,
       "width": 12,
       "height": 1
     },
@@ -312,8 +356,8 @@
       "type": "button",
       "id": "sys_props",
       "text": "S&ystem properties",
-      "col": 31,
-      "row": 19,
+      "col": 29,
+      "row": 17,
       "width": 21,
       "height": 1
     },
@@ -322,8 +366,8 @@
       "id": "cancel",
       "text": "Cancel",
       "cancel": true,
-      "col": 54,
-      "row": 19,
+      "col": 52,
+      "row": 17,
       "width": 12,
       "height": 1
     }

@@ -6,6 +6,8 @@ This file describes what changes for the user from version to version: new featu
 
 ## Unreleased
 
+## Dev v0.5.11.2 – 2026-11-22
+
 ### New
 
 - The top menu (≡ menu, Help) has "What MTN2 can do": a help page that lists the program's features by task (find a command, move around, select and rename files, search and compare, view and edit, console and terminals, tabs and workspaces, settings) with the keys and links to the details. The page is in the help contents too, in English, Russian, German and Chinese.
@@ -16,6 +18,9 @@ This file describes what changes for the user from version to version: new featu
 
 - After an update, the "What's new" button of the announcement opens only the changelog sections between the previous version and the installed one, instead of the whole changelog.
 - The first run of the program opens the "What MTN2 can do" help page.
+- The file search dialog has two tabs ("Search" and "Filters") and the attributes dialog has three ("Attributes", "Dates", "Owner"), so both fit an 80x24 terminal. In dialogs with tabs, the rule under the tab strip opens under the shown tab.
+- The plugin permissions dialog is compact when a plugin asks for no permissions. The attributes dialog highlights the file name and, for several items, shows how many files and folders are selected.
+- The network connections dialog of the network plugin has a cleaner layout, and its host-key and certificate prompts have tidy buttons. The "Set mode" dialog is translated, and a few menu hotkeys that clashed in German and Chinese are fixed.
 
 ## v0.5.11 – 2026-11-22
 

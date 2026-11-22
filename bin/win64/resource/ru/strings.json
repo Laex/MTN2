@@ -660,6 +660,10 @@
       "cancel": "Отмена"
     },
     "DIALOG_SEARCH": {
+      "tabs_items": {
+        "Search": "Поиск",
+        "Filters": "Фильтры"
+      },
       "lbl_mask": "Маска файла или несколько масок:",
       "lbl_text": "Содержащие текст:",
       "$title": "Поиск файла",
@@ -711,7 +715,24 @@
       "ok": "ОК",
       "cancel": "Отмена"
     },
+    "DIALOG_SETMODE": {
+      "$title": "Права доступа",
+      "lbl_mode": "Права (восьм.):",
+      "lbl_owner": "Владелец:",
+      "lbl_group": "Группа:",
+      "flag_immutable": "&Неизменяемый (chattr +i)",
+      "flag_append": "Только &добавление (chattr +a)",
+      "flag_nodump": "Не &архивировать (chattr +d)",
+      "recurse": "&Обрабатывать вложенные папки",
+      "ok": "Применить",
+      "cancel": "Отмена"
+    },
     "DIALOG_SETATTR": {
+      "tabs_items": {
+        "Attributes": "Атрибуты",
+        "Dates": "Даты",
+        "Owner": "Владелец"
+      },
       "$title": "Атрибуты",
       "attr_ro": "Только &чтение",
       "attr_h": "Скр&ытый",
@@ -1909,6 +1930,7 @@
     "setAttr.failedTitle": "Ошибка изменения атрибутов",
     "setAttr.ownerEmptyMsg": "Не указано имя владельца",
     "setAttr.badDate": "Неверная дата: %s",
+    "setAttr.items": "Элементов: %d (файлов: %d, папок: %d)",
 
     "terminalProfile.title": "Новый терминал",
     "terminalProfile.hint1": "Ins - копия профиля   Del - удалить копию",
@@ -2104,6 +2126,8 @@
     "hint.tmaOptExportSettings": "Сохраняет настройки в файл, чтобы перенести их на другой компьютер.",
     "hint.tmaOptImportSettings": "Загружает настройки из ранее сохранённого файла.",
     "hint.tmaOptConfigLocation": "Показывает, где хранятся настройки, и переключает папку пользователя и переносной режим.",
+    "hint.tmaCmdPairedFolders": "Включает или выключает парные папки: вход в подпапку или переход вверх на одной панели повторяется на другой.",
+    "hint.tmaCmdGroupBy": "Переключает группировку строк панели: по типу, по дате или без неё. Строки идут по группам, начало каждой группы отмечено.",
     "alias.tmaOptExportSettings": "экспорт, резервная копия, настройки",
     "alias.tmaOptImportSettings": "импорт, настройки, восстановить",
     "alias.tmaOptConfigLocation": "настройки, папка, расположение, конфиг",
@@ -2232,6 +2256,8 @@
     "alias.tmaCmdFocusCmdLine": "командная строка",
     "alias.tmaCmdNextTab": "вкладка, следующая",
     "alias.tmaCmdPalette": "найти команду, палитра, меню, поиск",
+    "alias.tmaCmdPairedFolders": "парные, синхронный обзор, синхронная навигация, связанные панели",
+    "alias.tmaCmdGroupBy": "группировка, тип, дата, порядок",
 
     "tmaHelpAbout": "&О программе MTN2...",
     "tmaHelpUpdates": "Об&новления...",

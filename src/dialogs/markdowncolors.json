@@ -3,7 +3,7 @@
   "version": "2.0",
   "title": "Markdown colors",
   "width": 78,
-  "height": 15,
+  "height": 16,
   "children": [
     {
       "type": "tabs",
@@ -16,7 +16,7 @@
         "Links and tables"
       ],
       "col": 1,
-      "row": 0,
+      "row": 1,
       "width": 70,
       "height": 1
     },
@@ -25,7 +25,7 @@
       "id": "lbl_element",
       "text": "Element",
       "col": 1,
-      "row": 1,
+      "row": 2,
       "width": 18,
       "height": 1
     },
@@ -34,7 +34,7 @@
       "id": "lbl_fg",
       "text": "Foreground",
       "col": 21,
-      "row": 1,
+      "row": 2,
       "width": 11,
       "height": 1
     },
@@ -43,7 +43,7 @@
       "id": "lbl_bg",
       "text": "Background",
       "col": 33,
-      "row": 1,
+      "row": 2,
       "width": 11,
       "height": 1
     },
@@ -52,7 +52,7 @@
       "id": "lbl_sample",
       "text": "Sample",
       "col": 45,
-      "row": 1,
+      "row": 2,
       "width": 9,
       "height": 1
     },
@@ -61,7 +61,7 @@
       "id": "lbl_style",
       "text": "Style",
       "col": 55,
-      "row": 1,
+      "row": 2,
       "width": 19,
       "height": 1
     },
@@ -70,7 +70,7 @@
       "id": "lbl_text",
       "text": "Text / document",
       "col": 1,
-      "row": 2,
+      "row": 3,
       "width": 18,
       "height": 1,
       "tab": 0
@@ -81,7 +81,7 @@
       "value": "",
       "colorpick": true,
       "col": 21,
-      "row": 2,
+      "row": 3,
       "width": 9,
       "height": 1,
       "tab": 0
@@ -92,7 +92,7 @@
       "value": "",
       "colorpick": true,
       "col": 33,
-      "row": 2,
+      "row": 3,
       "width": 9,
       "height": 1,
       "tab": 0
@@ -105,7 +105,7 @@
       "bgFrom": "md_text_bg",
       "styleFrom": "md_text_style",
       "col": 45,
-      "row": 2,
+      "row": 3,
       "width": 9,
       "height": 1,
       "tab": 0
@@ -118,7 +118,7 @@
         "Theme"
       ],
       "col": 55,
-      "row": 2,
+      "row": 3,
       "width": 19,
       "height": 1,
       "tab": 0
@@ -128,7 +128,7 @@
       "id": "lbl_h1",
       "text": "Heading 1",
       "col": 1,
-      "row": 3,
+      "row": 4,
       "width": 18,
       "height": 1,
       "tab": 0
@@ -139,7 +139,7 @@
       "value": "",
       "colorpick": true,
       "col": 21,
-      "row": 3,
+      "row": 4,
       "width": 9,
       "height": 1,
       "tab": 0
@@ -150,7 +150,7 @@
       "value": "",
       "colorpick": true,
       "col": 33,
-      "row": 3,
+      "row": 4,
       "width": 9,
       "height": 1,
       "tab": 0
@@ -166,7 +166,7 @@
       "styleFrom": "md_h1_style",
       "baseStyle": "bold",
       "col": 45,
-      "row": 3,
+      "row": 4,
       "width": 9,
       "height": 1,
       "tab": 0
@@ -179,7 +179,7 @@
         "Theme"
       ],
       "col": 55,
-      "row": 3,
+      "row": 4,
       "width": 19,
       "height": 1,
       "tab": 0
@@ -189,7 +189,7 @@
       "id": "lbl_h2",
       "text": "Heading 2",
       "col": 1,
-      "row": 4,
+      "row": 5,
       "width": 18,
       "height": 1,
       "tab": 0
@@ -200,7 +200,7 @@
       "value": "",
       "colorpick": true,
       "col": 21,
-      "row": 4,
+      "row": 5,
       "width": 9,
       "height": 1,
       "tab": 0
@@ -211,7 +211,7 @@
       "value": "",
       "colorpick": true,
       "col": 33,
-      "row": 4,
+      "row": 5,
       "width": 9,
       "height": 1,
       "tab": 0
@@ -227,7 +227,7 @@
       "styleFrom": "md_h2_style",
       "baseStyle": "bold",
       "col": 45,
-      "row": 4,
+      "row": 5,
       "width": 9,
       "height": 1,
       "tab": 0
@@ -240,7 +240,7 @@
         "Theme"
       ],
       "col": 55,
-      "row": 4,
+      "row": 5,
       "width": 19,
       "height": 1,
       "tab": 0
@@ -250,7 +250,7 @@
       "id": "lbl_h3to6",
       "text": "Headings 3-6",
       "col": 1,
-      "row": 5,
+      "row": 6,
       "width": 18,
       "height": 1,
       "tab": 0
@@ -261,7 +261,7 @@
       "value": "",
       "colorpick": true,
       "col": 21,
-      "row": 5,
+      "row": 6,
       "width": 9,
       "height": 1,
       "tab": 0
@@ -272,7 +272,7 @@
       "value": "",
       "colorpick": true,
       "col": 33,
-      "row": 5,
+      "row": 6,
       "width": 9,
       "height": 1,
       "tab": 0
@@ -288,7 +288,7 @@
       "styleFrom": "md_h3to6_style",
       "baseStyle": "bold",
       "col": 45,
-      "row": 5,
+      "row": 6,
       "width": 9,
       "height": 1,
       "tab": 0
@@ -301,7 +301,7 @@
         "Theme"
       ],
       "col": 55,
-      "row": 5,
+      "row": 6,
       "width": 19,
       "height": 1,
       "tab": 0
@@ -311,7 +311,7 @@
       "id": "lbl_bold",
       "text": "Bold",
       "col": 1,
-      "row": 2,
+      "row": 3,
       "width": 18,
       "height": 1,
       "tab": 1
@@ -322,7 +322,7 @@
       "value": "",
       "colorpick": true,
       "col": 21,
-      "row": 2,
+      "row": 3,
       "width": 9,
       "height": 1,
       "tab": 1
@@ -333,7 +333,7 @@
       "value": "",
       "colorpick": true,
       "col": 33,
-      "row": 2,
+      "row": 3,
       "width": 9,
       "height": 1,
       "tab": 1
@@ -349,7 +349,7 @@
       "styleFrom": "md_bold_style",
       "baseStyle": "bold",
       "col": 45,
-      "row": 2,
+      "row": 3,
       "width": 9,
       "height": 1,
       "tab": 1
@@ -362,7 +362,7 @@
         "Theme"
       ],
       "col": 55,
-      "row": 2,
+      "row": 3,
       "width": 19,
       "height": 1,
       "tab": 1
@@ -372,7 +372,7 @@
       "id": "lbl_italic",
       "text": "Italic",
       "col": 1,
-      "row": 3,
+      "row": 4,
       "width": 18,
       "height": 1,
       "tab": 1
@@ -383,7 +383,7 @@
       "value": "",
       "colorpick": true,
       "col": 21,
-      "row": 3,
+      "row": 4,
       "width": 9,
       "height": 1,
       "tab": 1
@@ -394,7 +394,7 @@
       "value": "",
       "colorpick": true,
       "col": 33,
-      "row": 3,
+      "row": 4,
       "width": 9,
       "height": 1,
       "tab": 1
@@ -410,7 +410,7 @@
       "styleFrom": "md_italic_style",
       "baseStyle": "italic",
       "col": 45,
-      "row": 3,
+      "row": 4,
       "width": 9,
       "height": 1,
       "tab": 1
@@ -423,7 +423,7 @@
         "Theme"
       ],
       "col": 55,
-      "row": 3,
+      "row": 4,
       "width": 19,
       "height": 1,
       "tab": 1
@@ -433,7 +433,7 @@
       "id": "lbl_boldItalic",
       "text": "Bold italic",
       "col": 1,
-      "row": 4,
+      "row": 5,
       "width": 18,
       "height": 1,
       "tab": 1
@@ -444,7 +444,7 @@
       "value": "",
       "colorpick": true,
       "col": 21,
-      "row": 4,
+      "row": 5,
       "width": 9,
       "height": 1,
       "tab": 1
@@ -455,7 +455,7 @@
       "value": "",
       "colorpick": true,
       "col": 33,
-      "row": 4,
+      "row": 5,
       "width": 9,
       "height": 1,
       "tab": 1
@@ -471,7 +471,7 @@
       "styleFrom": "md_boldItalic_style",
       "baseStyle": "bold+italic",
       "col": 45,
-      "row": 4,
+      "row": 5,
       "width": 9,
       "height": 1,
       "tab": 1
@@ -484,7 +484,7 @@
         "Theme"
       ],
       "col": 55,
-      "row": 4,
+      "row": 5,
       "width": 19,
       "height": 1,
       "tab": 1
@@ -494,7 +494,7 @@
       "id": "lbl_strike",
       "text": "Strikethrough",
       "col": 1,
-      "row": 5,
+      "row": 6,
       "width": 18,
       "height": 1,
       "tab": 1
@@ -505,7 +505,7 @@
       "value": "",
       "colorpick": true,
       "col": 21,
-      "row": 5,
+      "row": 6,
       "width": 9,
       "height": 1,
       "tab": 1
@@ -516,7 +516,7 @@
       "value": "",
       "colorpick": true,
       "col": 33,
-      "row": 5,
+      "row": 6,
       "width": 9,
       "height": 1,
       "tab": 1
@@ -532,7 +532,7 @@
       "styleFrom": "md_strike_style",
       "baseStyle": "strike",
       "col": 45,
-      "row": 5,
+      "row": 6,
       "width": 9,
       "height": 1,
       "tab": 1
@@ -545,7 +545,7 @@
         "Theme"
       ],
       "col": 55,
-      "row": 5,
+      "row": 6,
       "width": 19,
       "height": 1,
       "tab": 1
@@ -555,7 +555,7 @@
       "id": "lbl_inlineCode",
       "text": "Inline code",
       "col": 1,
-      "row": 2,
+      "row": 3,
       "width": 18,
       "height": 1,
       "tab": 2
@@ -566,7 +566,7 @@
       "value": "",
       "colorpick": true,
       "col": 21,
-      "row": 2,
+      "row": 3,
       "width": 9,
       "height": 1,
       "tab": 2
@@ -577,7 +577,7 @@
       "value": "",
       "colorpick": true,
       "col": 33,
-      "row": 2,
+      "row": 3,
       "width": 9,
       "height": 1,
       "tab": 2
@@ -592,7 +592,7 @@
       "bgFallback": "md_text_bg",
       "styleFrom": "md_inlineCode_style",
       "col": 45,
-      "row": 2,
+      "row": 3,
       "width": 9,
       "height": 1,
       "tab": 2
@@ -605,7 +605,7 @@
         "Theme"
       ],
       "col": 55,
-      "row": 2,
+      "row": 3,
       "width": 19,
       "height": 1,
       "tab": 2
@@ -615,7 +615,7 @@
       "id": "lbl_codeBlock",
       "text": "Code block",
       "col": 1,
-      "row": 3,
+      "row": 4,
       "width": 18,
       "height": 1,
       "tab": 2
@@ -626,7 +626,7 @@
       "value": "",
       "colorpick": true,
       "col": 21,
-      "row": 3,
+      "row": 4,
       "width": 9,
       "height": 1,
       "tab": 2
@@ -637,7 +637,7 @@
       "value": "",
       "colorpick": true,
       "col": 33,
-      "row": 3,
+      "row": 4,
       "width": 9,
       "height": 1,
       "tab": 2
@@ -652,7 +652,7 @@
       "bgFallback": "md_text_bg",
       "styleFrom": "md_codeBlock_style",
       "col": 45,
-      "row": 3,
+      "row": 4,
       "width": 9,
       "height": 1,
       "tab": 2
@@ -665,7 +665,7 @@
         "Theme"
       ],
       "col": 55,
-      "row": 3,
+      "row": 4,
       "width": 19,
       "height": 1,
       "tab": 2
@@ -675,7 +675,7 @@
       "id": "lbl_quote",
       "text": "Quote",
       "col": 1,
-      "row": 4,
+      "row": 5,
       "width": 18,
       "height": 1,
       "tab": 2
@@ -686,7 +686,7 @@
       "value": "",
       "colorpick": true,
       "col": 21,
-      "row": 4,
+      "row": 5,
       "width": 9,
       "height": 1,
       "tab": 2
@@ -697,7 +697,7 @@
       "value": "",
       "colorpick": true,
       "col": 33,
-      "row": 4,
+      "row": 5,
       "width": 9,
       "height": 1,
       "tab": 2
@@ -712,7 +712,7 @@
       "bgFallback": "md_text_bg",
       "styleFrom": "md_quote_style",
       "col": 45,
-      "row": 4,
+      "row": 5,
       "width": 9,
       "height": 1,
       "tab": 2
@@ -725,7 +725,7 @@
         "Theme"
       ],
       "col": 55,
-      "row": 4,
+      "row": 5,
       "width": 19,
       "height": 1,
       "tab": 2
@@ -735,7 +735,7 @@
       "id": "lbl_listMarker",
       "text": "List marker",
       "col": 1,
-      "row": 5,
+      "row": 6,
       "width": 18,
       "height": 1,
       "tab": 2
@@ -746,7 +746,7 @@
       "value": "",
       "colorpick": true,
       "col": 21,
-      "row": 5,
+      "row": 6,
       "width": 9,
       "height": 1,
       "tab": 2
@@ -757,7 +757,7 @@
       "value": "",
       "colorpick": true,
       "col": 33,
-      "row": 5,
+      "row": 6,
       "width": 9,
       "height": 1,
       "tab": 2
@@ -773,7 +773,7 @@
       "styleFrom": "md_listMarker_style",
       "baseStyle": "bold",
       "col": 45,
-      "row": 5,
+      "row": 6,
       "width": 9,
       "height": 1,
       "tab": 2
@@ -786,7 +786,7 @@
         "Theme"
       ],
       "col": 55,
-      "row": 5,
+      "row": 6,
       "width": 19,
       "height": 1,
       "tab": 2
@@ -796,7 +796,7 @@
       "id": "lbl_hrule",
       "text": "Horizontal rule",
       "col": 1,
-      "row": 6,
+      "row": 7,
       "width": 18,
       "height": 1,
       "tab": 2
@@ -807,7 +807,7 @@
       "value": "",
       "colorpick": true,
       "col": 21,
-      "row": 6,
+      "row": 7,
       "width": 9,
       "height": 1,
       "tab": 2
@@ -818,7 +818,7 @@
       "value": "",
       "colorpick": true,
       "col": 33,
-      "row": 6,
+      "row": 7,
       "width": 9,
       "height": 1,
       "tab": 2
@@ -832,7 +832,7 @@
       "fgFallback": "md_text_fg",
       "bgFallback": "md_text_bg",
       "col": 45,
-      "row": 6,
+      "row": 7,
       "width": 9,
       "height": 1,
       "tab": 2
@@ -842,7 +842,7 @@
       "id": "lbl_link",
       "text": "Link",
       "col": 1,
-      "row": 2,
+      "row": 3,
       "width": 18,
       "height": 1,
       "tab": 3
@@ -853,7 +853,7 @@
       "value": "",
       "colorpick": true,
       "col": 21,
-      "row": 2,
+      "row": 3,
       "width": 9,
       "height": 1,
       "tab": 3
@@ -864,7 +864,7 @@
       "value": "",
       "colorpick": true,
       "col": 33,
-      "row": 2,
+      "row": 3,
       "width": 9,
       "height": 1,
       "tab": 3
@@ -880,7 +880,7 @@
       "styleFrom": "md_link_style",
       "baseStyle": "underline",
       "col": 45,
-      "row": 2,
+      "row": 3,
       "width": 9,
       "height": 1,
       "tab": 3
@@ -893,7 +893,7 @@
         "Theme"
       ],
       "col": 55,
-      "row": 2,
+      "row": 3,
       "width": 19,
       "height": 1,
       "tab": 3
@@ -903,7 +903,7 @@
       "id": "lbl_imageMarker",
       "text": "Image placeholder",
       "col": 1,
-      "row": 3,
+      "row": 4,
       "width": 18,
       "height": 1,
       "tab": 3
@@ -914,7 +914,7 @@
       "value": "",
       "colorpick": true,
       "col": 21,
-      "row": 3,
+      "row": 4,
       "width": 9,
       "height": 1,
       "tab": 3
@@ -925,7 +925,7 @@
       "value": "",
       "colorpick": true,
       "col": 33,
-      "row": 3,
+      "row": 4,
       "width": 9,
       "height": 1,
       "tab": 3
@@ -940,7 +940,7 @@
       "bgFallback": "md_text_bg",
       "styleFrom": "md_imageMarker_style",
       "col": 45,
-      "row": 3,
+      "row": 4,
       "width": 9,
       "height": 1,
       "tab": 3
@@ -953,7 +953,7 @@
         "Theme"
       ],
       "col": 55,
-      "row": 3,
+      "row": 4,
       "width": 19,
       "height": 1,
       "tab": 3
@@ -963,7 +963,7 @@
       "id": "lbl_tableBorder",
       "text": "Table border",
       "col": 1,
-      "row": 4,
+      "row": 5,
       "width": 18,
       "height": 1,
       "tab": 3
@@ -974,7 +974,7 @@
       "value": "",
       "colorpick": true,
       "col": 21,
-      "row": 4,
+      "row": 5,
       "width": 9,
       "height": 1,
       "tab": 3
@@ -985,7 +985,7 @@
       "value": "",
       "colorpick": true,
       "col": 33,
-      "row": 4,
+      "row": 5,
       "width": 9,
       "height": 1,
       "tab": 3
@@ -999,7 +999,7 @@
       "fgFallback": "md_text_fg",
       "bgFallback": "md_text_bg",
       "col": 45,
-      "row": 4,
+      "row": 5,
       "width": 9,
       "height": 1,
       "tab": 3
@@ -1009,7 +1009,7 @@
       "id": "lbl_tableHeader",
       "text": "Table header",
       "col": 1,
-      "row": 5,
+      "row": 6,
       "width": 18,
       "height": 1,
       "tab": 3
@@ -1020,7 +1020,7 @@
       "value": "",
       "colorpick": true,
       "col": 21,
-      "row": 5,
+      "row": 6,
       "width": 9,
       "height": 1,
       "tab": 3
@@ -1031,7 +1031,7 @@
       "value": "",
       "colorpick": true,
       "col": 33,
-      "row": 5,
+      "row": 6,
       "width": 9,
       "height": 1,
       "tab": 3
@@ -1047,7 +1047,7 @@
       "styleFrom": "md_tableHeader_style",
       "baseStyle": "bold",
       "col": 45,
-      "row": 5,
+      "row": 6,
       "width": 9,
       "height": 1,
       "tab": 3
@@ -1060,7 +1060,7 @@
         "Theme"
       ],
       "col": 55,
-      "row": 5,
+      "row": 6,
       "width": 19,
       "height": 1,
       "tab": 3
@@ -1068,7 +1068,7 @@
     {
       "type": "separator",
       "col": 0,
-      "row": 7,
+      "row": 8,
       "width": 76,
       "height": 1
     },
@@ -1077,7 +1077,7 @@
       "id": "hint",
       "text": "F9 or [...] - pick a color; empty = the theme's color",
       "col": 1,
-      "row": 8,
+      "row": 9,
       "width": 60,
       "height": 1
     },
@@ -1086,14 +1086,14 @@
       "id": "status",
       "text": "",
       "col": 1,
-      "row": 10,
+      "row": 11,
       "width": 60,
       "height": 1
     },
     {
       "type": "separator",
       "col": 0,
-      "row": 9,
+      "row": 10,
       "width": 76,
       "height": 1
     },
@@ -1103,7 +1103,7 @@
       "text": "OK",
       "default": true,
       "col": 5,
-      "row": 11,
+      "row": 12,
       "width": 6,
       "height": 1
     },
@@ -1113,7 +1113,7 @@
       "text": "Cancel",
       "cancel": true,
       "col": 13,
-      "row": 11,
+      "row": 12,
       "width": 10,
       "height": 1
     },
@@ -1122,7 +1122,7 @@
       "id": "import",
       "text": "&Import from Obsidian...",
       "col": 25,
-      "row": 11,
+      "row": 12,
       "width": 27,
       "height": 1
     },
@@ -1131,7 +1131,7 @@
       "id": "reset",
       "text": "&Reset",
       "col": 54,
-      "row": 11,
+      "row": 12,
       "width": 9,
       "height": 1
     }

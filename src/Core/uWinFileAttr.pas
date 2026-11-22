@@ -29,7 +29,7 @@ procedure ApplyFileAttrRoots(const APaths: TArray<string>;
 implementation
 
 uses
-  System.IOUtils, uPlatformFileAttr, uVfsTypes;
+  System.IOUtils, uPlatformFileAttr, uVfsTypes, uStrings;
 
 function FileAttrChoiceToIndex(AChoice: TFileAttrChoice): Integer;
 begin
@@ -120,7 +120,7 @@ end;
 
 function BuildFileAttrDialogState(const APaths: TArray<string>): TFileAttrDialogState;
 var
-  I: Integer;
+  I, Folders: Integer;
   Snap: TFileAttrSnapshot;
   Err: string;
   First: Boolean;
@@ -157,7 +157,14 @@ begin
       Result.Summary := APaths[0];
   end
   else
-    Result.Summary := Format('%d items', [Length(APaths)]);
+  begin
+    Folders := 0;
+    for I := 0 to High(APaths) do
+      if TDirectory.Exists(APaths[I]) then
+        Inc(Folders);
+    Result.Summary := T('ui.setAttr.items', 'Items: %d (files: %d, folders: %d)',
+      [Length(APaths), Length(APaths) - Folders, Folders]);
+  end;
   First := True;
   for I := 0 to High(APaths) do
   begin

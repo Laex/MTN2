@@ -27,8 +27,12 @@ type
     [Test] procedure TestMnemonicOfAnotherPageOpensIt;
     [Test] procedure TestFocusByIdOpensItsPage;
     [Test] procedure TestStripDrawsMarkedCaption;
+    [Test] procedure TestRuleOpensUnderTheShownTab;
+    [Test] procedure TestEveryDialogFitsEightyColumns;
     [Test] procedure TestInterfaceDialogFitsEightyByTwentyFour;
     [Test] procedure TestMarkdownColorsDialogFitsEightyByTwentyFour;
+    [Test] procedure TestSearchDialogFitsEightyByTwentyFour;
+    [Test] procedure TestSetAttributesDialogFitsEightyByTwentyFour;
   end;
 
 implementation
@@ -36,7 +40,7 @@ implementation
 uses
   System.SysUtils, System.Classes, System.UITypes, uTerminalTypes, uThemeTypes, uDialogTypes,
   uDialogJson, uDialogJsonSerialize, uDialogTabs, uDialogV2Layout, uDialogHost,
-  uDialogResources, uStrings;
+  uDialogResources, uStrings, System.IOUtils;
 
 const
   cTabsJson =
@@ -350,9 +354,96 @@ begin
   end;
 end;
 
+procedure TTestDialogTabs.TestRuleOpensUnderTheShownTab;
+const
+  cJson =
+    '{"type":"dialog","version":"2.0","title":"t","width":50,"height":10,"children":[' +
+    '{"type":"tabs","id":"tabs","items":["One","Two"],"col":1,"row":1,"width":40,"height":1},' +
+    '{"type":"separator","col":0,"row":2,"width":48,"height":1},' +
+    '{"type":"checkbox","id":"a1","text":"&Alpha","col":1,"row":3,"width":20,"height":1,"tab":0},' +
+    '{"type":"button","id":"ok","text":"OK","default":true,"col":10,"row":7,"width":8,"height":1}]}';
+var
+  Host: TDialogHost;
+  Grid: TTerminalGrid;
+  R: TRectI;
+  S: string;
+  X: Integer;
+begin
+  Host := TDialogHost.Create(nil);
+  try
+    Assert.IsTrue(Host.OpenJson(cJson, nil), 'dialog opens');
+    DrawIn(Host, Grid);
+    R := Host.ControlBoundsAt(IndexOf(Host, 'tabs'));
+    S := '';
+    for X := R.Left - 1 to R.Left + 10 do
+      S := S + Grid[R.Top + 1][X].CharValue;
+    // The caption "[ One ]" is 7 cells wide: corner, 7 blanks, corner.
+    Assert.AreEqual(chBoxBR + '       ' + chBoxBL, Copy(S, 1, 9), 'rule opens under the shown tab: ' + S);
+    Assert.AreEqual(chBoxH, S[10], 'and goes on after it');
+  finally
+    Host.Free;
+  end;
+end;
+
+procedure TTestDialogTabs.TestEveryDialogFitsEightyColumns;
+var
+  F, Loc, ResName, Bad: string;
+  Decl: TDialogDeclaration;
+  Host: TDialogHost;
+  Grid: TTerminalGrid;
+  I, N: Integer;
+  R: TRectI;
+begin
+  Bad := '';
+  N := 0;
+  // Runner working dir is src	ests\dialogs.
+  for F in TDirectory.GetFiles(TPath.GetFullPath('../../dialogs'), '*.json') do
+  begin
+    ResName := 'DIALOG_' + UpperCase(TPath.GetFileNameWithoutExtension(F));
+    for Loc in ['', 'ru', 'de', 'zh'] do
+    begin
+      SetLocale(Loc);
+      try
+        if not TryLoadDialogResource(ResName, Decl) then
+          Continue;
+      finally
+        SetLocale('');
+      end;
+      Inc(N);
+      Host := TDialogHost.Create(nil);
+      try
+        Host.Open(Decl, nil);
+        DrawIn(Host, Grid);
+        if (Host.Bounds.Width > 78) or (Host.Bounds.Right > 79) then
+          Bad := Bad + ' ' + ResName + '/' + Loc + ':frame=' + IntToStr(Host.Bounds.Width);
+        for I := 0 to Host.ControlCount - 1 do
+        begin
+          R := Host.ControlBoundsAt(I);
+          if (R.Right >= R.Left) and (R.Left >= 0) and (R.Right >= Host.Bounds.Right) then
+            Bad := Bad + ' ' + ResName + '/' + Loc + ':' + Host.GetControl(I).Id;
+        end;
+      finally
+        Host.Free;
+      end;
+    end;
+  end;
+  Assert.IsTrue(N > 100, 'dialogs checked: ' + IntToStr(N));
+  Assert.AreEqual('', Bad, 'dialogs wider than 78 columns or with a control past the frame');
+end;
+
 procedure TTestDialogTabs.TestInterfaceDialogFitsEightyByTwentyFour;
 begin
   CheckFitsEightyByTwentyFour(cResDialogInterface);
+end;
+
+procedure TTestDialogTabs.TestSearchDialogFitsEightyByTwentyFour;
+begin
+  CheckFitsEightyByTwentyFour(cResDialogSearch);
+end;
+
+procedure TTestDialogTabs.TestSetAttributesDialogFitsEightyByTwentyFour;
+begin
+  CheckFitsEightyByTwentyFour(cResDialogSetAttr);
 end;
 
 procedure TTestDialogTabs.TestMarkdownColorsDialogFitsEightyByTwentyFour;

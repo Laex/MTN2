@@ -663,6 +663,10 @@
       "lbl_replace": "Replace with:"
     },
     "DIALOG_SEARCH": {
+      "tabs_items": {
+        "Search": "Search",
+        "Filters": "Filters"
+      },
       "$title": "Find file",
       "lbl_format": "Size: 10K, 1.5M",
       "search_case": "&Case sensitive",
@@ -714,7 +718,24 @@
       "ok": "OK",
       "cancel": "Cancel"
     },
+    "DIALOG_SETMODE": {
+      "$title": "Permissions",
+      "lbl_mode": "Mode (octal):",
+      "lbl_owner": "Owner:",
+      "lbl_group": "Group:",
+      "flag_immutable": "&Immutable (chattr +i)",
+      "flag_append": "&Append only (chattr +a)",
+      "flag_nodump": "&No dump (chattr +d)",
+      "recurse": "&Process subfolders",
+      "ok": "Set",
+      "cancel": "Cancel"
+    },
     "DIALOG_SETATTR": {
+      "tabs_items": {
+        "Attributes": "Attributes",
+        "Dates": "Dates",
+        "Owner": "Owner"
+      },
       "$title": "Set attributes",
       "attr_ro": "&Read-only",
       "attr_h": "&Hidden",
@@ -1912,6 +1933,7 @@
     "setAttr.failedTitle": "Set attributes failed",
     "setAttr.ownerEmptyMsg": "Owner name is empty",
     "setAttr.badDate": "Invalid date: %s",
+    "setAttr.items": "Items: %d (files: %d, folders: %d)",
 
     "terminalProfile.title": "New terminal",
     "terminalProfile.hint1": "Ins - copy profile   Del - delete copy",

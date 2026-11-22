@@ -248,9 +248,15 @@ begin
         Problems.Add('single line needs an empty row, then the rule, below it');
     end
     // The multi-rename and SSH connection dialogs keep a margin row under the
-    // title by design.
+    // title by design, and so do the dialogs with a tab strip: the strip does
+    // not touch the frame.
     else if not RowUsed(Frame.Top + 1) and not SameText(AName, 'DIALOG_MULTIRENAME') and
-            not SameText(AName, 'DIALOG_SSHCONNECTIONEDIT') then
+            not SameText(AName, 'DIALOG_SSHCONNECTIONEDIT') and
+            not SameText(AName, 'DIALOG_INTERFACE') and
+            not SameText(AName, 'DIALOG_MARKDOWNCOLORS') and
+            not SameText(AName, 'DIALOG_SEARCH') and
+            not SameText(AName, 'DIALOG_SETATTR') and
+            not SameText(AName, 'DIALOG_SETMODE') then
       Problems.Add('empty row under the title');
     if RowUsed(Top + 1) then
       Problems.Add('controls on the shadow row');

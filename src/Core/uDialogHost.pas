@@ -75,6 +75,7 @@ type
     /// <summary>Joins full-width separator rules to the dialog frame:
     /// ╟─╢ on a double frame, ├─┤ on a single one, +-+ on an ASCII one.</summary>
     procedure JoinSeparatorsToFrame(const AGrid: TTerminalGrid);
+    procedure OpenRuleUnderActiveTab(const AGrid: TTerminalGrid);
     function FocusedIsInput: Boolean;
     /// <summary>Fires the first button whose command is Yes (AYes) or No.</summary>
     function TryYesNoButton(AYes: Boolean): Boolean;
@@ -2546,8 +2547,65 @@ begin
   ResolveDialogContentColors(LabelFg, LabelBg);
   DrawControls(AGrid, LabelFg, LabelBg);
   JoinSeparatorsToFrame(AGrid);
+  OpenRuleUnderActiveTab(AGrid);
   DrawButtonShadows(AGrid);
   DrawDropDownPopup(AGrid);
+end;
+
+// The rule under the tab strip is cut out below the selected tab and ends in
+// corners there, so the tab reads as part of the page below it.
+procedure TDialogHost.OpenRuleUnderActiveTab(const AGrid: TTerminalGrid);
+var
+  I, X, X0, X1, Y: Integer;
+  R: TRectI;
+  Spans: TArray<TDialogTabSpan>;
+  Line, CornerL, CornerR: Char;
+  Cell: TCharCell;
+begin
+  for I := 0 to High(FDecl.Controls) do
+  begin
+    if (I > High(FControlBounds)) or (FDecl.Controls[I].Kind <> dckTab) or
+       DialogControlHiddenByTab(FDecl.Controls, I) then
+      Continue;
+    Spans := DialogTabSpans(FDecl.Controls[I]);
+    if (FDecl.Controls[I].SelectedIndex < 0) or (FDecl.Controls[I].SelectedIndex > High(Spans)) then
+      Continue;
+    R := FControlBounds[I];
+    Y := R.Top + 1;
+    X0 := R.Left + Spans[FDecl.Controls[I].SelectedIndex].Left;
+    X1 := X0 + Length(FDecl.Controls[I].Items[FDecl.Controls[I].SelectedIndex]) + 3;
+    if (Y < 0) or (Y > High(AGrid)) or (X0 < 1) or (X1 + 1 > High(AGrid[Y])) or
+       (X1 > R.Right) then
+      Continue;
+    if AGrid[Y][X0].CharValue = chBoxH then
+    begin
+      Line := chBoxH;
+      CornerL := chBoxBR;
+      CornerR := chBoxBL;
+    end
+    else if AGrid[Y][X0].CharValue = '-' then
+    begin
+      Line := '-';
+      CornerL := '+';
+      CornerR := '+';
+    end
+    else
+      Continue;
+    if (AGrid[Y][X1 + 1].CharValue <> Line) or (AGrid[Y][X0 - 1].CharValue <> Line) then
+      Continue;
+    for X := X0 to X1 do
+    begin
+      Cell := AGrid[Y][X];
+      Cell.CharValue := ' ';
+      AGrid[Y][X] := Cell;
+    end;
+    Cell := AGrid[Y][X0 - 1];
+    Cell.CharValue := CornerL;
+    AGrid[Y][X0 - 1] := Cell;
+    Cell := AGrid[Y][X1 + 1];
+    Cell.CharValue := CornerR;
+    AGrid[Y][X1 + 1] := Cell;
+  end;
 end;
 
 procedure TDialogHost.JoinSeparatorsToFrame(const AGrid: TTerminalGrid);

@@ -15,14 +15,14 @@
       ],
       "selected": 0,
       "col": 1,
-      "row": 0,
+      "row": 1,
       "width": 58,
       "height": 1
     },
     {
       "type": "separator",
       "col": 0,
-      "row": 1,
+      "row": 2,
       "width": 60,
       "height": 1
     },
@@ -31,7 +31,7 @@
       "id": "show_title_bar",
       "text": "Show window &title bar",
       "col": 1,
-      "row": 2,
+      "row": 3,
       "width": 58,
       "height": 1,
       "tab": 0
@@ -41,7 +41,7 @@
       "id": "show_menu_bar",
       "text": "Show &menu bar",
       "col": 1,
-      "row": 3,
+      "row": 4,
       "width": 58,
       "height": 1,
       "tab": 0
@@ -51,7 +51,7 @@
       "id": "show_key_bar",
       "text": "Show F-&key bar",
       "col": 1,
-      "row": 4,
+      "row": 5,
       "width": 58,
       "height": 1,
       "tab": 0
@@ -61,7 +61,7 @@
       "id": "show_status_line",
       "text": "Show &status line",
       "col": 1,
-      "row": 5,
+      "row": 6,
       "width": 58,
       "height": 1,
       "tab": 0
@@ -72,7 +72,7 @@
       "text": "Show &pop-up notifications",
       "checked": true,
       "col": 1,
-      "row": 6,
+      "row": 7,
       "width": 58,
       "height": 1,
       "tab": 0
@@ -83,7 +83,7 @@
       "text": "Show key &hints",
       "checked": true,
       "col": 1,
-      "row": 7,
+      "row": 8,
       "width": 58,
       "height": 1,
       "tab": 0
@@ -93,7 +93,7 @@
       "text": "Language",
       "id": "lbl_language",
       "col": 1,
-      "row": 8,
+      "row": 9,
       "width": 12,
       "height": 1,
       "tab": 0
@@ -106,7 +106,7 @@
         "English"
       ],
       "col": 14,
-      "row": 8,
+      "row": 9,
       "width": 20,
       "height": 1,
       "tab": 0
@@ -116,7 +116,7 @@
       "id": "reset_hints",
       "text": "&Reset hints",
       "col": 1,
-      "row": 9,
+      "row": 11,
       "width": 26,
       "height": 1,
       "tab": 0
@@ -126,7 +126,7 @@
       "id": "column_separators",
       "text": "Vertical lines between columns (&X)",
       "col": 1,
-      "row": 2,
+      "row": 3,
       "width": 58,
       "height": 1,
       "tab": 1
@@ -137,7 +137,7 @@
       "text": "Show column headers",
       "checked": true,
       "col": 1,
-      "row": 3,
+      "row": 4,
       "width": 58,
       "height": 1,
       "tab": 1
@@ -148,7 +148,7 @@
       "text": "Show the sort mode letter",
       "checked": true,
       "col": 1,
-      "row": 4,
+      "row": 5,
       "width": 58,
       "height": 1,
       "tab": 1
@@ -159,7 +159,7 @@
       "text": "NDN footer: t&wo extra lines (totals, free space)",
       "checked": true,
       "col": 1,
-      "row": 5,
+      "row": 6,
       "width": 58,
       "height": 1,
       "tab": 1
@@ -170,7 +170,7 @@
       "text": "Show a slash after directory names",
       "checked": true,
       "col": 1,
-      "row": 6,
+      "row": 7,
       "width": 58,
       "height": 1,
       "tab": 1
@@ -181,7 +181,7 @@
       "text": "Mark links (symbolic links and junctions)",
       "checked": true,
       "col": 1,
-      "row": 7,
+      "row": 8,
       "width": 58,
       "height": 1,
       "tab": 1
@@ -192,7 +192,7 @@
       "text": "Cursor in the inacti&ve panel",
       "checked": true,
       "col": 1,
-      "row": 8,
+      "row": 9,
       "width": 58,
       "height": 1,
       "tab": 1
@@ -202,7 +202,7 @@
       "id": "exact_sizes",
       "text": "Show exact size in &bytes",
       "col": 1,
-      "row": 9,
+      "row": 10,
       "width": 58,
       "height": 1,
       "tab": 1
@@ -212,7 +212,7 @@
       "id": "backspace_drive_menu",
       "text": "Backspace in a drive root opens the &drive menu",
       "col": 1,
-      "row": 10,
+      "row": 11,
       "width": 58,
       "height": 1,
       "tab": 1
@@ -222,7 +222,7 @@
       "id": "drive_other_folder",
       "text": "Drive &change opens the other panel's folder",
       "col": 1,
-      "row": 11,
+      "row": 12,
       "width": 58,
       "height": 1,
       "tab": 1
@@ -233,7 +233,7 @@
       "text": "&Open menu on a single Alt press",
       "checked": true,
       "col": 1,
-      "row": 2,
+      "row": 3,
       "width": 58,
       "height": 1,
       "tab": 2
@@ -244,7 +244,7 @@
       "text": "Dr&ag files with the mouse",
       "checked": true,
       "col": 1,
-      "row": 3,
+      "row": 4,
       "width": 58,
       "height": 1,
       "tab": 2
@@ -254,7 +254,7 @@
       "id": "select_folders",
       "text": "Select all also &folders",
       "col": 1,
-      "row": 4,
+      "row": 5,
       "width": 58,
       "height": 1,
       "tab": 2
@@ -264,7 +264,7 @@
       "id": "pack_same_panel",
       "text": "Pack to the sam&e panel (Shift+F1)",
       "col": 1,
-      "row": 5,
+      "row": 6,
       "width": 58,
       "height": 1,
       "tab": 2
@@ -274,7 +274,7 @@
       "id": "space_selects",
       "text": "Space se&lects files, then moves down",
       "col": 1,
-      "row": 6,
+      "row": 7,
       "width": 58,
       "height": 1,
       "tab": 2
@@ -284,7 +284,7 @@
       "id": "keep_panel_focus",
       "text": "Don't move focus to the command line when typi&ng",
       "col": 1,
-      "row": 7,
+      "row": 8,
       "width": 58,
       "height": 1,
       "tab": 2
@@ -294,7 +294,7 @@
       "id": "vim_keys",
       "text": "V&im keys on the panel (hjkl, g, G, /, :)",
       "col": 1,
-      "row": 8,
+      "row": 9,
       "width": 58,
       "height": 1,
       "tab": 2
@@ -305,7 +305,7 @@
       "text": "Editor a&uto-indent on Enter",
       "checked": true,
       "col": 1,
-      "row": 9,
+      "row": 10,
       "width": 58,
       "height": 1,
       "tab": 2
@@ -315,7 +315,7 @@
       "id": "sticky_quick_search",
       "text": "Keep &quick search open after Alt is released",
       "col": 1,
-      "row": 10,
+      "row": 11,
       "width": 58,
       "height": 1,
       "tab": 2
@@ -325,7 +325,7 @@
       "id": "quick_search_keep_empty",
       "text": "Keep an empt&y quick search open",
       "col": 1,
-      "row": 11,
+      "row": 12,
       "width": 58,
       "height": 1,
       "tab": 2
@@ -335,7 +335,7 @@
       "id": "quick_search_filter",
       "text": "Quick search also filters the panel (&G)",
       "col": 1,
-      "row": 12,
+      "row": 13,
       "width": 58,
       "height": 1,
       "tab": 2
@@ -345,7 +345,7 @@
       "id": "quick_search_keep_filter",
       "text": "Keep the quick search filter in other folders (&J)",
       "col": 1,
-      "row": 13,
+      "row": 14,
       "width": 58,
       "height": 1,
       "tab": 2
@@ -355,7 +355,7 @@
       "id": "quick_search_fuzzy",
       "text": "Fuzzy quick search filter: letters in order (&Z)",
       "col": 1,
-      "row": 14,
+      "row": 15,
       "width": 58,
       "height": 1,
       "tab": 2

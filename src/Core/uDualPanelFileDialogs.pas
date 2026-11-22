@@ -483,7 +483,7 @@ begin
           Delete(Decl.Controls, I, 1);
     // Close the two rows the removed lines occupied.
     for I := 0 to High(Decl.Controls) do
-      if Decl.Controls[I].Row >= 4 then
+      if Decl.Controls[I].Row >= 5 then
         Dec(Decl.Controls[I].Row, 2);
     Dec(Decl.Height, 2);
   end;

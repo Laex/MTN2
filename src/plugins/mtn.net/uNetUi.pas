@@ -186,11 +186,14 @@ type
   private
     FRoot: TJSONObject;
     FChildren: TJSONArray;
+    FWidth: Integer;
     function Box(const AType: string; ACol, ARow, AWidth: Integer): TJSONObject;
   public
     constructor Create(const ATitle: string; AWidth, AHeight: Integer);
     destructor Destroy; override;
     procedure Text(const AText: string; ACol, ARow: Integer);
+    /// <summary>Horizontal rule across the dialog, above the bottom button row.</summary>
+    procedure Rule(ARow: Integer);
     procedure Input(const AId, AValue: string; ACol, ARow, AWidth: Integer; APassword: Boolean = False);
     procedure Check(const AId, AText: string; AChecked: Boolean; ACol, ARow, AWidth: Integer);
     procedure Drop(const AId: string; const AItems: array of string; ASelected, ACol, ARow, AWidth: Integer);
@@ -201,6 +204,7 @@ type
 constructor TDlg.Create(const ATitle: string; AWidth, AHeight: Integer);
 begin
   inherited Create;
+  FWidth := AWidth;
   FRoot := TJSONObject.Create;
   FRoot.AddPair('type', 'dialog');
   FRoot.AddPair('version', '2.0');
@@ -234,6 +238,11 @@ var
 begin
   C := Box('label', ACol, ARow, Length(AText) + 1);
   C.AddPair('text', AText);
+end;
+
+procedure TDlg.Rule(ARow: Integer);
+begin
+  Box('separator', 0, ARow, FWidth - 2);
 end;
 
 procedure TDlg.Input(const AId, AValue: string; ACol, ARow, AWidth: Integer; APassword: Boolean);
@@ -499,8 +508,8 @@ begin
       D.Text(Tr('ui.hostkey.new', 'The authenticity of this server cannot be checked yet.'), 2, 3);
     D.Text(Tr('ui.hostkey.fingerprint', 'SHA-256 fingerprint:'), 2, 6);
     D.Input('fp', 'SHA256:' + AFingerprint, 2, 7, 66);
-    D.Button('trust', ' ' + Tr('ui.hostkey.trust', 'Trust and continue') + ' ', 14, 10, 22, False, False);
-    D.Button('cancel', Tr('ui.cancel', 'Cancel'), 40, 10, 12, True, True);
+    D.Button('trust', ' ' + Tr('ui.hostkey.trust', 'Trust and continue') + ' ', 14, 10, 28, False, False);
+    D.Button('cancel', Tr('ui.cancel', 'Cancel'), 44, 10, 12, True, True);
     Result := AskDialog(D.Json, AOp, Control, Values) and (Control = 'trust');
   finally
     D.Free;
@@ -521,8 +530,8 @@ begin
     D.Text(Format(Tr('ui.cert.server', 'The certificate of %s is not trusted.'), [ASession.Host]), 2, 1);
     D.Text(Msg, 2, 3);
     D.Text(Tr('ui.cert.hint', 'Continue only if you know the server.'), 2, 5);
-    D.Button('trust', ' ' + Tr('ui.cert.continue', 'Continue anyway') + ' ', 14, 8, 20, False, False);
-    D.Button('cancel', Tr('ui.cancel', 'Cancel'), 38, 8, 12, True, True);
+    D.Button('trust', ' ' + Tr('ui.cert.continue', 'Continue anyway') + ' ', 14, 8, 28, False, False);
+    D.Button('cancel', Tr('ui.cancel', 'Cancel'), 44, 8, 12, True, True);
     Result := AskDialog(D.Json, AOp, Control, Values) and (Control = 'trust');
   finally
     D.Free;
@@ -1003,16 +1012,17 @@ begin
   Lib := LibraryText;
   if Length(Lib) > 66 then
     Lib := Copy(Lib, 1, 63) + '...';
-  D := TDlg.Create(Tr('ui.settings.title', 'Network connections'), 72, 12);
+  D := TDlg.Create(Tr('ui.settings.title', 'Network connections'), 72, 13);
   try
     D.Text(Lib, 2, 1);
     if SecretsAvailable then
-      D.Text(Tr('ui.settings.sealed', 'Saved passwords are sealed for your Windows account.'), 2, 3)
+      D.Text(Tr('ui.settings.sealed', 'Saved passwords are sealed for your Windows account.'), 2, 2)
     else
-      D.Text(Tr('ui.settings.notSealed', 'Passwords are not saved on this system; they are asked for per run.'), 2, 3);
-    D.Button('import', Tr('ui.settings.import', 'Import connections from sftp://'), 8, 5, 40, False, False);
-    D.Button('disconnect', Tr('ui.settings.disconnect', 'Close connections'), 8, 7, 22, False, False);
-    D.Button('close', Tr('ui.close', 'Close'), 36, 7, 12, True, True);
+      D.Text(Tr('ui.settings.notSealed', 'Passwords are not saved on this system; they are asked for per run.'), 2, 2);
+    D.Button('import', Tr('ui.settings.import', 'Import connections from sftp://'), 2, 4, 40, False, False);
+    D.Button('disconnect', Tr('ui.settings.disconnect', 'Close connections'), 2, 5, 40, False, False);
+    D.Rule(7);
+    D.Button('close', Tr('ui.close', 'Close'), 30, 9, 12, True, True);
     if Assigned(GHost.ShowDialog) then
       GHost.ShowDialog(PAnsiChar(cPluginId), PAnsiChar(D.Json), @SettingsAnswer, nil);
   finally
@@ -1050,7 +1060,7 @@ begin
     Exit;
   D := TDlg.Create(Tr('ui.open.title', 'Open address'), 72, 10);
   try
-    D.Text(Tr('ui.open.prompt', 'Address (ftp://, ftps://, nsftp://, scp://, dav://, davs://, s3:// or net://):'), 2, 1);
+    D.Text(Tr('ui.open.prompt', 'Address (ftp, ftps, nsftp, scp, dav, davs, s3 or net):'), 2, 1);
     D.Input('address', 'ftp://', 2, 2, 66);
     D.Button('ok', '  ' + Tr('ui.ok', 'OK') + '  ', 20, 5, 12, True, False);
     D.Button('cancel', Tr('ui.cancel', 'Cancel'), 36, 5, 12, False, True);

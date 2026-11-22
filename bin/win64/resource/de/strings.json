@@ -662,6 +662,10 @@
       "lbl_replace": "Ersetzen durch:"
     },
     "DIALOG_SEARCH": {
+      "tabs_items": {
+        "Search": "Suche",
+        "Filters": "Filter"
+      },
       "$title": "Datei suchen",
       "lbl_format": "Größe: 10K, 1.5M",
       "lbl_size": "Größe von:",
@@ -713,7 +717,24 @@
       "ok": "OK",
       "cancel": "Abbrechen"
     },
+    "DIALOG_SETMODE": {
+      "$title": "Zugriffsrechte",
+      "lbl_mode": "Modus (oktal):",
+      "lbl_owner": "Besitzer:",
+      "lbl_group": "Gruppe:",
+      "flag_immutable": "&Unveränderlich (chattr +i)",
+      "flag_append": "Nur &anhängen (chattr +a)",
+      "flag_nodump": "Nicht &sichern (chattr +d)",
+      "recurse": "Unterordner &verarbeiten",
+      "ok": "Setzen",
+      "cancel": "Abbrechen"
+    },
     "DIALOG_SETATTR": {
+      "tabs_items": {
+        "Attributes": "Attribute",
+        "Dates": "Daten",
+        "Owner": "Besitzer"
+      },
       "$title": "Attribute setzen",
       "attr_ro": "&Schreibgeschützt",
       "attr_h": "&Versteckt",
@@ -1894,6 +1915,7 @@
     "setAttr.failedTitle": "Attribute setzen fehlgeschlagen",
     "setAttr.ownerEmptyMsg": "Der Besitzername ist leer",
     "setAttr.badDate": "Ungültiges Datum: %s",
+    "setAttr.items": "Elemente: %d (Dateien: %d, Ordner: %d)",
     "terminalProfile.title": "Neues Terminal",
     "terminalProfile.hint1": "Ins - Profil kopieren   Del - Kopie löschen",
     "terminalProfile.hint2": "Ctrl+Up/Down - Reihenfolge  F4 - Tasten  F6 - Umgebung",
@@ -2070,6 +2092,8 @@
     "alias.tmaCmdFocusCmdLine": "befehlszeile",
     "alias.tmaCmdNextTab": "tab, nächster",
     "alias.tmaCmdPalette": "befehl suchen, palette, menü, suche",
+    "alias.tmaCmdPairedFolders": "gepaart, synchrones Navigieren, verknüpfte Panels",
+    "alias.tmaCmdGroupBy": "gruppieren, Typ, Datum, Reihenfolge",
     "hint.tmaHelpAbout": "Zeigt die Version, die verwendete Darstellung und die Projektlinks.",
     "hint.tmaHelpUpdates": "Sucht nach einer neuen Version und bietet den Download an. Ohne Zustimmung wird nichts heruntergeladen.",
     "hint.tmaCmdPalette": "Durchsucht alle Menübefehle nach Name, Kategorie oder Taste und führt den gewählten aus.",
@@ -2216,6 +2240,8 @@
     "hint.tmaRightNewTab": "Öffnet im rechten Panel eine neue Registerkarte mit dem aktuellen Ordner.",
     "hint.tmaRightCloseTab": "Schließt die aktuelle Registerkarte des rechten Panels.",
     "hint.tmaRightToggle": "Blendet das rechte Panel aus oder ein.",
+    "hint.tmaCmdPairedFolders": "Schaltet gepaarte Ordner ein oder aus: Ein Unterordner oder ein Schritt nach oben in einem Panel wird im anderen nachgeführt.",
+    "hint.tmaCmdGroupBy": "Schaltet die Gruppierung der Panelzeilen um: nach Typ, nach Datum oder keine. Die Zeilen folgen den Gruppen, der Beginn jeder Gruppe ist markiert.",
     "tmaHelpAbout": "&Info zu MTN2...",
     "tmaHelpUpdates": "&Nach Updates suchen...",
     "tmaHelpContents": "&Hilfe",
@@ -2270,7 +2296,7 @@
     "tmaFileDescribe": "Beschreiben...",
     "tmaCmdTogglePassivePanel": "Passives Panel aus-/einblenden",
     "tmaFileCalcSize": "Ordner&größe berechnen",
-    "tmaFileCopyPath": "&Vollständigen Pfad kopieren",
+    "tmaFileCopyPath": "Vollständ&igen Pfad kopieren",
     "tmaFileCopyName": "Namen kopieren",
     "tmaFileExportList": "Liste speichern...",
     "tmaFileRunDetached": "&Losgelöst ausführen (OS)",
@@ -2313,9 +2339,9 @@
     "tmaCmdFolderHistory": "&Ordnerverlauf...",
     "tmaCmdFolderFrecent": "&Häufige Ordner...",
     "tmaCmdFileHistory": "Dateiverlauf...",
-    "tmaCmdFolderHotlist": "Verzeichnis-&Hotlist...",
+    "tmaCmdFolderHotlist": "Ve&rzeichnis-Hotlist...",
     "tmaCmdFolderHotlistAdd": "Z&ur Hotlist hinzufügen",
-    "tmaCmdWorkspaceLibrary": "A&rbeitsbereiche...",
+    "tmaCmdWorkspaceLibrary": "&Arbeitsbereiche...",
     "tmaCmdWorkspaceSave": "Arbeitsbereich &speichern",
     "tmaCmdFindToWorkspace": "Gefundenes in den Arbeitsbereich",
     "tmaCmdSshConnections": "SSH/S&FTP-Verbindungen...",
@@ -2327,7 +2353,7 @@
     "tmaCmdDriveRoot": "Lauf&werkswurzel",
     "tmaCmdRefresh": "Pa&nel aktualisieren",
     "tmaCmdSwapPanels": "Panels taus&chen",
-    "tmaCmdEqualizeOther": "&Ziel := Aktiv",
+    "tmaCmdEqualizeOther": "Z&iel := Aktiv",
     "tmaCmdEqualizeActive": "&Aktiv := Ziel",
     "tmaCmdPairedFolders": "&Gepaarte Ordner",
     "tmaCmdGroupBy": "Gruppieren nach T&yp / Datum",

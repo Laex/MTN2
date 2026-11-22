@@ -215,6 +215,7 @@ end;
 procedure TTestPluginDialogs.TestPluginWithNothingToAllowHasOnlyButtons;
 var
   Host: TDialogHost;
+  Decl: TDialogDeclaration;
 begin
   Host := TDialogHost.Create(nil);
   try
@@ -225,6 +226,9 @@ begin
     Assert.IsTrue((IndexOf(Host, 'perm_override') < 0) and (IndexOf(Host, 'perm_0') < 0) and
       (IndexOf(Host, 'perm_1') < 0), 'no checkboxes');
     Assert.IsTrue((IndexOf(Host, 'ok') >= 0) and (IndexOf(Host, 'cancel') >= 0), 'OK and Cancel');
+    Decl := BuildPluginPermissionsDialog('mtn.x', 'Nothing.', '', False, False, nil, nil);
+    Assert.AreEqual(Decl.Height - 4, Host.GetControl(IndexOf(Host, 'ok')).Row, 'buttons sit above the shadow row and frame');
+    Assert.IsTrue(Decl.Height <= 9, 'the dialog shrinks to the intro, a rule and the buttons');
   finally
     Host.Free;
   end;

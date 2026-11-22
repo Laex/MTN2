@@ -24,7 +24,7 @@ implementation
 uses
   System.SysUtils, System.IOUtils, System.DateUtils,
   Winapi.Windows,
-  uFileAttrTypes, uWinFileAttr, uPlatformFileAttr;
+  uFileAttrTypes, uWinFileAttr, uPlatformFileAttr, uStrings;
 
 function HasBit(const APath: string; ABit: DWORD): Boolean;
 var
@@ -105,6 +105,9 @@ begin
     Assert.IsTrue(State.ReadOnly = facKeep, 'mixed RO is Keep');
     Assert.IsTrue(not State.OwnerMixed, 'same owner not mixed');
     Assert.IsTrue(State.Owner <> '', 'owner name present');
+    SetLocale('en');
+    State := BuildFileAttrDialogState(TArray<string>.Create(A, B, Dir));
+    Assert.AreEqual('Items: 3 (files: 2, folders: 1)', State.Summary, 'several items are counted by kind');
   finally
     SetFileAttributes(PChar(A), FILE_ATTRIBUTE_NORMAL);
     SetFileAttributes(PChar(B), FILE_ATTRIBUTE_NORMAL);
