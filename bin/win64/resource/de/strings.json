@@ -953,6 +953,7 @@
     "folderTree.reading": "Lese...",
     "panel.reading": "Wird gelesen...",
     "panel.waitingServer": "Warten auf den Server...",
+    "panel.cancelled": "Abgebrochen",
     "panel.notResponding": "Noch keine Antwort – es wird weiter versucht (auf einem langsamen oder nicht erreichbaren Laufwerk kann das dauern)...",
     "editor.loading": "Wird geladen...",
     "editor.follow": "Folgen",

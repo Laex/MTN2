@@ -715,7 +715,12 @@ begin
       end;
     CURLE_SSH:
       begin
-        if (Pos('no such', Low) > 0) or (Pos('not found', Low) > 0) then
+        // A key libssh2 cannot open with the passphrase it has, or a key the
+        // server does not accept, is a rejected login.
+        if (Pos('passphrase', Low) > 0) or (Pos('publickey', Low) > 0) or
+           (Pos('private key', Low) > 0) or (Pos('public key', Low) > 0) then
+          Result := nrAuthFailed
+        else if (Pos('no such', Low) > 0) or (Pos('not found', Low) > 0) then
           Result := nrNotFound
         else if (Pos('permission', Low) > 0) or (Pos('denied', Low) > 0) then
           Result := nrAccessDenied

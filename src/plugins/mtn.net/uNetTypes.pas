@@ -132,7 +132,19 @@ function NetCancelled(AOp: TNetOp): Boolean;
 
 function UnixToNetTime(AValue: Int64): Int64;
 
+type
+  /// <summary>What a private key file turns out to be.</summary>
+  TNetKeyKind = (nkMissing, nkPutty, nkEncrypted, nkPlain, nkUnknown);
+
+/// <summary>Looks at the start of a private key file: PuTTY (.ppk) keys are
+/// not readable by libssh2, an encrypted key needs its passphrase before the
+/// connection is tried.</summary>
+function NetClassifyKeyFile(const APath: string): TNetKeyKind;
+
 implementation
+
+uses
+  System.NetEncoding;
 
 function TNetTarget.IsSessionList: Boolean;
 begin
@@ -465,6 +477,78 @@ begin
     Result := 0
   else
     Result := AValue;
+end;
+
+// The cipher name of an OpenSSH key ("none" for an unprotected one) follows
+// the magic "openssh-key-v1" and its terminating zero.
+function OpenSshKeyIsEncrypted(const ABody: string): Boolean;
+const
+  cMagicLen = 15;
+var
+  Raw: TBytes;
+  Len: Integer;
+  Cipher: string;
+begin
+  Result := False;
+  try
+    Raw := TNetEncoding.Base64.DecodeStringToBytes(Copy(ABody, 1, 80));
+  except
+    Exit;
+  end;
+  if Length(Raw) < cMagicLen + 4 then
+    Exit;
+  Len := (Raw[cMagicLen] shl 24) or (Raw[cMagicLen + 1] shl 16) or
+    (Raw[cMagicLen + 2] shl 8) or Raw[cMagicLen + 3];
+  if (Len <= 0) or (cMagicLen + 4 + Len > Length(Raw)) then
+    Exit;
+  Cipher := TEncoding.ASCII.GetString(Raw, cMagicLen + 4, Len);
+  Result := Cipher <> 'none';
+end;
+
+function NetClassifyKeyFile(const APath: string): TNetKeyKind;
+const
+  cOpenSsh = '-----BEGIN OPENSSH PRIVATE KEY-----';
+var
+  Stream: TFileStream;
+  Buf: TBytes;
+  N, P, E: Integer;
+  Text, Body: string;
+begin
+  if (APath = '') or not FileExists(APath) then
+    Exit(nkMissing);
+  try
+    Stream := TFileStream.Create(APath, fmOpenRead or fmShareDenyNone);
+    try
+      SetLength(Buf, 4096);
+      N := Stream.Read(Buf[0], Length(Buf));
+    finally
+      Stream.Free;
+    end;
+  except
+    Exit(nkUnknown);
+  end;
+  Text := TEncoding.ASCII.GetString(Buf, 0, N);
+  if Pos('PuTTY-User-Key-File', Text) = 1 then
+    Exit(nkPutty);
+  P := Pos(cOpenSsh, Text);
+  if P > 0 then
+  begin
+    Body := Copy(Text, P + Length(cOpenSsh), MaxInt);
+    E := Pos('-----END', Body);
+    if E > 0 then
+      Body := Copy(Body, 1, E - 1);
+    Body := StringReplace(StringReplace(Trim(Body), #13, '', [rfReplaceAll]), #10, '', [rfReplaceAll]);
+    if OpenSshKeyIsEncrypted(Body) then
+      Exit(nkEncrypted);
+    Exit(nkPlain);
+  end;
+  if (Pos('PRIVATE KEY-----', Text) > 0) then
+  begin
+    if (Pos('ENCRYPTED', Text) > 0) then
+      Exit(nkEncrypted);
+    Exit(nkPlain);
+  end;
+  Result := nkUnknown;
 end;
 
 end.

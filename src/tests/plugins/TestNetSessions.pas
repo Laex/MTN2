@@ -22,12 +22,14 @@ type
     [Test] procedure TestFindForServerMatchesProtocolHostPortAndUser;
     [Test] procedure TestBadJsonGivesAnEmptyList;
     [Test] procedure TestSealedSecretOpensOnlyWhatWeSealed;
+    [Test] procedure TestKeyFileKindIsRecognisedFromItsStart;
   end;
 
 implementation
 
 uses
-  System.SysUtils, System.Character, uNetTypes, uNetSessions, uNetSecrets;
+  System.SysUtils, System.Character, System.Classes, System.IOUtils, System.NetEncoding,
+  uNetTypes, uNetSessions, uNetSecrets;
 
 function Make(const AName: string; AProto: TNetProtocol = npFtp): TNetSession;
 begin
@@ -263,6 +265,50 @@ begin
   Plain := 'пароль ' + Char.ConvertFromUtf32($1F600);
   Assert.IsTrue(UnprotectSecret(ProtectSecret(Plain), Sealed));
   Assert.AreEqual(Plain, Sealed);
+end;
+
+// An OpenSSH private key file whose header names ACipher.
+function OpenSshKeyText(const ACipher: string): string;
+var
+  Raw: TBytes;
+begin
+  Raw := TEncoding.ASCII.GetBytes('openssh-key-v1' + #0#0#0#0 + Chr(Length(ACipher)) + ACipher +
+    'padding-padding-padding');
+  Result := '-----BEGIN OPENSSH PRIVATE KEY-----' + #10 +
+    TNetEncoding.Base64.EncodeBytesToString(Raw) + #10 + '-----END OPENSSH PRIVATE KEY-----' + #10;
+end;
+
+procedure TTestNetSessions.TestKeyFileKindIsRecognisedFromItsStart;
+var
+  Dir: string;
+
+  function Kind(const AText: string): TNetKeyKind;
+  var
+    Path: string;
+  begin
+    Path := TPath.Combine(Dir, 'key');
+    TFile.WriteAllText(Path, AText, TEncoding.ASCII);
+    Result := NetClassifyKeyFile(Path);
+  end;
+
+begin
+  Dir := TPath.Combine(TPath.GetTempPath, 'mtn2-keykind-' + TGUID.NewGuid.ToString);
+  TDirectory.CreateDirectory(Dir);
+  try
+    Assert.IsTrue(NetClassifyKeyFile('') = nkMissing);
+    Assert.IsTrue(NetClassifyKeyFile(TPath.Combine(Dir, 'none')) = nkMissing);
+    Assert.IsTrue(Kind('PuTTY-User-Key-File-3: ssh-ed25519' + #10 + 'Encryption: none') = nkPutty);
+    Assert.IsTrue(Kind(OpenSshKeyText('none')) = nkPlain, 'OpenSSH key without a cipher');
+    Assert.IsTrue(Kind(OpenSshKeyText('aes256-ctr')) = nkEncrypted, 'OpenSSH key with a cipher');
+    Assert.IsTrue(Kind('-----BEGIN RSA PRIVATE KEY-----' + #10 + 'MIIB' + #10 +
+      '-----END RSA PRIVATE KEY-----') = nkPlain);
+    Assert.IsTrue(Kind('-----BEGIN RSA PRIVATE KEY-----' + #10 + 'Proc-Type: 4,ENCRYPTED' + #10 +
+      'DEK-Info: AES-128-CBC,00' + #10 + 'MIIB') = nkEncrypted, 'PEM with Proc-Type');
+    Assert.IsTrue(Kind('-----BEGIN ENCRYPTED PRIVATE KEY-----' + #10 + 'MIIB') = nkEncrypted);
+    Assert.IsTrue(Kind('hello') = nkUnknown);
+  finally
+    TDirectory.Delete(Dir, True);
+  end;
 end;
 
 initialization

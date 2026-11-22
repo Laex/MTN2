@@ -6,6 +6,13 @@ This file describes what changes for the user from version to version: new featu
 
 ## Unreleased
 
+## Dev v0.5.11.3 – 2026-11-22
+
+### Fixed
+
+- SFTP / SCP with a key file: an encrypted key now asks for its passphrase before the first connection, a wrong passphrase is asked again, and a key the server rejects shows the reason instead of failing silently. A missing key file and a PuTTY (.ppk) key, which the plugin cannot read, are reported with an explanation (export the key in OpenSSH format with PuTTYgen).
+- Cancelling the login question of a network connection returns the panel from "Waiting for the server..." to a "Cancelled" row with a way back to the list of connections. Errors of network connections show the server's own message instead of "Access denied".
+
 ## Dev v0.5.11.2 – 2026-11-22
 
 ### New

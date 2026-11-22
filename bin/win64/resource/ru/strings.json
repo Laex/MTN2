@@ -951,6 +951,7 @@
     "folderTree.reading": "Чтение...",
     "panel.reading": "Чтение...",
     "panel.waitingServer": "Ожидание сервера...",
+    "panel.cancelled": "Отменено",
     "panel.notResponding": "Ответа пока нет – попытки продолжаются (на медленном или недоступном диске это может занять много времени)...",
     "editor.loading": "Загрузка...",
     "editor.follow": "Слежение",

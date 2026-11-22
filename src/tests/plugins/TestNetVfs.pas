@@ -46,6 +46,7 @@ type
     FStoreWrites: Integer;
     function FtpSession(const AName: string): TNetSession;
     function SftpSession(const AName: string): TNetSession;
+    function KeySession(const AName, AKeyText: string): TNetSession;
     function List(const AUri: string; out AError: TVfsError): TArray<TVfsEntry>;
     function ExistsAt(const AUri: string; out AIsDir: Boolean): Boolean;
     function Copy_(const AFrom, ATo: string; AOverwrite: Boolean): TVfsError;
@@ -64,6 +65,10 @@ type
     [Test] procedure TestWrongPasswordIsAskedAgainWithRetryFlag;
     [Test] procedure TestCancelledPasswordPromptFailsTheOperation;
     [Test] procedure TestSavedPasswordIsNeverAsked;
+    [Test] procedure TestPuttyKeyFileIsRefusedWithAnExplanation;
+    [Test] procedure TestMissingKeyFileIsReported;
+    [Test] procedure TestEncryptedKeyFileAsksForThePassphraseBeforeConnecting;
+    [Test] procedure TestPlainKeyFileNeverAsksForAPassphrase;
     [Test] procedure TestDirectAddressUsesTheSavedSessionOfThatServer;
     [Test] procedure TestFileCopiesBothWays;
     [Test] procedure TestFolderTreeCopiesBothWays;
@@ -467,6 +472,74 @@ begin
   List('net://ftp1/', Err);
   Assert.IsTrue(Err.Code = vecOk, Err.Message);
   Assert.AreEqual(0, FPrompter.SecretCalls);
+end;
+
+function TTestNetVfs.KeySession(const AName, AKeyText: string): TNetSession;
+var
+  Path: string;
+begin
+  Path := TPath.Combine(FWork, AName + '.key');
+  TFile.WriteAllText(Path, AKeyText, TEncoding.ASCII);
+  Result := SftpSession(AName);
+  Result.Auth := naKey;
+  Result.Password := '';
+  Result.KeyFile := Path;
+  Result.SavePassword := False;
+end;
+
+procedure TTestNetVfs.TestPuttyKeyFileIsRefusedWithAnExplanation;
+var
+  Err: TVfsError;
+begin
+  if FSkipReason <> '' then
+    Assert.Pass('SKIP: ' + FSkipReason);
+  FManager.AddSession(KeySession('ppk', 'PuTTY-User-Key-File-3: ssh-ed25519' + #10));
+  List('net://ppk/', Err);
+  Assert.IsTrue(Err.Code = vecIOError, Err.Message);
+  Assert.IsTrue(Pos('PuTTY', Err.Message) > 0, Err.Message);
+  Assert.AreEqual(0, FPrompter.SecretCalls, 'no question for a key that cannot be used');
+end;
+
+procedure TTestNetVfs.TestMissingKeyFileIsReported;
+var
+  Err: TVfsError;
+  S: TNetSession;
+begin
+  if FSkipReason <> '' then
+    Assert.Pass('SKIP: ' + FSkipReason);
+  S := KeySession('nokey', 'x');
+  TFile.Delete(S.KeyFile);
+  FManager.AddSession(S);
+  List('net://nokey/', Err);
+  Assert.IsTrue(Err.Code = vecIOError, Err.Message);
+  Assert.IsTrue(Pos('not found', Err.Message) > 0, Err.Message);
+  Assert.AreEqual(0, FPrompter.SecretCalls);
+end;
+
+procedure TTestNetVfs.TestEncryptedKeyFileAsksForThePassphraseBeforeConnecting;
+var
+  Err: TVfsError;
+begin
+  if FSkipReason <> '' then
+    Assert.Pass('SKIP: ' + FSkipReason);
+  FManager.AddSession(KeySession('enc', '-----BEGIN RSA PRIVATE KEY-----' + #10 +
+    'Proc-Type: 4,ENCRYPTED' + #10 + 'DEK-Info: AES-128-CBC,00' + #10 + 'MIIB' + #10));
+  List('net://enc/', Err);
+  Assert.AreEqual(1, FPrompter.SecretCalls, 'the passphrase is asked first');
+  Assert.IsTrue(Err.Code = vecCancelled, 'no answer: ' + Err.Message);
+end;
+
+procedure TTestNetVfs.TestPlainKeyFileNeverAsksForAPassphrase;
+var
+  Err: TVfsError;
+begin
+  if FSkipReason <> '' then
+    Assert.Pass('SKIP: ' + FSkipReason);
+  FManager.AddSession(KeySession('plain', '-----BEGIN RSA PRIVATE KEY-----' + #10 + 'MIIB' + #10 +
+    '-----END RSA PRIVATE KEY-----' + #10));
+  List('net://plain/', Err);
+  Assert.IsFalse(Err.Code = vecOk);
+  Assert.AreEqual(0, FPrompter.SecretCalls, 'a key without a passphrase has nothing to ask');
 end;
 
 procedure TTestNetVfs.TestDirectAddressUsesTheSavedSessionOfThatServer;

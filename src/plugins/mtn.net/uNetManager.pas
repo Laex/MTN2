@@ -51,6 +51,7 @@ type
     function ClientFor(const ASession: TNetSession): TNetClient;
     procedure DropClient(const AName: string);
     function NeedsSecret(const S: TNetSession): Boolean;
+    function CheckKeyFile(const S: TNetSession; AOp: TNetOp): TNetResult;
     function EnsureSecret(var S: TNetSession; ARetry: Boolean; AOp: TNetOp): TNetResult;
     procedure Changed;
   public
@@ -448,7 +449,47 @@ end;
 
 function TNetManager.NeedsSecret(const S: TNetSession): Boolean;
 begin
-  Result := (S.Auth = naPassword) and (S.Password = '') and (S.User <> '');
+  case S.Auth of
+    naPassword:
+      Result := (S.Password = '') and (S.User <> '');
+    naKey:
+      Result := (S.KeyPassphrase = '') and (NetClassifyKeyFile(S.KeyFile) = nkEncrypted);
+  else
+    Result := False;
+  end;
+end;
+
+// A key the client cannot use at all: no point in connecting or asking.
+function TNetManager.CheckKeyFile(const S: TNetSession; AOp: TNetOp): TNetResult;
+var
+  Msg: string;
+begin
+  Result := nrOk;
+  if (S.Auth <> naKey) or not (S.Protocol in [npSftp, npScp]) then
+    Exit;
+  case NetClassifyKeyFile(S.KeyFile) of
+    nkMissing:
+      if S.KeyFile = '' then
+        Msg := 'No key file is set for this connection'
+      else
+        Msg := 'Key file not found: ' + S.KeyFile;
+    nkPutty:
+      Msg := 'PuTTY (.ppk) keys are not supported: export the key in OpenSSH format (PuTTYgen, Conversions)';
+  else
+    Exit;
+  end;
+  if AOp <> nil then
+    AOp.ErrorText := Msg;
+  Result := nrIO;
+end;
+
+// The secret the login of S uses: the passphrase of a key file, else the password.
+function SecretOf(const S: TNetSession): string;
+begin
+  if S.Auth = naKey then
+    Result := S.KeyPassphrase
+  else
+    Result := S.Password;
 end;
 
 function TNetManager.EnsureSecret(var S: TNetSession; ARetry: Boolean; AOp: TNetOp): TNetResult;
@@ -459,6 +500,9 @@ var
   AskPass: Boolean;
 begin
   Result := nrOk;
+  Result := CheckKeyFile(S, AOp);
+  if Result <> nrOk then
+    Exit;
   AskPass := ARetry or NeedsSecret(S);
   if not AskPass then
     Exit;
@@ -477,7 +521,7 @@ begin
       S := Current;
       Exit(nrOk);
     end;
-    if ARetry and (Current.Password <> S.Password) then
+    if ARetry and (SecretOf(Current) <> SecretOf(S)) then
     begin
       S := Current;
       Exit(nrOk);
@@ -557,6 +601,9 @@ begin
       nrAuthFailed:
         begin
           if not (S.Auth in [naPassword, naKey]) or (FPrompter = nil) then
+            Exit(R);
+          // Only an encrypted key has a passphrase to ask for.
+          if (S.Auth = naKey) and (NetClassifyKeyFile(S.KeyFile) <> nkEncrypted) then
             Exit(R);
           // A rejected login: ask again (for the passphrase of the key file with key logins).
           Retry := True;

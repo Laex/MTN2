@@ -19,6 +19,8 @@ The plugin opens remote servers as folders of the panels: **FTP**, **FTPS**, **S
 | Start folder | Where the connection opens. For S3 start with `/bucket` |
 | Save the password | Keeps the password sealed for the Windows user; without it the password is asked once per run |
 
+The key file of SFTP / SCP must be an OpenSSH or PEM private key; PuTTY (.ppk) files are not read (in PuTTYgen use *Conversions - Export OpenSSH key*). An encrypted key asks for its passphrase when the connection opens; enter it in the *Key passphrase* field to skip the question.
+
 *More...* holds the passive mode of FTP, implicit TLS, certificate checking, the code page of file names, a proxy (`socks5h://host:1080`, `http://host:3128`), the timeout, the S3 region and path style, and the base path of a WebDAV share.
 
 ## Trust questions

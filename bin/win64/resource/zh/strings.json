@@ -952,6 +952,7 @@
     "folderTree.reading": "读取中...",
     "panel.reading": "读取中...",
     "panel.waitingServer": "等待服务器...",
+    "panel.cancelled": "已取消",
     "panel.notResponding": "尚无响应,仍在重试(在缓慢或无法访问的磁盘上可能需要较长时间)...",
     "editor.loading": "加载中...",
     "editor.follow": "跟随",

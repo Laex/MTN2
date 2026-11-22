@@ -954,6 +954,7 @@
     "folderTree.reading": "Reading...",
     "panel.reading": "Reading...",
     "panel.waitingServer": "Waiting for the server...",
+    "panel.cancelled": "Cancelled",
     "panel.notResponding": "Not responding yet -- still trying (this can take a while on a slow/unreachable drive)...",
     "editor.loading": "Loading...",
     "editor.follow": "Follow",

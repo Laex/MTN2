@@ -692,11 +692,12 @@ begin
     begin
       if not Life.Alive or (Gen <> FGen) then
         Exit;
+      // The user declined a question of the backend (a login prompt, say):
+      // replace the loading or waiting rows with a way back.
       if AError.Code = vecCancelled then
       begin
+        ApplyRows(ErrorRows(URI, T('ui.panel.cancelled', 'Cancelled'), ReturnUri), Gen);
         FLastError := AError;
-        FLoading := False;
-        NotifyChanged;
         Exit;
       end;
       FLastError := AError;
@@ -707,7 +708,7 @@ begin
         case AError.Code of
           // The SFTP backend explains why (host key, missing key file, ...).
           vecAccessDenied:
-            if IsSftpUri(URI) and (AError.Message <> '') then
+            if (IsSftpUri(URI) or IsGenericVfsUri(URI)) and (AError.Message <> '') then
               Msg := AError.Message
             else
               Msg := 'Access denied';
