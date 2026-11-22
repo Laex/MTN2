@@ -6,65 +6,7 @@ This file describes what changes for the user from version to version: new featu
 
 ## Unreleased
 
-## Dev v0.5.10.12 – 2026-11-22
-
-### Changed
-
-- The Interface dialog is split into the tabs Window, Panels and Behavior, so it fits an 80x24 terminal; the tabs switch with a click, Ctrl+PgUp/Ctrl+PgDn or Ctrl+Tab.
-- The Markdown colors dialog is split into the tabs Text, Emphasis, Blocks and Links and tables and fits an 80x24 terminal.
-- Dialogs wider than the screen (Mask groups, Multi-rename, Synchronize, File history, Plugins and others, also in translated captions) are squeezed to fit an 80x24 terminal instead of losing their right part: fields and lists get narrower first, then spare cells of captions; buttons stay whole.
-- Dialog descriptions (plugins and built-in windows) can have tabs: a `tabs` control and a `tab` number on the controls of each page.
-
-### Added
-
-- The profile list of the Background console dialog shows the key mode of each profile in a second column, as the New terminal dialog does.
-- Two options in the Interface dialog: "Show column headers" and "Show the sort mode letter". With the headers off the list starts one row higher; the sort letter then sits on the top border. [#97](https://github.com/Laex/MTN2/issues/97)
-
-## Dev v0.5.10.11 – 2026-11-22
-
-### Changed
-
-- The sets Minimal, Dates and Technical are no longer created in `columnsets.json`; the built-in wide variants are listed first in the sets list of the Columns dialog. Existing files keep their sets.
-- The column modes menu lists two kinds of view: Brief, and Wide with the built-in variants (size, date, full, created, types) followed by your own column sets.
-- In the Custom columns dialog the columns of a plugin are listed under the name of the plugin, apart from the built-in ones.
-
-### Fixed
-
-- In a console or terminal tab, Enter pressed in a running console or full-screen program (Far Manager, vim) no longer sends an extra line feed; in Far it opened Explorer on `..` as if Shift+Enter had been pressed.
-- While a console program such as Far Manager is running and the profile's keys mode is "while running" or "terminal", PgUp, PgDn, Insert and Shift with the arrow, Home and End keys go to the program instead of scrolling or selecting in the window.
-
-### Added
-
-- A fourth key mode for shell profiles, "while running" (F4 in the shell list): the program gets every key while a console program started from the shell, such as Far Manager, is running, and the window's keys apply at the bare prompt. A GUI program launched from the shell does not count. [#105](https://github.com/Laex/MTN2/discussions/105)
-- A program that asks for the mouse (Far Manager, `htop`, `mc`) now receives clicks, drags and the wheel over the console or terminal text; hold Shift to select text with the mouse as before. [#105](https://github.com/Laex/MTN2/discussions/105)
-- The width of a Brief column can be set (10-50 characters, 28 by default): the "Brief view" field in the Columns dialog; the panel holds as many columns of that width as fit. The column modes menu ends with a separator and a "Settings..." item that opens it. The plugin headings in that dialog are highlighted. [#103](https://github.com/Laex/MTN2/discussions/103)
-- Column sets can include the columns that plugins add. A set saved in the Custom columns dialog remembers them for the folder type it was saved in, and choosing the set shows them again.
-
-## Dev v0.5.10.10 – 2026-11-21
-
-### Fixed
-
-- Copying a folder out of an archive (7z, RAR and others, F5) unpacks the whole folder in one pass. Before, every file was unpacked on its own, and in a solid archive that meant reading it again from the start each time: a 30 MB RAR with about 1300 files took minutes, now it takes about a second. [#106](https://github.com/Laex/MTN2/issues/106)
-
-## Dev v0.5.10.8 – 2026-11-21
-
-### Fixed
-
-- In the built-in themes, color coding by extension (archives, temporary files and so on) applies to files only: a folder named like `name.7z` or `name.tmp` keeps the folder color. Themes you saved earlier keep their groups as they are; choose "Files only" for them in the color coding editor.
-
-## Dev v0.5.10.7 – 2026-11-20
-
-### Changed
-
-- While the "Paired folders" mode is on, the status line shows a "Paired" marker; a click on it turns the mode off. The mode is no longer kept between launches and is off after every start.
-
-## Dev v0.5.10.6 – 2026-11-20
-
-### Fixed
-
-- In consoles, the mouse wheel and the keyboard scroll from the current view instead of jumping to an old position. When scrolling hides the last line, following the output of a running program stops, and it resumes once the console is scrolled back to the bottom.
-
-## Dev v0.5.10.3 – 2026-11-18
+## v0.5.11 – 2026-11-22
 
 ### New
 
@@ -76,15 +18,37 @@ This file describes what changes for the user from version to version: new featu
 
 ### Changed
 
+- The Interface dialog is split into the tabs Window, Panels and Behavior, so it fits an 80x24 terminal; the tabs switch with a click, Ctrl+PgUp/Ctrl+PgDn or Ctrl+Tab.
+- The Markdown colors dialog is split into the tabs Text, Emphasis, Blocks and Links and tables and fits an 80x24 terminal.
+- Dialogs wider than the screen (Mask groups, Multi-rename, Synchronize, File history, Plugins and others, also in translated captions) are squeezed to fit an 80x24 terminal instead of losing their right part: fields and lists get narrower first, then spare cells of captions; buttons stay whole.
+- Dialog descriptions (plugins and built-in windows) can have tabs: a `tabs` control and a `tab` number on the controls of each page.
+- The sets Minimal, Dates and Technical are no longer created in `columnsets.json`; the built-in wide variants are listed first in the sets list of the Columns dialog. Existing files keep their sets.
+- The column modes menu lists two kinds of view: Brief, and Wide with the built-in variants (size, date, full, created, types) followed by your own column sets.
+- In the Custom columns dialog the columns of a plugin are listed under the name of the plugin, apart from the built-in ones.
+- While the "Paired folders" mode is on, the status line shows a "Paired" marker; a click on it turns the mode off. The mode is no longer kept between launches and is off after every start.
 - Tab or Esc in the Folder map plugin returns the keyboard to the file panel without discarding the map.
 - With the cursor on `..`, the Folder map plugin in Quick View (Ctrl+Q) shows the map of the current folder, so the folder you have just entered and the whole disk stay in view.
 
 ### Fixed
 
+- In a console or terminal tab, Enter pressed in a running console or full-screen program (Far Manager, vim) no longer sends an extra line feed; in Far it opened Explorer on `..` as if Shift+Enter had been pressed.
+- While a console program such as Far Manager is running and the profile's keys mode is "while running" or "terminal", PgUp, PgDn, Insert and Shift with the arrow, Home and End keys go to the program instead of scrolling or selecting in the window.
+- Copying a folder out of an archive (7z, RAR and others, F5) unpacks the whole folder in one pass. Before, every file was unpacked on its own, and in a solid archive that meant reading it again from the start each time: a 30 MB RAR with about 1300 files took minutes, now it takes about a second. [#106](https://github.com/Laex/MTN2/issues/106)
+- In the built-in themes, color coding by extension (archives, temporary files and so on) applies to files only: a folder named like `name.7z` or `name.tmp` keeps the folder color. Themes you saved earlier keep their groups as they are; choose "Files only" for them in the color coding editor.
+- In consoles, the mouse wheel and the keyboard scroll from the current view instead of jumping to an old position. When scrolling hides the last line, following the output of a running program stops, and it resumes once the console is scrolled back to the bottom.
 - After leaving a link to a folder that sits next to its target, the cursor returns to the link instead of the target folder, so a delete no longer hits the wrong folder.
 - Ctrl+Enter and Ctrl+Shift+Enter no longer paste the "Reading..." or error line of a panel into the command line.
 - Folder map: the key that shows a tile in the panel no longer also types its letter into the command line, and the Cyrillic "п" works as G.
 - Folder map: Backspace at the top of a whole disk no longer reaches the file panel, so the map stays on the disk.
+
+### Added
+
+- The profile list of the Background console dialog shows the key mode of each profile in a second column, as the New terminal dialog does.
+- Two options in the Interface dialog: "Show column headers" and "Show the sort mode letter". With the headers off the list starts one row higher; the sort letter then sits on the top border. [#97](https://github.com/Laex/MTN2/issues/97)
+- A fourth key mode for shell profiles, "while running" (F4 in the shell list): the program gets every key while a console program started from the shell, such as Far Manager, is running, and the window's keys apply at the bare prompt. A GUI program launched from the shell does not count. [#105](https://github.com/Laex/MTN2/discussions/105)
+- A program that asks for the mouse (Far Manager, `htop`, `mc`) now receives clicks, drags and the wheel over the console or terminal text; hold Shift to select text with the mouse as before. [#105](https://github.com/Laex/MTN2/discussions/105)
+- The width of a Brief column can be set (10-50 characters, 28 by default): the "Brief view" field in the Columns dialog; the panel holds as many columns of that width as fit. The column modes menu ends with a separator and a "Settings..." item that opens it. The plugin headings in that dialog are highlighted. [#103](https://github.com/Laex/MTN2/discussions/103)
+- Column sets can include the columns that plugins add. A set saved in the Custom columns dialog remembers them for the folder type it was saved in, and choosing the set shows them again.
 
 ## v0.5.10 – 2026-11-17
 
