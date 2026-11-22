@@ -125,6 +125,7 @@ uses
   uDualPanelPaletteDialog in 'Core\uDualPanelPaletteDialog.pas',
   uCommandPalette in 'Core\uCommandPalette.pas',
   uKeyHints in 'Core\uKeyHints.pas',
+  uFeatureTips in 'Core\uFeatureTips.pas',
   uDualPanelSettingsDialogs in 'Core\uDualPanelSettingsDialogs.pas',
   uDualPanelThemeDialogs in 'Core\uDualPanelThemeDialogs.pas',
   uDualPanelFileDialogs in 'Core\uDualPanelFileDialogs.pas',

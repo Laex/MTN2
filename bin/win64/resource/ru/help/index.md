@@ -6,6 +6,8 @@ Modern Terminal Navigator 2 – двухпанельный файловый ме
 
 ### Содержание
 
+- [Возможности MTN2](features.md)
+- [Рецепты](recipes.md)
 - [Экран программы](screen.md)
 - [Панели и навигация](panels.md)
 - [Выделение файлов](selection.md)

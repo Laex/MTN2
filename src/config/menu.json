@@ -8,6 +8,7 @@
         { "caption": "Check for updates...", "hotChar": "U", "shortcut": "", "action": "tmaHelpUpdates", "hint": "Checks for a new version and offers to download it. Nothing is downloaded without consent.", "aliases": "update, upgrade, new version, release" },
         { "caption": "Find command...", "hotChar": "F", "shortcut": "Shift+F9", "action": "tmaCmdPalette", "hint": "Searches all menu commands by name, category or key, and runs the chosen one.", "aliases": "command, palette, search, menu" },
         { "caption": "Help contents", "hotChar": "H", "shortcut": "F1", "action": "tmaHelpContents", "hint": "Opens the help window with the contents.", "aliases": "help, manual, docs" },
+        { "caption": "What MTN2 can do", "hotChar": "W", "shortcut": "", "action": "tmaHelpFeatures", "hint": "Opens an overview of the program by task: what to press and where to read more.", "aliases": "features, overview, capabilities, tips, cheat sheet, what can" },
         { "isSeparator": true },
         { "caption": "Quit", "hotChar": "Q", "shortcut": "F10", "action": "tmaQuit", "hint": "Closes the program and saves settings, panels and tabs.", "aliases": "exit, close, quit" }
       ]

@@ -39,6 +39,8 @@ type
 
 const
   cHelpIndexTopic = 'index.md';
+  /// <summary>The by-task overview page (Help menu: What MTN2 can do).</summary>
+  cFeaturesTopic = 'features.md';
 
 /// <summary>Dialogs that read F1 themselves: the key-capture field of the
 /// keymap editor records any key, and the built-in key summary is already
@@ -196,7 +198,7 @@ type
 const
   // The first rule whose prefix starts the name wins, so the specific
   // prefixes come before the general ones.
-  cRules: array[0..77] of TTopicRule = (
+  cRules: array[0..78] of TTopicRule = (
     (Prefix: 'tmaFileSelect'; Topic: 'selection.md'),
     (Prefix: 'tmaFileUnselect'; Topic: 'selection.md'),
     (Prefix: 'tmaFileInvertSelect'; Topic: 'selection.md'),
@@ -274,6 +276,7 @@ const
     (Prefix: 'tmaOptToggleMouse'; Topic: 'text.md#mouse'),
     (Prefix: 'tmaOpt'; Topic: 'settings.md'),
     (Prefix: 'tmaHelpUpdates'; Topic: 'updates.md'),
+    (Prefix: 'tmaHelpFeatures'; Topic: cFeaturesTopic),
     (Prefix: 'tmaCmd'; Topic: 'panels.md'));
 var
   I: Integer;

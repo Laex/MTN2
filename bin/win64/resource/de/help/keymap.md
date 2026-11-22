@@ -21,7 +21,7 @@ Globale Befehle wirken in jedem Fenster – auf den Panels, in einem Dokument, i
 - F10 schließt ein Dokument und beendet das Programm nur auf den Panels (`Quit`);
 - Esc auf den Panels zeigt die Konsole (`ConsoleToggle`), wenn das Panel den Fokus hat; in der Befehlszeile löscht es zuerst die Zeile und gibt dann den Fokus an das Panel zurück.
 
-**Vollbildprogramm.** Läuft eines in einer Konsole oder einem Terminal (der Tastenmodus des Profils ist *auto* oder *Terminal*, siehe Terminals), bekommt die Konsole diese Tasten ebenfalls, außer denen, die sie verlassen: F11, Ctrl+O, Tabwechsel, Ctrl+Shift+N und Ctrl+Alt+O.
+**Vollbildprogramm.** Läuft eines in einer Konsole oder einem Terminal (der Tastenmodus des Profils ist *auto*, *während Programm läuft* oder *Terminal*, siehe Terminals), bekommt die Konsole diese Tasten ebenfalls, außer denen, die sie verlassen: F11, Ctrl+O, Tabwechsel, Ctrl+Shift+N und Ctrl+Alt+O.
 
 **Dialoge.** Solange ein Dialog offen ist, lösen die globalen Befehle nicht aus; `ZoomReset` und `ReloadKeymap` immer.
 

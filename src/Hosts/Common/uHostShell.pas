@@ -576,6 +576,8 @@ begin
   GShowToasts := Sess.ShowNotifications;
   FDualPanel.KeyHintsEnabled := Sess.ShowKeyHints;
   FDualPanel.KeyHintsSeen := Sess.KeyHintsSeen;
+  FDualPanel.StartFeatureTips(Sess.FeatureTipRuns, Sess.FeatureTipUsed,
+    Sess.FeatureTipShown);
   GSaverMinutes := Sess.SaverMinutes;
   GSaverId := Sess.SaverId;
   GSaverRandom := Sess.SaverRandom;
@@ -642,6 +644,9 @@ begin
   Sess.ShowNotifications := GShowToasts;
   Sess.ShowKeyHints := FDualPanel.KeyHintsEnabled;
   Sess.KeyHintsSeen := FDualPanel.KeyHintsSeen;
+  Sess.FeatureTipRuns := FDualPanel.FeatureTipRuns;
+  Sess.FeatureTipUsed := FDualPanel.FeatureTipUsed;
+  Sess.FeatureTipShown := FDualPanel.FeatureTipShown;
   Sess.SaverMinutes := GSaverMinutes;
   Sess.SaverId := GSaverId;
   Sess.SaverRandom := GSaverRandom;
@@ -853,6 +858,11 @@ begin
     procedure(APath: string)
     begin
       DualPanelOpenViewer(PathToFileUri(APath));
+    end;
+  Host.OpenFeatures :=
+    procedure
+    begin
+      FDualPanel.OpenFeatures;
     end;
   FUpdater := TUpdateController.Create(Host);
   FDualPanel.OnOpenUpdates := DualPanelOpenUpdates;

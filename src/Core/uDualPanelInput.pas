@@ -119,6 +119,7 @@ type
     BeginSelectByMask: TKeymapBoolProc;
     ApplySelectByExtension: TKeymapBoolProc;
     OpenHelp: TKeymapProc;
+    OpenFeatures: TKeymapProc;
     OpenUserMenu: TKeymapProc;
     BeginPackZip: TKeymapProc;
     BeginUnpackZip: TKeymapProc;

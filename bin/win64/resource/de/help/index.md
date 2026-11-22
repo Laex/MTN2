@@ -6,6 +6,8 @@ Die Tasten gelten für das eingebaute Profil; sie lassen sich ändern (siehe [Ta
 
 ### Inhalt
 
+- [Was MTN2 kann](features.md)
+- [Rezepte](recipes.md)
 - [Programmoberfläche](screen.md)
 - [Panels und Navigation](panels.md)
 - [Dateien auswählen](selection.md)

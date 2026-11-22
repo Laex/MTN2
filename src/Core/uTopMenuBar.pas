@@ -167,6 +167,7 @@ type
     tmaOptRestoreHiddenDialogs,
     tmaCmdPalette,
     tmaHelpContents,
+    tmaHelpFeatures,
     tmaHelpAbout,
     tmaHelpUpdates,
     tmaQuit
@@ -1205,12 +1206,13 @@ begin
   FCategories[0].Title := #$2261;
   FCategories[0].HotChar := #0;
   FCategories[0].HotPos := 0;
-  SetLength(FCategories[0].Items, 5);
+  SetLength(FCategories[0].Items, 6);
   FCategories[0].Items[0] := SubItem('About MTN2...', 'A', '', tmaHelpAbout);
   FCategories[0].Items[1] := SubItem('Check for updates...', 'U', '', tmaHelpUpdates);
   FCategories[0].Items[2] := SubItem('Help contents', 'H', 'F1', tmaHelpContents);
-  FCategories[0].Items[3] := Separator;
-  FCategories[0].Items[4] := SubItem('Quit', 'Q', 'F10', tmaQuit);
+  FCategories[0].Items[3] := SubItem('What MTN2 can do', 'W', '', tmaHelpFeatures);
+  FCategories[0].Items[4] := Separator;
+  FCategories[0].Items[5] := SubItem('Quit', 'Q', 'F10', tmaQuit);
 
   // 1: Left
   FCategories[1].Title := 'Left';

@@ -16,6 +16,7 @@ type
     [SetupFixture] procedure SetupFixture;
     [TearDownFixture] procedure TearDownFixture;
     [Test] procedure TestVersions;
+    [Test] procedure TestChangelogSince;
     [Test] procedure TestReleaseJson;
     [Test] procedure TestDevReleaseJson;
     [Test] procedure TestSha256;
@@ -436,6 +437,41 @@ end;
 procedure TTestUpdater.TestVersions;
 begin
   TestUpdater.TestVersions;
+end;
+
+procedure TTestUpdater.TestChangelogSince;
+const
+  cLog =
+    '# What''s new'#10#10'Intro text.'#10#10'## Unreleased'#10#10'- pending'#10#10 +
+    '## v0.5.11 - 2026-11-22'#10#10'### New'#10#10'- eleven'#10#10 +
+    '## Dev v0.5.10.3 - 2026-11-20'#10#10'- dev three'#10#10 +
+    '## v0.5.10 - 2026-11-17'#10#10'- ten'#10#10 +
+    '## v0.5.9 - 2026-11-10'#10#10'- nine'#10;
+var
+  S: string;
+begin
+  S := ChangelogSince(cLog, '0.5.10', '0.5.11');
+  Assert.IsTrue(S.Contains('- eleven'), 'the new release is listed');
+  Assert.IsFalse(S.Contains('- ten'), 'the version already run is not listed');
+  Assert.IsFalse(S.Contains('Intro text'), 'text before the first section is dropped');
+  Assert.IsFalse(S.Contains('pending'), 'Unreleased is never listed');
+  Assert.IsTrue(S.StartsWith('## v0.5.11'), 'sections keep their heading');
+  Assert.IsFalse(S.EndsWith(#10), 'no trailing blank line');
+
+  S := ChangelogSince(cLog, '0.5.9', '0.5.11');
+  Assert.IsTrue(S.Contains('- eleven') and S.Contains('- dev three') and S.Contains('- ten'),
+    'every section in between is listed');
+  Assert.IsTrue(S.IndexOf('- eleven') < S.IndexOf('- ten'), 'file order is kept');
+  Assert.IsFalse(S.Contains('- nine'), 'the version already run is not listed');
+
+  S := ChangelogSince(cLog, '0.5.10', '0.5.10.3');
+  Assert.IsTrue(S.Contains('- dev three') and not S.Contains('- eleven'),
+    'a section above the installed version is not listed');
+
+  Assert.AreEqual('', ChangelogSince(cLog, '0.5.11', '0.5.11'), 'nothing newer');
+  Assert.AreEqual('', ChangelogSince('no sections here', '0.1.0', '0.2.0'), 'no sections');
+  Assert.IsTrue(ChangelogSince('## v0.5.11 - d'#13#10'- crlf'#13#10, '0.5.10', '0.5.11').Contains('- crlf'),
+    'CRLF text works');
 end;
 
 procedure TTestUpdater.TestReleaseJson;

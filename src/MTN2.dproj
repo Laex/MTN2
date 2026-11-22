@@ -308,6 +308,7 @@
         <DCCReference Include="Core\uDualPanelPaletteDialog.pas"/>
         <DCCReference Include="Core\uCommandPalette.pas"/>
         <DCCReference Include="Core\uKeyHints.pas"/>
+        <DCCReference Include="Core\uFeatureTips.pas"/>
         <DCCReference Include="Core\uDualPanelSettingsDialogs.pas"/>
         <DCCReference Include="Core\uDualPanelThemeDialogs.pas"/>
         <DCCReference Include="Core\uDualPanelFileDialogs.pas"/>

@@ -44,7 +44,7 @@ If the theme of the saved session is not found, the program says so and uses the
 - **h** – go to the parent folder; **l** – open the item;
 - **g / G** – jump to the first / last row;
 - **/** – start the quick search; **:** – move to the command line.
-<!--columns-->- **Columns...** – the columns of the “Custom” mode.
+<!--columns-->- **Columns...** – the width of the columns in the Brief view and the columns of the Wide views.
 <!--console-->- **Console...** – the scrollback size of the console and terminals, confirmation of a multi-line paste, removal of trailing spaces on copy and paste, return to the panels when a command from the command line ends (more in the command line help).
 <!--save-settings-->- **Save settings** – writes the settings, the panels and the tabs to the settings file now, not only when the program closes; a toast confirms it or names the problem. Options changed in dialogs are applied at once; this item makes sure they are on disk, for example before a copy of the settings folder is taken.
 <!--settings-file-->- **Export settings... / Import settings...** – the settings as one zip file.

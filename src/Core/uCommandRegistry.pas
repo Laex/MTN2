@@ -130,6 +130,10 @@ type
 
 function CommandRegistry: ICommandRegistry;
 
+/// <summary>Called with every built-in command the user runs (key or menu),
+/// before the hooks. One observer at a time; nil removes it.</summary>
+procedure SetKeymapActionObserver(AObserver: TProc<TKeymapAction>);
+
 /// <summary>Runs the hooks of the built-in command behind AAction. False
 /// (cheaply) when no hook is registered at all.</summary>
 function InterceptKeymapAction(AAction: TKeymapAction; const AOrigin: string): Boolean;
@@ -1025,8 +1029,18 @@ begin
   Result := GRegistry;
 end;
 
+var
+  GActionObserver: TProc<TKeymapAction>;
+
+procedure SetKeymapActionObserver(AObserver: TProc<TKeymapAction>);
+begin
+  GActionObserver := AObserver;
+end;
+
 function InterceptKeymapAction(AAction: TKeymapAction; const AOrigin: string): Boolean;
 begin
+  if (AAction <> kaNone) and Assigned(GActionObserver) then
+    GActionObserver(AAction);
   if (AAction = kaNone) or (GRegistryObj = nil) or (GRegistryObj.HookCount = 0) then
     Exit(False);
   Result := GRegistryObj.TryIntercept(KeymapActionDisplayName(AAction), AOrigin);

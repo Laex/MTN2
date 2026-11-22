@@ -30,6 +30,7 @@ uses
   TestKeymap in 'TestKeymap.pas',
   TestKeyChord in 'TestKeyChord.pas',
   TestKeyHints in 'TestKeyHints.pas',
+  TestFeatureTips in 'TestFeatureTips.pas',
   TestLiveReload in 'TestLiveReload.pas',
   TestLocalePacks in 'TestLocalePacks.pas',
   TestColumnSets in 'TestColumnSets.pas',

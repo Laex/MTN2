@@ -1884,6 +1884,8 @@ begin
   GShowToasts := Sess.ShowNotifications;
   FDualPanel.KeyHintsEnabled := Sess.ShowKeyHints;
   FDualPanel.KeyHintsSeen := Sess.KeyHintsSeen;
+  FDualPanel.StartFeatureTips(Sess.FeatureTipRuns, Sess.FeatureTipUsed,
+    Sess.FeatureTipShown);
   GFileDragEnabled := Sess.FileDrag;
   GAltOpensMenu := Sess.AltOpensMenu;
   GEditorAutoIndent := Sess.EditorAutoIndent;
@@ -2005,11 +2007,17 @@ begin
   begin
     Sess.ShowKeyHints := FDualPanel.KeyHintsEnabled;
     Sess.KeyHintsSeen := FDualPanel.KeyHintsSeen;
+    Sess.FeatureTipRuns := FDualPanel.FeatureTipRuns;
+    Sess.FeatureTipUsed := FDualPanel.FeatureTipUsed;
+    Sess.FeatureTipShown := FDualPanel.FeatureTipShown;
   end
   else
   begin
     Sess.ShowKeyHints := FSession.ShowKeyHints;
     Sess.KeyHintsSeen := FSession.KeyHintsSeen;
+    Sess.FeatureTipRuns := FSession.FeatureTipRuns;
+    Sess.FeatureTipUsed := FSession.FeatureTipUsed;
+    Sess.FeatureTipShown := FSession.FeatureTipShown;
   end;
   Sess.ShowTitleBar := GShowTitleBar;
   Sess.ShowMenuBar := GShowMenuBar;
@@ -2359,6 +2367,11 @@ begin
     procedure(APath: string)
     begin
       DualPanelOpenViewer(PathToFileUri(APath));
+    end;
+  Host.OpenFeatures :=
+    procedure
+    begin
+      FDualPanel.OpenFeatures;
     end;
   FUpdater := TUpdateController.Create(Host);
   FUpdateTimer := TTimer.Create(Self);

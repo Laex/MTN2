@@ -69,6 +69,9 @@ type
     ShowNotifications: Boolean;
     ShowKeyHints: Boolean;         // short key hints for the state the program is in (uKeyHints)
     KeyHintsSeen: Integer;         // bit set of the hints already shown (TKeyHintTracker.Seen)
+    FeatureTipRuns: Integer;       // runs counted for the feature tips (uFeatureTips)
+    FeatureTipUsed: Integer;       // bit set of the features already used
+    FeatureTipShown: Integer;      // bit set of the feature tips already shown
     ShowTitleBar: Boolean;
     ShowMenuBar: Boolean;
     FileDrag: Boolean;
@@ -156,7 +159,7 @@ implementation
 
 uses
   System.Classes, System.Generics.Collections, System.IOUtils, System.JSON,
-  System.Math, uConfigLocation, uDisplaySettings, uConsoleSettings, uScreenSaver;
+  System.Math, uFeatureTips, uConfigLocation, uDisplaySettings, uConsoleSettings, uScreenSaver;
 
 function DefaultSessionFilePath: string;
 begin
@@ -686,6 +689,9 @@ begin
       Root.AddPair('showNotifications', TJSONBool.Create(ASession.ShowNotifications));
       Root.AddPair('showKeyHints', TJSONBool.Create(ASession.ShowKeyHints));
       Root.AddPair('keyHintsSeen', TJSONNumber.Create(ASession.KeyHintsSeen));
+      Root.AddPair('featureTipRuns', TJSONNumber.Create(ASession.FeatureTipRuns));
+      Root.AddPair('featureTipUsed', TJSONNumber.Create(ASession.FeatureTipUsed));
+      Root.AddPair('featureTipShown', TJSONNumber.Create(ASession.FeatureTipShown));
       Root.AddPair('showTitleBar', TJSONBool.Create(ASession.ShowTitleBar));
       Root.AddPair('showMenuBar', TJSONBool.Create(ASession.ShowMenuBar));
       Root.AddPair('fileDrag', TJSONBool.Create(ASession.FileDrag));
@@ -789,6 +795,9 @@ begin
   ASession.ShowNotifications := True;
   ASession.ShowKeyHints := True;
   ASession.KeyHintsSeen := 0;
+  ASession.FeatureTipRuns := 0;
+  ASession.FeatureTipUsed := 0;
+  ASession.FeatureTipShown := 0;
   ASession.ShowTitleBar := True;
   ASession.ShowMenuBar := True;
   ASession.FileDrag := True;
@@ -914,6 +923,13 @@ begin
       ASession.ShowNotifications := JsonBool(Root, 'showNotifications', True);
       ASession.ShowKeyHints := JsonBool(Root, 'showKeyHints', True);
       ASession.KeyHintsSeen := JsonInt(Root, 'keyHintsSeen', 0);
+      ASession.FeatureTipRuns := JsonInt(Root, 'featureTipRuns', 0);
+      ASession.FeatureTipUsed := JsonInt(Root, 'featureTipUsed', 0);
+      ASession.FeatureTipShown := JsonInt(Root, 'featureTipShown', 0);
+      // A session written before the tips existed belongs to a user who
+      // already knows the program: no tip is offered to them.
+      if Root.GetValue('featureTipRuns') = nil then
+        ASession.FeatureTipShown := AllFeatureTipsMask;
       ASession.ShowTitleBar := JsonBool(Root, 'showTitleBar', True);
       ASession.ShowMenuBar := JsonBool(Root, 'showMenuBar', True);
       ASession.FileDrag := JsonBool(Root, 'fileDrag', True);

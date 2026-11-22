@@ -11,10 +11,22 @@
 
 The modes:
 - *auto* – the program gets the keys while a full-screen application such as mc or vim runs in the console;
-- *terminal* – the program gets every key, including F1, F9 and Alt+letter;
+- *while running* – as *auto*, and also while a console program started from the shell is running, even one that does not use the alternate screen, such as Far Manager. At the bare prompt the window's keys apply; a GUI program launched from the shell does not count;
+- *terminal* – the program gets every key, including F1, F9 and Alt+letter; the only keys that stay with the window are the bare navigation keys (arrows, Home, End, PgUp, PgDn, Insert, Delete, with or without Shift) at the bare prompt, where they scroll, select and recall history. It is the mode for shells that are themselves the program (bash in WSL, ssh, Git Bash), which need their own Ctrl+R, Ctrl+A and so on;
 - *host* – the MTN2 window's keys come first.
 
-In *auto* and *terminal* the window keeps only the keys that leave the console: F11, Ctrl+O, switching tabs, Ctrl+Shift+N and Ctrl+Alt+O.
+Who gets the keys:
+
+| Mode | At the bare prompt | An ordinary command (`ping`, `git`, a build) | A full-screen program (`vim`, `htop`) | A console program without the alternate screen (Far Manager) |
+|---|---|---|---|---|
+| auto | window | window | program | window |
+| while running | window | program | program | program |
+| terminal | program | program | program | program |
+| host | window | window | window | window |
+
+"Window" here means the MTN2 window's own keys: help, scrolling and selecting the output, command recall. In *auto* the window keeps scrolling and selecting while an ordinary command runs; a program such as Far needs *while running* or *terminal*. "While running" tells a program from the prompt by a console process started by the shell, so it does not apply to a shell that is itself the program (WSL, ssh): use *terminal* for those.
+
+In *auto*, *while running* and *terminal* the window keeps only the keys that leave the console: F11, Ctrl+O, switching tabs, Ctrl+Shift+N and Ctrl+Alt+O.
 - **F6** – the environment profile of the selected shell or its copy (see [Environment profiles](environment.md)).
 
 ---

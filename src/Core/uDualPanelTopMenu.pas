@@ -231,6 +231,7 @@ begin
 
     tmaCmdPalette: CallProc(AHost.OpenCommandPalette);
     tmaHelpContents: CallProc(AHost.OpenHelp);
+    tmaHelpFeatures: CallProc(AHost.OpenFeatures);
     tmaHelpAbout: CallProc(AHost.OpenAboutDialog);
     tmaHelpUpdates: CallProc(AHost.OpenUpdates);
     tmaQuit: CallProc(AHost.RequestQuit);
@@ -250,7 +251,7 @@ begin
     tmaNone:
       Exit(False);
 
-    tmaHelpContents, tmaHelpAbout, tmaHelpUpdates, tmaQuit, tmaCmdPalette,
+    tmaHelpContents, tmaHelpFeatures, tmaHelpAbout, tmaHelpUpdates, tmaQuit, tmaCmdPalette,
     tmaOptReloadKeymap, tmaOptShowPlugins, tmaOptColorCoding, tmaOptKeymap,
     tmaOptTheme,
     tmaOptColumnsConfig, tmaOptMaskGroups, tmaOptDisplay, tmaOptInterface, tmaOptExternalTools, tmaOptConsoleOptions, tmaOptEnvironment, tmaOptMarkdownColors, tmaOptZoomIn, tmaOptZoomOut, tmaOptResetZoom,

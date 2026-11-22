@@ -25,6 +25,8 @@ The command line is always below the panels: just start typing. A command runs i
 
 **In the console:** **Ctrl+C** interrupts the command; **Esc** only hides the console and does not stop the process. The mouse wheel scrolls the output. Text is selected with the mouse (see [Working with text and the mouse](text.md)).
 
+**Mouse in a program.** A program that asks for mouse input (Far Manager, `htop`, `mc`, `vim` with `mouse=a`) receives clicks, drags and the wheel over the console text, and the window no longer scrolls or selects there. Hold **Shift** to select text with the mouse as usual. Scrolling the history and the window buttons keep working outside the text area.
+
 **Searching the output** (console and terminal):
 - **Ctrl+Shift+F** asks for the text; matches are highlighted in the whole history and the current one is selected like a mouse selection. An empty string in the dialog clears the search.
 - **F3** / **Shift+F3** go to the next / previous match (wrapping around) while a search is set and no full-screen program runs in the window.

@@ -83,6 +83,10 @@ function IsNewerVersion(const ACandidate, ACurrent: string): Boolean;
 function DownloadProgressText(ADone, ATotal: Int64): string;
 /// <summary>True for a development build: a version with a build number above 0.</summary>
 function IsDevVersion(const AVersion: string): Boolean;
+/// <summary>The sections of a changelog ("## v1.2.3 - date", "## Dev v1.2.3.4 - date")
+/// whose version is above AFromVersion and not above AToVersion, in file order,
+/// each with its heading. '' when there is none (Unreleased never counts).</summary>
+function ChangelogSince(const AChangelog, AFromVersion, AToVersion: string): string;
 
 /// <summary>Major.Minor.Release of AExeFile's version resource, plus .Build
 /// when it is not 0 ('' if none).</summary>
@@ -234,6 +238,45 @@ var
 begin
   Result := TryParseVersionBuild(ACandidate, M, N, P, B) and
     (CompareVersions(ACandidate, ACurrent) > 0);
+end;
+
+function ChangelogSince(const AChangelog, AFromVersion, AToVersion: string): string;
+const
+  cHead = '## ';
+  cDev = 'Dev ';
+var
+  Lines: TArray<string>;
+  Kept: TStringList;
+  Line, Ver: string;
+  Keep: Boolean;
+  M, N, P, B, Sp: Integer;
+begin
+  Lines := AChangelog.Replace(#13#10, #10).Split([#10]);
+  Kept := TStringList.Create;
+  try
+    Keep := False;
+    for Line in Lines do
+    begin
+      if Line.StartsWith(cHead) then
+      begin
+        Ver := Trim(Copy(Line, Length(cHead) + 1, MaxInt));
+        if Ver.StartsWith(cDev) then
+          Ver := Trim(Copy(Ver, Length(cDev) + 1, MaxInt));
+        Sp := Pos(' ', Ver);
+        if Sp > 0 then
+          Ver := Copy(Ver, 1, Sp - 1);
+        Keep := TryParseVersionBuild(Ver, M, N, P, B) and
+          IsNewerVersion(Ver, AFromVersion) and not IsNewerVersion(Ver, AToVersion);
+      end;
+      if Keep then
+        Kept.Add(Line);
+    end;
+    while (Kept.Count > 0) and (Trim(Kept[Kept.Count - 1]) = '') do
+      Kept.Delete(Kept.Count - 1);
+    Result := Kept.Text.TrimRight([#13, #10]).Replace(sLineBreak, #10);
+  finally
+    Kept.Free;
+  end;
 end;
 
 function FileVersionString(const AExeFile: string): string;

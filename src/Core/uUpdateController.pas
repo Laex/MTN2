@@ -34,6 +34,8 @@ type
     RequestClose: TProc;
     /// <summary>Opens a file in the viewer (the changelog after an update).</summary>
     OpenFile: TProc<string>;
+    /// <summary>Opens the features page of the help (the first run).</summary>
+    OpenFeatures: TProc;
   end;
 
   TUpdateState = (usIdle, usChecking, usDownloading, usReady, usApplied);
@@ -81,8 +83,13 @@ type
     procedure RestartNow;
     procedure SaveSettings;
     /// <summary>After the program was updated: once, a dialog naming the new
-    /// version with a button that opens CHANGELOG.md in the viewer.</summary>
+    /// version with a button that opens what changed since the previous run
+    /// (the newer sections of the changelog) in the viewer.</summary>
     procedure AnnounceUpdate;
+    /// <summary>The file the viewer opens for the update announcement: a page
+    /// with the changelog sections since APrevious, or the whole changelog when
+    /// none can be told apart. '' when there is no changelog.</summary>
+    function WhatsNewFile(const APrevious: string): string;
   public
     constructor Create(const AHost: TUpdateHost);
     destructor Destroy; override;
@@ -286,32 +293,61 @@ begin
   SaveUpdateSettings(FSettings);
 end;
 
+function TUpdateController.WhatsNewFile(const APrevious: string): string;
+var
+  Source, Sections: string;
+begin
+  // CHANGELOG.md is English; a translation sits next to it as CHANGELOG.<language>.md.
+  Source := TPath.Combine(AppDir, 'CHANGELOG.' + CurrentLocale + '.md');
+  if SameText(CurrentLocale, 'en') or not TFile.Exists(Source) then
+    Source := TPath.Combine(AppDir, 'CHANGELOG.md');
+  if not TFile.Exists(Source) then
+    Exit('');
+  Result := Source;
+  try
+    Sections := ChangelogSince(TFile.ReadAllText(Source, TEncoding.UTF8), APrevious, FCurrent);
+    if Sections = '' then
+      Exit;
+    Result := TPath.Combine(TPath.GetTempPath, 'mtn2-whats-new.md');
+    TFile.WriteAllText(Result,
+      '# ' + T('ui.update.whatsNewTitle', 'What''s new in MTN2 %s', [FCurrent]) +
+      sLineBreak + sLineBreak + Sections + sLineBreak, TEncoding.UTF8);
+  except
+    on Exception do
+      Result := Source;
+  end;
+end;
+
 procedure TUpdateController.AnnounceUpdate;
 var
-  Changelog, Installed: string;
+  Changelog, Installed, Previous: string;
   Updated: Boolean;
 begin
   if (FCurrent = '') or (FSettings.LastRunVersion = FCurrent) then
     Exit;
-  Updated := (FSettings.LastRunVersion <> '') and
-    IsNewerVersion(FCurrent, FSettings.LastRunVersion);
+  Previous := FSettings.LastRunVersion;
+  Updated := (Previous <> '') and IsNewerVersion(FCurrent, Previous);
   FSettings.LastRunVersion := FCurrent;
   SaveSettings;
+  if Previous = '' then
+  begin
+    // The first run: the map of what the program can do.
+    if Assigned(FHost.OpenFeatures) then
+      FHost.OpenFeatures();
+    Exit;
+  end;
   if not Updated then
     Exit;
-  // CHANGELOG.md is English; a translation sits next to it as CHANGELOG.<language>.md.
-  Changelog := TPath.Combine(AppDir, 'CHANGELOG.' + CurrentLocale + '.md');
-  if SameText(CurrentLocale, 'en') or not TFile.Exists(Changelog) then
-    Changelog := TPath.Combine(AppDir, 'CHANGELOG.md');
+  Changelog := WhatsNewFile(Previous);
   if IsDevVersion(FCurrent) then
     Installed := T('ui.update.installedDev',
       'MTN2 has been updated to development build %s.', [FCurrent])
   else
     Installed := T('ui.update.installed', 'MTN2 has been updated to version %s.', [FCurrent]);
-  if Assigned(FHost.OpenFile) and TFile.Exists(Changelog) then
+  if Assigned(FHost.OpenFile) and (Changelog <> '') then
     Show(BuildUpdateMessageDialog(
       Installed, '',
-      T('ui.update.openChangelog', 'Open changelog'), True,
+      T('ui.update.openChangelog', 'What''s new'), True,
       T('ui.update.close', 'Close')),
       procedure(ACmd, AValues: string)
       begin

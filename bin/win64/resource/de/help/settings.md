@@ -44,7 +44,7 @@ Wird das Farbschema der gespeicherten Sitzung nicht gefunden, meldet das Program
 - **h** – übergeordneter Ordner; **l** – öffnen;
 - **g / G** – erste / letzte Zeile;
 - **/** – Schnellsuche; **:** – zur Befehlszeile.
-<!--columns-->- **Spalten...** – die Spalten des Modus „Eigene“.
+<!--columns-->- **Spalten...** – die Spaltenbreite der Kurzansicht und die Spalten der breiten Ansichten.
 <!--console-->- **Konsole...** – die Scrollback-Größe von Konsole und Terminals, Bestätigung beim mehrzeiligen Einfügen, Entfernen von Leerzeichen am Zeilenende beim Kopieren und Einfügen, Rückkehr zu den Panels, wenn ein Befehl aus der Befehlszeile endet (mehr in der Hilfe zur Befehlszeile).
 <!--save-settings-->- **Einstellungen speichern** – schreibt die Einstellungen, die Panels und die Tabs sofort in die Einstellungsdatei und nicht erst beim Beenden des Programms; ein Hinweis bestätigt es oder nennt das Problem. In Dialogen geänderte Optionen gelten sofort; dieser Punkt stellt sicher, dass sie auf dem Datenträger liegen, zum Beispiel bevor der Einstellungsordner kopiert wird.
 <!--settings-file-->- **Einstellungen exportieren... / Einstellungen importieren...** – die Einstellungen als eine Zip-Datei.

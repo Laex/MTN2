@@ -25,6 +25,8 @@ Die Befehlszeile befindet sich immer unter den Panels: einfach losschreiben. Ein
 
 **In der Konsole:** **Ctrl+C** unterbricht den Befehl; **Esc** blendet die Konsole nur aus und beendet den Prozess nicht. Das Mausrad blättert durch die Ausgabe. Text wird mit der Maus ausgewählt (siehe [Arbeiten mit Text und Maus](text.md)).
 
+**Maus im Programm.** Ein Programm, das Mauseingaben anfordert (Far Manager, `htop`, `mc`, `vim` mit `mouse=a`), erhält Klicks, Ziehen und das Mausrad über dem Konsolentext; das Fenster blättert und wählt dort nicht mehr aus. Mit gehaltener **Shift**-Taste wird Text wie gewohnt mit der Maus ausgewählt. Das Blättern im Verlauf und die Fensterschaltflächen funktionieren außerhalb des Textbereichs weiter.
+
 **Suche in der Ausgabe** (Konsole und Terminal):
 - **Ctrl+Shift+F** fragt nach dem Text; Treffer sind im ganzen Verlauf hervorgehoben, der aktuelle ist wie bei einer Mausauswahl markiert. Eine leere Zeile im Dialog hebt die Suche auf.
 - **F3** / **Shift+F3** springen zum nächsten / vorherigen Treffer (zyklisch), solange eine Suche gesetzt ist und im Fenster kein Vollbildprogramm läuft.

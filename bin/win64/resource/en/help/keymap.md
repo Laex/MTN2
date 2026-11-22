@@ -21,7 +21,7 @@ Global commands work in any window – the panels, a document, a terminal:
 - F10 closes a document and quits only on the panels (`Quit`);
 - Esc on the panels shows the console (`ConsoleToggle`) when the panel has the focus; in the command line it first clears it, then gives the focus back to the panel.
 
-**Full-screen program.** While one runs in a console or terminal (the profile's keys mode is *auto* or *terminal*, see Terminals), the console gets these keys too, except the ones that leave it: F11, Ctrl+O, switching tabs, Ctrl+Shift+N and Ctrl+Alt+O.
+**Full-screen program.** While one runs in a console or terminal (the profile's keys mode is *auto*, *while running* or *terminal*, see Terminals), the console gets these keys too, except the ones that leave it: F11, Ctrl+O, switching tabs, Ctrl+Shift+N and Ctrl+Alt+O.
 
 **Dialogs.** While a dialog is open the global commands do not fire; `ZoomReset` and `ReloadKeymap` always do.
 

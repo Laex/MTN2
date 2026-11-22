@@ -6,6 +6,17 @@ This file describes what changes for the user from version to version: new featu
 
 ## Unreleased
 
+### New
+
+- The top menu (≡ menu, Help) has "What MTN2 can do": a help page that lists the program's features by task (find a command, move around, select and rename files, search and compare, view and edit, console and terminals, tabs and workspaces, settings) with the keys and links to the details. The page is in the help contents too, in English, Russian, German and Chinese.
+- The help has a "Recipes" page with short answers to common tasks (copy, find, rename many files, compare folders, unpack an archive, return to a folder, terminals, remote servers, moving the settings), in English, Russian, German and Chinese.
+- From the third run on, the program shows one short tip per run about a feature you have not used yet (the command search, multi-rename, the folder hotlist, paired folders, comparison, Quick View, terminals, the folder tree, grouping, checksums, workspaces) with its current keys. A feature you already use is skipped and each tip appears once. The "Reset hints" button brings the tips back; the key hints switch turns them off.
+
+### Changed
+
+- After an update, the "What's new" button of the announcement opens only the changelog sections between the previous version and the installed one, instead of the whole changelog.
+- The first run of the program opens the "What MTN2 can do" help page.
+
 ## v0.5.11 – 2026-11-22
 
 ### New

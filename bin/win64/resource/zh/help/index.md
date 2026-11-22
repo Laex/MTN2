@@ -6,6 +6,8 @@ Modern Terminal Navigator 2 是一款双面板文件管理器,风格类似 NDN /
 
 ### 目录
 
+- [MTN2 能做什么](features.md)
+- [常用做法](recipes.md)
 - [程序界面](screen.md)
 - [面板和导航](panels.md)
 - [选择文件](selection.md)

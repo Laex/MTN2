@@ -8,6 +8,8 @@ Keys are given for the built-in profile; you can redefine them (see [Key binding
 
 ## Contents
 
+- [What MTN2 can do](#what-mtn2-can-do)
+- [Recipes](#recipes)
 - [Program screen](#program-screen)
 - [Panels and navigation](#panels-and-navigation)
 - [Selecting files](#selecting-files)
@@ -118,6 +120,103 @@ The repository holds three example `keymap.json` files, [`keymap.far.json`, `key
 ### Reserved keys
 
 Not taken yet and kept for planned features: **Shift+F3** (archive commands), **F11** (the plugin menu), **Ctrl+Alt+Ins** (network UNC paths), **Ctrl+.** (macro recording). An automatic check keeps the built-in keymap from taking them.
+
+---
+
+[Contents](#contents)
+
+## What MTN2 can do
+
+A map of the program by task: what to press and where to read more. Keys are for the built-in profile (see [Key bindings](#key-bindings)). Not sure where a command lives? **Shift+F9** searches all of them.
+
+### Find a command or a key
+
+- **Shift+F9** – search over every menu command by name, category or key; **Ctrl+K** in it changes the command's key. See [Top menu](#top-menu-f9).
+- **F1** – help for the place you are in: a dialog, a menu, the console, an archive, a viewer.
+
+### Get around quickly
+
+- **Ctrl+D** – folder hotlist with groups and quick letters; **Ctrl+Shift+F12** – the folders you visit most; **Alt+F12** – folder history; **Alt+←** / **Alt+→** – back and forward. See [History and folder hotlist](#history-and-folder-hotlist).
+- **Alt+letter** – quick search by name in the panel; **Ctrl+I** – a filter that keeps only matching names. See [Search and filters](#search-and-filters).
+- **Alt+F10** – folder tree; **Alt+F1** / **Alt+F2** – drives, network shares, special places. See [Drives and special places](#drives-and-special-places).
+- **Ctrl+Alt+P** – paired folders: going into or up a folder in one panel does the same in the other. See [Panels and navigation](#panels-and-navigation).
+
+### Select and work with files
+
+- **Ins**, **Space**, Gray **+** / **-** / **\***, **Ctrl+M** (bring back the last selection). See [Selecting files](#selecting-files).
+- **Ctrl+Alt+N** – rename many files by rules, with a preview. See [File operations](#file-operations).
+- Copy, move and delete run in the background; **Ctrl+Shift+J** shows the job list with pause, queue and speed limit. See [Background jobs](#background-jobs).
+- **Enter** or **Ctrl+PgDn** on an archive opens it like a folder; **F5** copies out of it. See [Archives](#archives).
+
+### Search and compare
+
+- **Alt+F7** – find files by mask, text, size, date; searches can run in the background and the results open as a panel. See [Search and filters](#search-and-filters).
+- **Ctrl+Alt+C** – compare and merge two files; **Ctrl+Shift+C** – compare folders; synchronize two folders. See [Synchronization and comparison](#synchronization-and-comparison).
+
+### View and edit
+
+- **F3** – view, **F4** – edit, **F6** – switch between them; **Ctrl+Q** – quick view on the other panel. Text, hex, Markdown and images. See [Viewing and editing files](#viewing-and-editing-files).
+
+### Console, terminals, remote
+
+- Type a command and press **Enter**; **Ctrl+O** switches between the panels and the console. See [Command line and console](#command-line-and-console).
+- **Ctrl+Shift+N** – a terminal in its own tab: cmd, PowerShell, WSL, saved SSH connections; full-screen programs and the mouse work in it. See [Terminals](#terminals).
+- **Ctrl+Alt+Shift+N** – SSH and SFTP connections: a remote folder as a panel. See [Network: SSH and SFTP](#network-ssh-and-sftp).
+
+### Organize your work
+
+- **Ctrl+T** / **Ctrl+W** – panel tabs; **Ctrl+Shift+W** – a new workspace (its own panels, terminals and documents); **Ctrl+Shift+D** – saved workspaces. See [Tabs and workspaces](#tabs-and-workspaces).
+- **Ctrl+\`** – brief or wide view and column sets; **Ctrl+F12** – sort; **Ctrl+Alt+G** – group rows by type or date. See [Panel view and sorting](#panel-view-and-sorting).
+- **F2** – your own menu of commands. See [User menu](#user-menu-f2).
+
+### Make it yours
+
+- **Options → Theme...** – colors and frames; **Options → Keymap...** – any key; **Options → Plugins...** – extensions. See [Settings](#settings) and [Key bindings](#key-bindings).
+- **Options → Export settings...** – everything in one zip file, to move to another computer. See [Settings files](#settings-files).
+
+---
+
+[Contents](#contents)
+
+## Recipes
+
+Short answers to "how do I...": the keys to press and what you get. Keys are for the built-in profile (see [Key bindings](#key-bindings)); the whole map of the program is in [What MTN2 can do](#what-mtn2-can-do).
+
+### Copy files to the other panel
+
+Select with **Ins** or **Space**, press **F5**, confirm. The copy runs in the background; **Ctrl+Shift+J** shows the job list where it can be paused, queued or slowed down. See [File operations](#file-operations) and [Background jobs](#background-jobs).
+
+### Find a file and go to its folder
+
+**Alt+F7**, type a mask (and text or size if needed), start the search. The results open as a panel: **Enter** on a row goes to the file's folder. See [Search and filters](#search-and-filters).
+
+### Rename many files at once
+
+Select the files, press **Ctrl+Alt+N**, set the rules and look at the preview before applying. See [File operations](#file-operations).
+
+### Make two folders the same
+
+**Ctrl+Shift+C** selects what differs between the panels; **F5** copies the selection across. For two-way work use the synchronization dialog. See [Synchronization and comparison](#synchronization-and-comparison).
+
+### Unpack an archive
+
+**Enter** on the archive opens it like a folder; select what you need and press **F5** to copy it to the other panel. See [Archives](#archives).
+
+### Return to a folder quickly
+
+**Ctrl+D** opens the folder hotlist, **Ctrl+Shift+F12** the folders you visit most, **Alt+F12** the history. **Alt+letter** jumps to a name in the current folder. See [History and folder hotlist](#history-and-folder-hotlist).
+
+### Run a program in its own tab
+
+**Ctrl+Shift+N** opens a terminal in a new tab (cmd, PowerShell, WSL or a saved SSH connection). Full-screen programs and the mouse work there. See [Terminals](#terminals).
+
+### Work with a remote server
+
+**Ctrl+Alt+Shift+N** connects over SSH or SFTP; the remote folder becomes a panel, so copying works the same as locally. See [Network: SSH and SFTP](#network-ssh-and-sftp).
+
+### Move your setup to another computer
+
+**Options → Export settings...** packs everything into one zip file; import it on the other machine. See [Settings files](#settings-files).
 
 ---
 
@@ -932,7 +1031,7 @@ If the theme of the saved session is not found, the program says so and uses the
 - **h** – go to the parent folder; **l** – open the item;
 - **g / G** – jump to the first / last row;
 - **/** – start the quick search; **:** – move to the command line.
-<!--columns-->- **Columns...** – the columns of the “Custom” mode.
+<!--columns-->- **Columns...** – the width of the columns in the Brief view and the columns of the Wide views.
 <!--console-->- **Console...** – the scrollback size of the console and terminals, confirmation of a multi-line paste, removal of trailing spaces on copy and paste, return to the panels when a command from the command line ends (more in the command line help).
 <!--save-settings-->- **Save settings** – writes the settings, the panels and the tabs to the settings file now, not only when the program closes; a toast confirms it or names the problem. Options changed in dialogs are applied at once; this item makes sure they are on disk, for example before a copy of the settings folder is taken.
 <!--settings-file-->- **Export settings... / Import settings...** – the settings as one zip file.

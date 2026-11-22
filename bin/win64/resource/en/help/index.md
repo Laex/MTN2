@@ -6,6 +6,8 @@ Keys are given for the built-in profile; you can redefine them (see [Key binding
 
 ### Contents
 
+- [What MTN2 can do](features.md)
+- [Recipes](recipes.md)
 - [Program screen](screen.md)
 - [Panels and navigation](panels.md)
 - [Selecting files](selection.md)

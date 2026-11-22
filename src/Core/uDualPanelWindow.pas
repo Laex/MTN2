@@ -31,7 +31,7 @@ uses
   uDualPanelJobDialogs, uDualPanelFindDialogs, uDualPanelMultiRename, uDiffViewer, uDualPanelStatus, uStatusSegments, uElevatedVfs, uElevation,
   uDualPanelInput, uDualPanelTopMenu, uDualPanelClick, uDualPanelDrag, uPanelUriLabels, uListExport,
   uMessageBus, uDisplaySettings, uConPty, uNotice, uToast, uHiddenDialogs, uPlatformDrives,
-  uKeyHints, uPanelCompare;
+  uKeyHints, uFeatureTips, uPanelCompare;
 
 type
   THandleInputMethod = function(var AKey: Word; AShift: TShiftState;
@@ -268,6 +268,7 @@ type
     /// <summary>Transient bottom-right notice (clipboard copies etc.).</summary>
     FToast: TToast;
     FKeyHints: TKeyHintTracker;
+    FFeatureTips: TFeatureTipTracker;
     /// <summary>The key-hint situations that held at the last look, and whether
     /// there was a last look (a restored session's tabs and workspaces are not news).</summary>
     FHintActive: THintSituations;
@@ -801,6 +802,7 @@ type
     procedure OpenColumnModeMenu;
     procedure CloseColumnModeMenu;
     procedure OpenHelp;
+    procedure OpenHelpAt(const ATopic: string);
     /// <summary>Context F1: THelpScreen from what is on screen now.</summary>
     function CurrentHelpScreen: THelpScreen;
     procedure HelpChanged(Sender: TObject);
@@ -1558,6 +1560,10 @@ type
     procedure SetKeyHintsEnabled(AValue: Boolean);
     function GetKeyHintsSeen: Integer;
     procedure SetKeyHintsSeen(AValue: Integer);
+    procedure ShowToastHint(const AText: string);
+    function GetFeatureTipRuns: Integer;
+    function GetFeatureTipUsed: Integer;
+    function GetFeatureTipShown: Integer;
     property CmdFocused: Boolean read GetCmdFocused write SetCmdFocused;
     property ConsoleMode: Boolean read FConsoleMode write SetConsoleMode;
     /// <summary>When True (default), a Ctrl+Shift+N terminal tab's shell
@@ -1570,8 +1576,18 @@ type
     property KeyHintsEnabled: Boolean read GetKeyHintsEnabled write SetKeyHintsEnabled;
     /// <summary>The hints shown so far (bit set), kept in the session file.</summary>
     property KeyHintsSeen: Integer read GetKeyHintsSeen write SetKeyHintsSeen;
-    /// <summary>Makes every key hint due again.</summary>
+    /// <summary>Makes every key hint and feature tip due again.</summary>
     procedure ResetKeyHints;
+    /// <summary>The feature tip state kept in the session file: runs counted,
+    /// bit set of the features used, bit set of the tips shown.</summary>
+    property FeatureTipRuns: Integer read GetFeatureTipRuns;
+    property FeatureTipUsed: Integer read GetFeatureTipUsed;
+    property FeatureTipShown: Integer read GetFeatureTipShown;
+    /// <summary>Help > What MTN2 can do: the help window at the features page.</summary>
+    procedure OpenFeatures;
+    /// <summary>Loads the state saved by the last run and counts this run; call
+    /// once after the session is read.</summary>
+    procedure StartFeatureTips(ARuns, AUsed, AShown: Integer);
     /// <summary>When True, the active panel navigating automatically pushes
     /// its directory into the background console (Ctrl+O). Off by default:
     /// the console and the active panel then keep independent directories,
@@ -1689,6 +1705,8 @@ procedure TDualPanelWindow.SetKeyHintsEnabled(AValue: Boolean);
 begin
   if Assigned(FKeyHints) then
     FKeyHints.Enabled := AValue;
+  if Assigned(FFeatureTips) then
+    FFeatureTips.Enabled := AValue;
 end;
 
 function TDualPanelWindow.GetKeyHintsSeen: Integer;
@@ -1705,10 +1723,49 @@ begin
     FKeyHints.Seen := AValue;
 end;
 
+function TDualPanelWindow.GetFeatureTipRuns: Integer;
+begin
+  if Assigned(FFeatureTips) then
+    Result := FFeatureTips.State.Launches
+  else
+    Result := 0;
+end;
+
+function TDualPanelWindow.GetFeatureTipUsed: Integer;
+begin
+  if Assigned(FFeatureTips) then
+    Result := FFeatureTips.State.Used
+  else
+    Result := 0;
+end;
+
+function TDualPanelWindow.GetFeatureTipShown: Integer;
+begin
+  if Assigned(FFeatureTips) then
+    Result := FFeatureTips.State.Shown
+  else
+    Result := 0;
+end;
+
+procedure TDualPanelWindow.StartFeatureTips(ARuns, AUsed, AShown: Integer);
+var
+  State: TFeatureTipState;
+begin
+  if not Assigned(FFeatureTips) then
+    Exit;
+  State.Launches := ARuns;
+  State.Used := AUsed;
+  State.Shown := AShown;
+  FFeatureTips.State := State;
+  FFeatureTips.BeginSession;
+end;
+
 procedure TDualPanelWindow.ResetKeyHints;
 begin
   if Assigned(FKeyHints) then
     FKeyHints.Seen := 0;
+  if Assigned(FFeatureTips) then
+    FFeatureTips.ResetShown;
   // The state the program is in now shows its hint again.
   FHintActive := [];
   NotifyChanged;
@@ -1779,6 +1836,13 @@ begin
         NotifyChanged;
     end);
   FKeyHints := TKeyHintTracker.Create(True);
+  FFeatureTips := TFeatureTipTracker.Create(True);
+  SetKeymapActionObserver(
+    procedure(AAction: TKeymapAction)
+    begin
+      if Life.Alive and Assigned(FFeatureTips) then
+        FFeatureTips.NoteAction(AAction);
+    end);
   FSaver := TScreenSaver.Create(
     procedure
     begin
@@ -2027,7 +2091,9 @@ begin
   end;
   SetNoticeHandler(nil);
   FreeAndNil(FToast);
+  SetKeymapActionObserver(nil);
   FreeAndNil(FKeyHints);
+  FreeAndNil(FFeatureTips);
   FreeAndNil(FSaver);
   if Assigned(FChecksumToken) then
     FChecksumToken.Cancel;
@@ -2273,6 +2339,7 @@ begin
   FKeymapHost.BeginSelectByMask := BeginSelectByMask;
   FKeymapHost.ApplySelectByExtension := ApplySelectByExtension;
   FKeymapHost.OpenHelp := OpenHelp;
+  FKeymapHost.OpenFeatures := OpenFeatures;
   FKeymapHost.OpenUserMenu := OpenUserMenu;
   FKeymapHost.BeginPackZip := BeginPackZip;
   FKeymapHost.BeginUnpackZip := BeginUnpackZip;
@@ -4351,8 +4418,7 @@ end;
 
 function TDualPanelWindow.ShowKeyHint(ASituation: THintSituation): Boolean;
 var
-  Request: TNoticeRequest;
-  Text, Line1, Line2: string;
+  Text: string;
 begin
   Result := False;
   if not Assigned(FKeyHints) then
@@ -4360,13 +4426,21 @@ begin
   Text := FKeyHints.Take(ASituation, ActiveKeymap);
   if Text = '' then
     Exit;
+  ShowToastHint(Text);
+  Result := True;
+end;
+
+procedure TDualPanelWindow.ShowToastHint(const AText: string);
+var
+  Request: TNoticeRequest;
+  Line1, Line2: string;
+begin
   // A hint longer than the window is wide goes onto two lines, not off the edge.
-  WrapKeyHint(Text, ToastMaxTextLen(Area.Width), Line1, Line2);
+  WrapKeyHint(AText, ToastMaxTextLen(Area.Width), Line1, Line2);
   Request := TNoticeRequest.Make(Line1);
   Request.Hint := Line2;
   Request.DurationMs := 6000;
   FToast.ShowRequest(Request);
-  Result := True;
 end;
 
 function TDualPanelWindow.CurrentHintSituations: THintSituations;
@@ -4456,10 +4530,14 @@ const
 var
   Active, Fresh: THintSituations;
   S: THintSituation;
+  Starting, Shown: Boolean;
+  Tip: string;
 begin
   if not Assigned(FKeyHints) or not Assigned(FToast) then
     Exit;
   Active := CurrentHintSituations;
+  Starting := not FHintStarted;
+  Shown := False;
   if not FHintStarted then
   begin
     FHintStarted := True;
@@ -4470,7 +4548,18 @@ begin
   FHintActive := Active;
   for S in cPriority do
     if (S in Fresh) and ShowKeyHint(S) then
+    begin
+      Shown := True;
       Break;
+    end;
+  // The run's feature tip comes with the first look, unless a hint for the
+  // state the program starts in took the toast.
+  if Starting and not Shown and Assigned(FFeatureTips) then
+  begin
+    Tip := FFeatureTips.NextTip(ActiveKeymap);
+    if Tip <> '' then
+      ShowToastHint(Tip);
+  end;
 end;
 
 procedure TDualPanelWindow.ModelInvalidated(AWindowId: Integer);
@@ -10691,8 +10780,19 @@ begin
 end;
 
 procedure TDualPanelWindow.OpenHelp;
+begin
+  OpenHelpAt('');
+end;
+
+procedure TDualPanelWindow.OpenFeatures;
+begin
+  OpenHelpAt(cFeaturesTopic);
+end;
+
+procedure TDualPanelWindow.OpenHelpAt(const ATopic: string);
 var
   Screen: THelpScreen;
+  Topic: string;
 begin
   if HelpVisible then
     Exit;
@@ -10711,7 +10811,10 @@ begin
   end;
   // The help window is modal over menus and dialogs alike, so they stay
   // open underneath: Esc returns to where F1 was pressed.
-  if FHelp.Open(HelpTopicForScreen(Screen)) then
+  Topic := ATopic;
+  if Topic = '' then
+    Topic := HelpTopicForScreen(Screen);
+  if FHelp.Open(Topic) then
   begin
     NotifyChanged;
     Exit;
