@@ -175,7 +175,10 @@
       "job_existing_items": {
         "Ask": "询问",
         "Overwrite": "覆盖",
-        "Skip": "跳过"
+        "Skip": "跳过",
+        "Overwrite if newer": "较新时覆盖",
+        "Overwrite if size differs": "大小不同时覆盖",
+        "Rename automatically": "自动重命名"
       },
       "$title": "复制",
       "existing_label": "已存在的文件:",
@@ -183,6 +186,7 @@
       "job_timestamps": "保留所有时间戳(&P)",
       "job_only_newer": "仅较新的文件(&O)",
       "job_symlinks": "复制符号链接的内容(&S)",
+      "job_verify": "复制后校验(&V)",
       "job_filter": "排除掩码(&E):",
       "ok": "复制",
       "background": "后台(&B)",
@@ -534,6 +538,13 @@
       "pausejob": "暂停(&P)",
       "jobup": "上移(&U)",
       "jobdown": "下移(&D)",
+      "after_label": "队列结束后:",
+      "after_queue_items": {
+        "Do nothing": "不执行任何操作",
+        "Sleep": "睡眠",
+        "Shut down": "关机",
+        "Close the program": "关闭程序"
+      },
       "jobspeed": "限速(&S)",
       "canceljob": "取消(&C)",
       "cancelall": "全部取消(&A)",
@@ -599,6 +610,9 @@
       "skip": "跳过(&S)",
       "rename": "重命名(&R)",
       "append": "追加(&A)",
+      "newer": "较新时(&N)",
+      "diffsize": "大小不同(&Z)",
+      "autorename": "自动命名(&U)",
       "cancel": "取消"
     },
     "DIALOG_PLUGINLIST": {
@@ -1425,6 +1439,10 @@
     "stop.selected": "取消所选操作?",
     "stop.all": "取消所有操作?",
     "stop.search": "停止搜索?",
+    "queue.sleep": "所有任务已完成。计算机将在30秒后进入睡眠。现在执行?",
+    "queue.shutdown": "所有任务已完成。计算机将在30秒后关机。现在执行?",
+    "queue.close": "所有任务已完成。程序将在30秒后关闭。现在关闭?",
+    "queue.failed": "系统未接受该请求。",
     "search.results": "结果: %d",
     "search.title": "查找",
     "workspace.home": "主页",

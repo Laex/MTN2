@@ -4,7 +4,7 @@
   "style": "warning",
   "title": "Warning",
   "width": 70,
-  "height": 13,
+  "height": 15,
   "children": [
     {
       "type": "label",
@@ -111,6 +111,33 @@
       "col": 42,
       "row": 9,
       "width": 10,
+      "height": 1
+    },
+    {
+      "type": "button",
+      "id": "newer",
+      "text": "If &newer",
+      "col": 3,
+      "row": 11,
+      "width": 13,
+      "height": 1
+    },
+    {
+      "type": "button",
+      "id": "diffsize",
+      "text": "If si&ze differs",
+      "col": 18,
+      "row": 11,
+      "width": 19,
+      "height": 1
+    },
+    {
+      "type": "button",
+      "id": "autorename",
+      "text": "Rename a&uto",
+      "col": 40,
+      "row": 11,
+      "width": 15,
       "height": 1
     },
     {

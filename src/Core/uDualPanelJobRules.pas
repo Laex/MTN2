@@ -17,6 +17,28 @@ var
   /// another, so two transfers do not fight for one disk.</summary>
   JobSerializePerVolume: Boolean = True;
 
+type
+  /// <summary>What a conflict rule needs to know about one of the two files.</summary>
+  TConflictFileInfo = record
+    Size: Int64;
+    WriteUtc: TDateTime;
+  end;
+
+/// <summary>True for the actions that decide each conflict from the two files
+/// instead of answering it once: overwrite if newer, overwrite if the size
+/// differs, rename automatically.</summary>
+function ConflictActionIsRule(AAction: TJobConflictAction): Boolean;
+/// <summary>The answer a conflict rule gives for one pair of files. A rule that
+/// does not overwrite answers vcaSkip; vcaRename means "use a free name", the
+/// caller picks it with UniqueConflictPath. Other actions map to their plain
+/// answer.</summary>
+function ConflictRuleDecision(AAction: TJobConflictAction; const ASrc,
+  ADst: TConflictFileInfo): TVfsConflictAction;
+/// <summary>The first name of the form "base (2).ext", "base (3).ext", ... for
+/// which AExists is False, next to APath.</summary>
+function UniqueConflictPath(const APath: string;
+  const AExists: TFunc<string, Boolean>): string;
+
 function JobKindTitle(AKind: TPanelJobKind; ADeleteToRecycleBin: Boolean): string;
 /// <summary>One cell that tells the operations apart: copy, move, recycle,
 /// permanent delete, pack, unpack. Used by the tab bar chips and the job list.</summary>
@@ -47,6 +69,13 @@ function JobFilePercent(const AJob: TPanelJobState): Integer;
 function JobDeletePercent(const AJob: TPanelJobState): Integer;
 function JobIsAskPhase(APhase: TPanelJobPhase): Boolean;
 function JobIsBusy(const AJob: TPanelJobState): Boolean;
+/// <summary>True when the armed action is due: the queue is empty and nothing
+/// failed or was cancelled since it last ran dry.</summary>
+function QueueActionShouldFire(AAction: TQueueAction; ABusyJobs: Integer;
+  AAnyFailed: Boolean): Boolean;
+/// <summary>The action for a drop-down index (0 none, 1 sleep, 2 shut down,
+/// 3 close the program); anything else is none.</summary>
+function QueueActionFromIndex(AIndex: Integer): TQueueAction;
 function JobProgressPercent(const AJob: TPanelJobState): Integer;
 function FormatJobProgressLine(const AJob: TPanelJobState): string;
 
@@ -176,6 +205,55 @@ begin
   AName := Open + AName + Close;
 end;
 
+// File systems store times with a granularity of up to two seconds (FAT), so a
+// source counts as newer only when it is later by more than that.
+const
+  cNewerToleranceDays = 2 / SecsPerDay;
+
+function ConflictActionIsRule(AAction: TJobConflictAction): Boolean;
+begin
+  Result := AAction in [jcaOverwriteNewer, jcaOverwriteDiffSize, jcaAutoRename];
+end;
+
+function ConflictRuleDecision(AAction: TJobConflictAction; const ASrc,
+  ADst: TConflictFileInfo): TVfsConflictAction;
+begin
+  case AAction of
+    jcaOverwriteNewer:
+      if ASrc.WriteUtc - ADst.WriteUtc > cNewerToleranceDays then
+        Result := vcaOverwrite
+      else
+        Result := vcaSkip;
+    jcaOverwriteDiffSize:
+      if ASrc.Size <> ADst.Size then
+        Result := vcaOverwrite
+      else
+        Result := vcaSkip;
+    jcaAutoRename: Result := vcaRename;
+    jcaSkip: Result := vcaSkip;
+    jcaAppend: Result := vcaAppend;
+    jcaCancel: Result := vcaCancel;
+  else
+    Result := vcaOverwrite;
+  end;
+end;
+
+function UniqueConflictPath(const APath: string;
+  const AExists: TFunc<string, Boolean>): string;
+var
+  Dir, Base, Ext: string;
+  N: Integer;
+begin
+  Dir := ExtractFilePath(APath);
+  Ext := ExtractFileExt(APath);
+  Base := ChangeFileExt(ExtractFileName(APath), '');
+  N := 2;
+  repeat
+    Result := Dir + Base + ' (' + IntToStr(N) + ')' + Ext;
+    Inc(N);
+  until not AExists(Result);
+end;
+
 function JobKindTitle(AKind: TPanelJobKind; ADeleteToRecycleBin: Boolean): string;
 begin
   case AKind of
@@ -220,6 +298,20 @@ end;
 function JobIsBusy(const AJob: TPanelJobState): Boolean;
 begin
   Result := AJob.Phase <> pjpNone;
+end;
+
+function QueueActionShouldFire(AAction: TQueueAction; ABusyJobs: Integer;
+  AAnyFailed: Boolean): Boolean;
+begin
+  Result := (AAction <> qaNone) and (ABusyJobs = 0) and not AAnyFailed;
+end;
+
+function QueueActionFromIndex(AIndex: Integer): TQueueAction;
+begin
+  if (AIndex >= Ord(Low(TQueueAction))) and (AIndex <= Ord(High(TQueueAction))) then
+    Result := TQueueAction(AIndex)
+  else
+    Result := qaNone;
 end;
 
 function JobOwnsInput(const AJob: TPanelJobState): Boolean;

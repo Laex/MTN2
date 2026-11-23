@@ -37,6 +37,9 @@ type
     FOnReloadPanels: TJobReloadPanelsEvent;
     FOnClearSelection: TJobClearSelectionEvent;
     FOnAfterClose: TProc;
+    FAfterQueue: TQueueAction;
+    FQueueFailed: Boolean;
+    FOnQueueAction: TQueueActionEvent;
     FOnBeforeExecute: TProc;
     FNextId: Integer;
     FAskJobId: Integer;
@@ -57,6 +60,7 @@ type
     procedure OnJobIOErrorAsk(AJob: TPanelJobController; const AHeadline, APath,
       AErrorLine: string);
     procedure OnJobFinished(AJob: TPanelJobController; ASuccess: Boolean);
+    procedure NoteQueueProgress(ASuccess: Boolean);
     procedure OnJobReload(AJob: TPanelJobController; const AOriginSrc,
       AOriginDst: string);
     procedure OnJobClearSel(AJob: TPanelJobController; const AOriginSrc: string);
@@ -120,6 +124,10 @@ type
       AOnlyNewer: Boolean = False; AFollowSymlinks: Boolean = False;
       ARetryLimit: Integer = 0; const AExcludeMask: string = '');
     procedure SetSingleTarget(const ATargetUri: string);
+    /// <summary>In the confirm phase: every name conflict of the job is decided by ARule.</summary>
+    procedure SetConflictRule(ARule: TJobConflictAction);
+    /// <summary>In the confirm phase: copied files are compared with their sources.</summary>
+    procedure SetVerifyCopy(AValue: Boolean);
     procedure ConfirmJob;
     procedure BackgroundJob;
     /// <summary>The Panel button of a plugin job's progress dialog: the job goes on
@@ -147,6 +155,11 @@ type
     /// <summary>Set before jobs are spawned; passed to every job so that Esc
     /// on a foreground job goes through the owner's stop confirmation.</summary>
     property OnStopRequest: TProc read FOnStopRequest write FOnStopRequest;
+    /// <summary>Armed action: runs once, when the queue next runs dry without a
+    /// failure or cancel; it disarms itself.</summary>
+    property AfterQueue: TQueueAction read FAfterQueue write FAfterQueue;
+    /// <summary>Called on the UI thread when the armed action is due.</summary>
+    property OnQueueAction: TQueueActionEvent read FOnQueueAction write FOnQueueAction;
     procedure CancelJobByIndex(AIndex: Integer);
     /// <summary>Holds the job at AIndex of the job list, or releases it.</summary>
     procedure TogglePauseByIndex(AIndex: Integer);
@@ -796,6 +809,26 @@ begin
     FOnJobFinished(ASuccess);
   TryStartQueued;
   TryOpenNextAsk;
+  NoteQueueProgress(ASuccess);
+end;
+
+procedure TPanelJobList.NoteQueueProgress(ASuccess: Boolean);
+var
+  Action: TQueueAction;
+  Due: Boolean;
+begin
+  if not ASuccess then
+    FQueueFailed := True;
+  if BusyCount > 0 then
+    Exit;
+  Action := FAfterQueue;
+  Due := QueueActionShouldFire(Action, 0, FQueueFailed);
+  FQueueFailed := False;
+  if not Due then
+    Exit;
+  FAfterQueue := qaNone;
+  if Assigned(FOnQueueAction) then
+    FOnQueueAction(Action);
 end;
 
 procedure TPanelJobList.OnJobReload(AJob: TPanelJobController;
@@ -955,6 +988,28 @@ begin
   if Job <> nil then
     Job.ApplyCopyMoveOptions(ADestDirURI, AOverwriteMode, APreserveTimestamps,
       AOnlyNewer, AFollowSymlinks, ARetryLimit, AExcludeMask);
+end;
+
+procedure TPanelJobList.SetConflictRule(ARule: TJobConflictAction);
+var
+  Job: TPanelJobController;
+begin
+  Job := ConfirmingJob;
+  if Job = nil then
+    Job := ActiveJob;
+  if Job <> nil then
+    Job.SetConflictRule(ARule);
+end;
+
+procedure TPanelJobList.SetVerifyCopy(AValue: Boolean);
+var
+  Job: TPanelJobController;
+begin
+  Job := ConfirmingJob;
+  if Job = nil then
+    Job := ActiveJob;
+  if Job <> nil then
+    Job.SetVerifyCopy(AValue);
 end;
 
 procedure TPanelJobList.SetSingleTarget(const ATargetUri: string);

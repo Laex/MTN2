@@ -39,6 +39,7 @@ type
   TJobIOErrorAskEvent = reference to procedure(const AHeadline, APath,
     AErrorLine: string);
   TJobFinishedEvent = reference to procedure(ASuccess: Boolean);
+  TQueueActionEvent = reference to procedure(AAction: TQueueAction);
   TJobReloadPanelsEvent = reference to procedure(const AOriginSrc,
     AOriginDst: string);
   TJobClearSelectionEvent = reference to procedure(const AOriginSrc: string);
@@ -109,6 +110,12 @@ type
     procedure ResolveWorkerConflict(AAction: TJobConflictAction;
       const ARenameName: string);
     procedure AbortConflictWait;
+    function DecideConflictRule(AAction: TJobConflictAction; const ASrcPath,
+      ADstPath: string; out ANewDstPath: string): TVfsConflictAction;
+    function PendingRuleAsPlain(var AAction: TJobConflictAction;
+      var ARenameName: string): Boolean;
+    function TryApplyRememberedRule(const ASrcURI, ADstURI: string;
+      AIndex: Integer): Boolean;
     function JobTitle: string;
     procedure ResetExcludeMasks;
     procedure HandleConfirmKeys(var AKey: Word; var AKeyChar: Char);
@@ -208,6 +215,11 @@ type
     /// exactly ATargetUri (a new name) instead of into the destination folder.
     /// An empty URI goes back to the folder.</summary>
     procedure SetSingleTarget(const ATargetUri: string);
+    /// <summary>In the confirm phase: every name conflict of the job is decided
+    /// by ARule, as if it had been picked in the prompt with "Remember".</summary>
+    procedure SetConflictRule(ARule: TJobConflictAction);
+    /// <summary>In the confirm phase: copied files are compared with their sources.</summary>
+    procedure SetVerifyCopy(AValue: Boolean);
     procedure ConfirmJob;
     procedure QueueAfterConfirm;
     procedure StartIfQueued;
@@ -244,6 +256,29 @@ implementation
 
 uses
   System.SyncObjs, uLinkUtils, uNotice;
+
+// False when either side is not a readable file (a folder, a missing path, an
+// unreachable share): a conflict rule cannot decide those.
+function ReadConflictFileInfo(const APath: string;
+  out AInfo: TConflictFileInfo): Boolean;
+var
+  Api: string;
+begin
+  AInfo := Default(TConflictFileInfo);
+  Result := False;
+  if APath = '' then
+    Exit;
+  try
+    Api := WinApiPath(APath);
+    if TDirectory.Exists(Api) or not TFile.Exists(Api) then
+      Exit;
+    AInfo.Size := TFile.GetSize(Api);
+    AInfo.WriteUtc := TFile.GetLastWriteTimeUtc(Api);
+    Result := True;
+  except
+    Result := False;
+  end;
+end;
 
 type
   TConflictWait = class(TInterfacedObject, IConflictWait)
@@ -414,6 +449,15 @@ begin
         Exit(vcaOverwrite);
       if FWorkerRemembered = Ord(jcaAppend) then
         Exit(vcaAppend);
+      if (FWorkerRemembered >= 0) and
+         ConflictActionIsRule(TJobConflictAction(FWorkerRemembered)) then
+      begin
+        Result := DecideConflictRule(TJobConflictAction(FWorkerRemembered),
+          ASrcPath, ADstPath, ANewDstPath);
+        if Result <> vcaCancel then
+          Exit;
+        ANewDstPath := '';
+      end;
       SrcPath := ASrcPath;
       DstPath := ADstPath;
       NewLine := FormatConflictFileLine('New', SrcPath);
@@ -595,7 +639,7 @@ begin
     AWait.Signal(vcaCancel, '');
     Exit;
   end;
-  if FJob.HasRememberedAction then
+  if FJob.HasRememberedAction and not ConflictActionIsRule(FJob.RememberedAction) then
   begin
     case FJob.RememberedAction of
       jcaSkip: AWait.Signal(vcaSkip, '');
@@ -644,6 +688,71 @@ begin
       Wait.Signal(vcaCancel, '');
     end;
   end;
+end;
+
+// vcaCancel means "undecided": the pair is not two readable files, so the
+// caller asks instead.
+function TPanelJobController.DecideConflictRule(AAction: TJobConflictAction;
+  const ASrcPath, ADstPath: string; out ANewDstPath: string): TVfsConflictAction;
+var
+  Src, Dst: TConflictFileInfo;
+begin
+  ANewDstPath := '';
+  if not (ReadConflictFileInfo(ASrcPath, Src) and ReadConflictFileInfo(ADstPath, Dst)) then
+    Exit(vcaCancel);
+  Result := ConflictRuleDecision(AAction, Src, Dst);
+  if Result = vcaRename then
+    ANewDstPath := UniqueConflictPath(ADstPath,
+      function(APath: string): Boolean
+      begin
+        Result := TFile.Exists(WinApiPath(APath)) or
+          TDirectory.Exists(WinApiPath(APath));
+      end);
+end;
+
+// Turns a rule picked in the Ask prompt into the plain answer for the pending
+// pair. False when the rule cannot decide that pair.
+function TPanelJobController.PendingRuleAsPlain(var AAction: TJobConflictAction;
+  var ARenameName: string): Boolean;
+var
+  NewPath: string;
+begin
+  Result := True;
+  case DecideConflictRule(AAction, FileUriToPath(FJob.PendingSrcURI),
+    FileUriToPath(FJob.PendingDstURI), NewPath) of
+    vcaOverwrite: AAction := jcaOverwrite;
+    vcaSkip: AAction := jcaSkip;
+    vcaRename:
+      begin
+        AAction := jcaRename;
+        ARenameName := ExtractFileName(NewPath);
+      end;
+  else
+    Result := False;
+  end;
+end;
+
+// A remembered rule for a top-level item that already exists at the
+// destination. False when no rule is remembered or it cannot decide the pair
+// (the prompt follows).
+function TPanelJobController.TryApplyRememberedRule(const ASrcURI, ADstURI: string;
+  AIndex: Integer): Boolean;
+var
+  NewPath: string;
+begin
+  Result := False;
+  if not (FJob.HasRememberedAction and ConflictActionIsRule(FJob.RememberedAction)) then
+    Exit;
+  case DecideConflictRule(FJob.RememberedAction, FileUriToPath(ASrcURI),
+    FileUriToPath(ADstURI), NewPath) of
+    vcaOverwrite: StartTransferInvalidate(ASrcURI, ADstURI, AIndex, True, False);
+    vcaSkip: AdvanceJobAfterItem(AIndex);
+    vcaRename: StartTransferInvalidate(ASrcURI, PathToFileUri(NewPath), AIndex,
+      False, False);
+  else
+    Exit;
+  end;
+  Result := True;
 end;
 
 procedure TPanelJobController.AbortConflictWait;
@@ -853,6 +962,7 @@ begin
   FJob.OverwriteMode := jomAsk;
   FJob.PreserveTimestamps := False;
   FJob.OnlyNewer := False;
+  FJob.VerifyCopy := False;
   FJob.FollowSymlinks := False;
   FJob.ExcludeMask := '';
   ResetExcludeMasks;
@@ -953,6 +1063,23 @@ begin
   ResetExcludeMasks;
 end;
 
+procedure TPanelJobController.SetConflictRule(ARule: TJobConflictAction);
+begin
+  if (FJob.Phase <> pjpConfirm) or not ConflictActionIsRule(ARule) then
+    Exit;
+  FJob.OverwriteMode := jomAsk;
+  FJob.HasRememberedAction := True;
+  FJob.RememberedAction := ARule;
+  FWorkerRemembered := Ord(ARule);
+end;
+
+procedure TPanelJobController.SetVerifyCopy(AValue: Boolean);
+begin
+  if FJob.Phase <> pjpConfirm then
+    Exit;
+  FJob.VerifyCopy := AValue and (FJob.Kind in [pjkCopy, pjkMove]);
+end;
+
 procedure TPanelJobController.SetSingleTarget(const ATargetUri: string);
 begin
   if (FJob.Phase <> pjpConfirm) or (Length(FJob.Sources) <> 1) then
@@ -990,6 +1117,7 @@ begin
   FJob.OverwriteMode := AOverwriteMode;
   FJob.PreserveTimestamps := True;
   FJob.OnlyNewer := False;
+  FJob.VerifyCopy := False;
   FJob.FollowSymlinks := False;
   FJob.ExcludeMask := '';
   ResetExcludeMasks;
@@ -1324,6 +1452,7 @@ begin
   if Assigned(FOnBeforeExecute) then
     FOnBeforeExecute;
   Token := TJobCancelToken.Create;
+  Token.VerifyCopy := FJob.VerifyCopy;
   // Skip mode must leave existing files alone without asking.
   if FJob.OverwriteMode = jomAsk then
     Token.ConflictResolver := MakeConflictResolver();
@@ -1492,7 +1621,8 @@ begin
       FJob.OverwriteMode = jomOverwrite, False);
     Exit(True);
   end;
-  if FJob.HasRememberedAction then
+  // A remembered rule is applied per file by the conflict resolver, like Ask.
+  if FJob.HasRememberedAction and not ConflictActionIsRule(FJob.RememberedAction) then
   begin
     StartTransferInvalidate(ASrcURI, ADstURI, AIndex,
       FJob.RememberedAction <> jcaSkip, FJob.RememberedAction = jcaAppend);
@@ -1518,7 +1648,9 @@ begin
   if FJob.OverwriteMode <> jomAsk then
     Exit;
   Result := True;
-  if FJob.HasRememberedAction then
+  if TryApplyRememberedRule(ASrcURI, ADstURI, AIndex) then
+    Exit;
+  if FJob.HasRememberedAction and not ConflictActionIsRule(FJob.RememberedAction) then
   begin
     case FJob.RememberedAction of
       jcaSkip:
@@ -2262,20 +2394,28 @@ end;
 procedure TPanelJobController.ResolveOverwriteAsk(AAction: TJobConflictAction;
   ARemember: Boolean; const ARenameName: string);
 var
-  SrcURI, DstURI, NewName, Dir: string;
+  SrcURI, DstURI, NewName, Dir, RenameName: string;
   Idx: Integer;
 begin
   if FJob.Phase <> pjpOverwriteAsk then
     Exit;
-  if ARemember and (AAction in [jcaOverwrite, jcaSkip, jcaAppend]) then
+  if ARemember and (AAction in [jcaOverwrite, jcaSkip, jcaAppend, jcaOverwriteNewer,
+       jcaOverwriteDiffSize, jcaAutoRename]) then
   begin
     FJob.HasRememberedAction := True;
     FJob.RememberedAction := AAction;
     FWorkerRemembered := Ord(AAction);
   end;
+  RenameName := ARenameName;
+  if ConflictActionIsRule(AAction) and not PendingRuleAsPlain(AAction, RenameName) then
+  begin
+    // Not two readable files (a folder, an unreachable path): ask again.
+    PromptOverwriteAsk(FJob.PendingSrcURI, FJob.PendingDstURI, FJob.PendingIndex);
+    Exit;
+  end;
   if Assigned(FConflictWait) then
   begin
-    ResolveWorkerConflict(AAction, ARenameName);
+    ResolveWorkerConflict(AAction, RenameName);
     Exit;
   end;
 
@@ -2306,7 +2446,7 @@ begin
       end;
     jcaRename:
       begin
-        NewName := Trim(ARenameName);
+        NewName := Trim(RenameName);
         if NewName = '' then
         begin
           PromptOverwriteAsk(SrcURI, DstURI, Idx);

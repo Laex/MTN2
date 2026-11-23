@@ -3,7 +3,7 @@
   "version": "2.0",
   "title": "Background jobs",
   "width": 72,
-  "height": 19,
+  "height": 20,
   "children": [
     {
       "type": "label",
@@ -29,8 +29,32 @@
     {
       "type": "separator",
       "col": 0,
-      "row": 11,
+      "row": 12,
       "width": 70,
+      "height": 1
+    },
+    {
+      "type": "label",
+      "id": "after_label",
+      "text": "When the queue ends:",
+      "col": 1,
+      "row": 11,
+      "width": 21,
+      "height": 1
+    },
+    {
+      "type": "dropdown",
+      "id": "after_queue",
+      "selected": 0,
+      "items": [
+        "Do nothing",
+        "Sleep",
+        "Shut down",
+        "Close the program"
+      ],
+      "col": 23,
+      "row": 11,
+      "width": 45,
       "height": 1
     },
     {
@@ -38,7 +62,7 @@
       "id": "pausejob",
       "text": "&Pause",
       "col": 4,
-      "row": 13,
+      "row": 14,
       "width": 14,
       "height": 1
     },
@@ -47,7 +71,7 @@
       "id": "jobup",
       "text": "&Up",
       "col": 20,
-      "row": 13,
+      "row": 14,
       "width": 14,
       "height": 1
     },
@@ -56,7 +80,7 @@
       "id": "jobdown",
       "text": "Do&wn",
       "col": 36,
-      "row": 13,
+      "row": 14,
       "width": 14,
       "height": 1
     },
@@ -65,7 +89,7 @@
       "id": "jobspeed",
       "text": "&Speed",
       "col": 52,
-      "row": 13,
+      "row": 14,
       "width": 14,
       "height": 1
     },
@@ -75,7 +99,7 @@
       "text": "Foreground",
       "default": true,
       "col": 4,
-      "row": 15,
+      "row": 16,
       "width": 14,
       "height": 1
     },
@@ -84,7 +108,7 @@
       "id": "canceljob",
       "text": "&Cancel",
       "col": 20,
-      "row": 15,
+      "row": 16,
       "width": 14,
       "height": 1
     },
@@ -93,7 +117,7 @@
       "id": "cancelall",
       "text": "Cancel &all",
       "col": 36,
-      "row": 15,
+      "row": 16,
       "width": 14,
       "height": 1
     },
@@ -103,7 +127,7 @@
       "text": "Close",
       "cancel": true,
       "col": 52,
-      "row": 15,
+      "row": 16,
       "width": 14,
       "height": 1
     }

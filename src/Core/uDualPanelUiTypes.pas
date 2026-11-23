@@ -24,9 +24,16 @@ type
   TPanelJobPhase = (pjpNone, pjpConfirm, pjpQueued, pjpRunning, pjpOverwriteAsk,
     pjpDeleteAsk, pjpIOErrorAsk, pjpError);
   TJobPresentation = (jpForeground, jpBackground);
+  /// <summary>What the program does once the job queue has run dry without
+  /// errors or cancels.</summary>
+  TQueueAction = (qaNone, qaSleep, qaShutdown, qaClose);
   TJobOverwriteMode = (jomAsk, jomOverwrite, jomSkip);
-  /// <summary>Per-file conflict answer when OverwriteMode=jomAsk.</summary>
-  TJobConflictAction = (jcaOverwrite, jcaSkip, jcaRename, jcaAppend, jcaCancel);
+  /// <summary>Per-file conflict answer when OverwriteMode=jomAsk. The last three
+  /// before jcaCancel are rules: each conflict is decided from the two files
+  /// (see ConflictRuleDecision), so they only make sense as a remembered
+  /// answer.</summary>
+  TJobConflictAction = (jcaOverwrite, jcaSkip, jcaRename, jcaAppend,
+    jcaOverwriteNewer, jcaOverwriteDiffSize, jcaAutoRename, jcaCancel);
   /// <summary>Answer when a delete item fails (Recycle Bin / permanent).</summary>
   TJobDeleteFailAction = (jdaPermanent, jdaRetry, jdaSkip, jdaSkipAll, jdaCancel,
     jdaElevate);
@@ -59,6 +66,8 @@ type
     OverwriteMode: TJobOverwriteMode;
     PreserveTimestamps: Boolean;
     OnlyNewer: Boolean;
+    /// <summary>Copies are compared with their sources before being kept.</summary>
+    VerifyCopy: Boolean;
     FollowSymlinks: Boolean;
     ExcludeMask: string;
     RetryLimit: Integer;
@@ -202,7 +211,7 @@ type
   TDialogCommandFields = record
     Name, Mask, Containing, HexText, DestPath, ExcludeMask, Password: string;
     ExistingIdx, RetryIdx, PackTypeIdx, PackLevelIdx: Integer;
-    PreserveTs, OnlyNewer, FollowSymlinks, UseExclude, DryRun, Remember,
+    PreserveTs, OnlyNewer, VerifyCopy, FollowSymlinks, UseExclude, DryRun, Remember,
       Subdirs, CaseSens, WholeWords, SearchFolders, UseRegex, SyncTwoWay,
       SyncByContent, EncryptNames, SearchArchives: Boolean;
     /// <summary>Code page of the Find dialog: 0 detects it per file, n is
@@ -335,6 +344,7 @@ begin
   Result.EncryptNames := ADialog.GetCheckbox('pack_encrypt_names');
   Result.PreserveTs := ADialog.GetCheckbox('job_timestamps');
   Result.OnlyNewer := ADialog.GetCheckbox('job_only_newer');
+  Result.VerifyCopy := ADialog.GetCheckbox('job_verify');
   Result.FollowSymlinks := ADialog.GetCheckbox('job_symlinks');
   Result.UseExclude := ADialog.GetCheckbox('job_filter');
   Result.ExcludeMask := ADialog.GetInputValue('job_exclude');

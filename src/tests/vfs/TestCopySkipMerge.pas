@@ -36,7 +36,15 @@ type
     [Test] procedure TestAskModeRenameAnswer;
     [Test] procedure TestAskModeAppendAnswer;
     [Test] procedure TestAskModeCancelAnswer;
+    [Test] procedure TestPresetRuleNewerOverwritesOnlyNewer;
+    [Test] procedure TestPresetRuleDifferentSize;
+    [Test] procedure TestPresetRuleAutoRenameKeepsBoth;
+    [Test] procedure TestPromptRuleAnswerDecidesThatConflict;
+    [Test] procedure TestRuleOnFolderFileMismatchAsks;
     [Test] procedure TestFileOntoDirectoryKeepsTheFolder;
+    [Test] procedure TestVerifyAcceptsIdenticalCopy;
+    [Test] procedure TestVerifyRejectsChangedByte;
+    [Test] procedure TestVerifyJobCopiesTree;
     [Test] procedure TestDirectoryOntoFileKeepsTheFile;
     [Test] procedure TestOverwriteOfLockedFileKeepsIt;
     [Test] procedure TestFailedZipReplaceKeepsEntries;
@@ -61,6 +69,7 @@ uses
   uVfsRouter,
   uDualPanelUiTypes,
   uDualPanelJobs,
+  uDualPanelJobRules,
   uPlatformPaths;
 
 var
@@ -373,7 +382,7 @@ end;
 /// until the finish callback fires. The controller is where a folder-level
 /// Skip would drop the whole item before CopyAsync ever saw it.</summary>
 function RunJobCopy(const ASrcDir, ADestParentDir: string;
-  AMode: TJobOverwriteMode; out ASuccess: Boolean): Boolean;
+  AMode: TJobOverwriteMode; out ASuccess: Boolean; AVerify: Boolean = False): Boolean;
 var
   Jobs: TPanelJobController;
   Vfs: IVirtualFileSystem;
@@ -403,6 +412,7 @@ begin
     Jobs.BeginJob(TArray<string>.Create(PathToFileUri(ASrcDir)),
       PathToFileUri(ADestParentDir), pjkCopy);
     Jobs.ApplyCopyMoveOptions(PathToFileUri(ADestParentDir), AMode, False);
+    Jobs.SetVerifyCopy(AVerify);
     Jobs.ConfirmJob;
 
     Tick := GetTickCount;
@@ -467,7 +477,7 @@ end;
 /// item. APrompted lists the destination paths that were asked about.</summary>
 function RunJobCopyAsk(const ASrcDir, ADestDir: string; AAnswer: TJobConflictAction;
   const ARenameTo: string; out ASuccess: Boolean; out APromptCount: Integer;
-  out APrompted: string): Boolean;
+  out APrompted: string; ARule: TJobConflictAction = jcaCancel): Boolean;
 var
   Jobs: TPanelJobController;
   Vfs: IVirtualFileSystem;
@@ -528,6 +538,8 @@ begin
   try
     Jobs.BeginJob(Sources, PathToFileUri(ADestDir), pjkCopy);
     Jobs.ApplyCopyMoveOptions(PathToFileUri(ADestDir), jomAsk, False);
+    if ConflictActionIsRule(ARule) then
+      Jobs.SetConflictRule(ARule);
     Jobs.ConfirmJob;
 
     Tick := GetTickCount;
@@ -665,6 +677,186 @@ begin
   Assert.IsFalse(Ok, 'cancelling the prompt fails the job');
   Assert.AreEqual('dst-same', ReadTextFile(TPath.Combine(Dst, 'dir', 'same.txt')),
     'the existing file is untouched');
+end;
+
+/// <summary>Source and destination each hold the nested file same.txt and the
+/// top-level file top.txt with different contents; ASrcNewer says which side
+/// has the later modification time.</summary>
+procedure MakeRuleFixture(const AName: string; ASrcNewer: Boolean; out ASrc, ADst: string);
+var
+  Old, New: TDateTime;
+begin
+  MakeAskFixture(AName, ASrc, ADst);
+  WriteTextFile(TPath.Combine(ASrc, 'top.txt'), 'src-top');
+  WriteTextFile(TPath.Combine(ADst, 'top.txt'), 'dst-top');
+  Old := EncodeDate(2020, 1, 1);
+  New := EncodeDate(2024, 1, 1);
+  if not ASrcNewer then
+  begin
+    Old := EncodeDate(2024, 1, 1);
+    New := EncodeDate(2020, 1, 1);
+  end;
+  TFile.SetLastWriteTime(TPath.Combine(ASrc, 'dir', 'same.txt'), New);
+  TFile.SetLastWriteTime(TPath.Combine(ASrc, 'top.txt'), New);
+  TFile.SetLastWriteTime(TPath.Combine(ADst, 'dir', 'same.txt'), Old);
+  TFile.SetLastWriteTime(TPath.Combine(ADst, 'top.txt'), Old);
+end;
+
+procedure TestPresetRuleNewerOverwritesOnlyNewer;
+var
+  Src, Dst, Prompted: string;
+  Ok, Ran: Boolean;
+  Prompts: Integer;
+begin
+  MakeRuleFixture('rn1', True, Src, Dst);
+  Ran := RunJobCopyAsk(Src, Dst, jcaCancel, '', Ok, Prompts, Prompted, jcaOverwriteNewer);
+  Assert.IsTrue(Ran and Ok, 'job finished successfully');
+  Assert.AreEqual(0, Prompts, 'a preset rule asks nothing');
+  Assert.AreEqual('src-same', ReadTextFile(TPath.Combine(Dst, 'dir', 'same.txt')),
+    'a newer nested file is overwritten');
+  Assert.AreEqual('src-top', ReadTextFile(TPath.Combine(Dst, 'top.txt')),
+    'a newer top-level file is overwritten');
+
+  MakeRuleFixture('rn2', False, Src, Dst);
+  Ran := RunJobCopyAsk(Src, Dst, jcaCancel, '', Ok, Prompts, Prompted, jcaOverwriteNewer);
+  Assert.IsTrue(Ran and Ok, 'job finished successfully');
+  Assert.AreEqual('dst-same', ReadTextFile(TPath.Combine(Dst, 'dir', 'same.txt')),
+    'an older nested file is kept out');
+  Assert.AreEqual('dst-top', ReadTextFile(TPath.Combine(Dst, 'top.txt')),
+    'an older top-level file is kept out');
+  Assert.AreEqual('src-fresh', ReadTextFile(TPath.Combine(Dst, 'dir', 'fresh.txt')),
+    'a file missing at the destination is still copied');
+end;
+
+procedure TestPresetRuleDifferentSize;
+var
+  Src, Dst, Prompted: string;
+  Ok, Ran: Boolean;
+  Prompts: Integer;
+begin
+  MakeRuleFixture('rd', False, Src, Dst);
+  // Same size, different bytes: kept. Different size: overwritten.
+  WriteTextFile(TPath.Combine(Src, 'dir', 'same.txt'), 'abcd');
+  WriteTextFile(TPath.Combine(Dst, 'dir', 'same.txt'), 'wxyz');
+  WriteTextFile(TPath.Combine(Src, 'top.txt'), 'longer-source');
+  Ran := RunJobCopyAsk(Src, Dst, jcaCancel, '', Ok, Prompts, Prompted, jcaOverwriteDiffSize);
+  Assert.IsTrue(Ran and Ok, 'job finished successfully');
+  Assert.AreEqual(0, Prompts, 'a preset rule asks nothing');
+  Assert.AreEqual('wxyz', ReadTextFile(TPath.Combine(Dst, 'dir', 'same.txt')),
+    'the same size is kept');
+  Assert.AreEqual('longer-source', ReadTextFile(TPath.Combine(Dst, 'top.txt')),
+    'another size is overwritten');
+end;
+
+procedure TestPresetRuleAutoRenameKeepsBoth;
+var
+  Src, Dst, Prompted: string;
+  Ok, Ran: Boolean;
+  Prompts: Integer;
+begin
+  MakeRuleFixture('ra', True, Src, Dst);
+  WriteTextFile(TPath.Combine(Dst, 'dir', 'same (2).txt'), 'taken');
+  Ran := RunJobCopyAsk(Src, Dst, jcaCancel, '', Ok, Prompts, Prompted, jcaAutoRename);
+  Assert.IsTrue(Ran and Ok, 'job finished successfully');
+  Assert.AreEqual(0, Prompts, 'a preset rule asks nothing');
+  Assert.AreEqual('dst-same', ReadTextFile(TPath.Combine(Dst, 'dir', 'same.txt')),
+    'the existing nested file is kept');
+  Assert.AreEqual('taken', ReadTextFile(TPath.Combine(Dst, 'dir', 'same (2).txt')),
+    'a name already taken is not reused');
+  Assert.AreEqual('src-same', ReadTextFile(TPath.Combine(Dst, 'dir', 'same (3).txt')),
+    'the new file gets the next free number');
+  Assert.AreEqual('dst-top', ReadTextFile(TPath.Combine(Dst, 'top.txt')),
+    'the existing top-level file is kept');
+  Assert.AreEqual('src-top', ReadTextFile(TPath.Combine(Dst, 'top (2).txt')),
+    'the new top-level file gets a numbered name');
+end;
+
+procedure TestPromptRuleAnswerDecidesThatConflict;
+var
+  Src, Dst, Prompted: string;
+  Ok, Ran: Boolean;
+  Prompts: Integer;
+begin
+  MakeRuleFixture('rp', False, Src, Dst);
+  Ran := RunJobCopyAsk(Src, Dst, jcaOverwriteNewer, '', Ok, Prompts, Prompted);
+  Assert.IsTrue(Ran and Ok, 'job finished successfully');
+  Assert.AreEqual(2, Prompts, 'without Remember every conflict is asked');
+  Assert.AreEqual('dst-same', ReadTextFile(TPath.Combine(Dst, 'dir', 'same.txt')),
+    'the rule keeps the newer destination');
+
+  MakeRuleFixture('rp2', True, Src, Dst);
+  Ran := RunJobCopyAsk(Src, Dst, jcaAutoRename, '', Ok, Prompts, Prompted);
+  Assert.IsTrue(Ran and Ok, 'job finished successfully');
+  Assert.AreEqual('src-same', ReadTextFile(TPath.Combine(Dst, 'dir', 'same (2).txt')),
+    'the picked auto-rename names the copy');
+end;
+
+procedure TestRuleOnFolderFileMismatchAsks;
+var
+  Src, Dst, Prompted: string;
+  Ok, Ran: Boolean;
+  Prompts: Integer;
+begin
+  Src := TPath.Combine(GRoot, 'rm_src');
+  Dst := TPath.Combine(GRoot, 'rm_dst');
+  TDirectory.CreateDirectory(Src);
+  TDirectory.CreateDirectory(TPath.Combine(Dst, 'clash'));
+  WriteTextFile(TPath.Combine(Src, 'clash'), 'src-file');
+  // A file meeting a folder is not two readable files: the rule cannot decide.
+  Ran := RunJobCopyAsk(Src, Dst, jcaSkip, '', Ok, Prompts, Prompted, jcaOverwriteNewer);
+  Assert.IsTrue(Ran and Ok, 'job finished successfully');
+  Assert.AreEqual(1, Prompts, 'an undecidable pair is asked about');
+  Assert.IsTrue(TDirectory.Exists(TPath.Combine(Dst, 'clash')), 'the folder stays');
+end;
+
+procedure TestVerifyAcceptsIdenticalCopy;
+var
+  A, B: string;
+  Err: TVfsError;
+begin
+  A := TPath.Combine(GRoot, 'vf_a.txt');
+  B := TPath.Combine(GRoot, 'vf_b.txt');
+  WriteTextFile(A, 'same bytes');
+  WriteTextFile(B, 'same bytes');
+  Err := TVfsError.Ok;
+  VerifyCopiedContent(A, B, TFile.GetSize(A), nil, Err);
+  Assert.AreEqual(Ord(vecOk), Ord(Err.Code), 'identical files pass');
+end;
+
+procedure TestVerifyRejectsChangedByte;
+var
+  A, B: string;
+  Err: TVfsError;
+begin
+  A := TPath.Combine(GRoot, 'vf_c.txt');
+  B := TPath.Combine(GRoot, 'vf_d.txt');
+  WriteTextFile(A, 'same bytes');
+  WriteTextFile(B, 'same bytez');
+  Err := TVfsError.Ok;
+  VerifyCopiedContent(A, B, TFile.GetSize(A), nil, Err);
+  Assert.AreEqual(Ord(vecIOError), Ord(Err.Code), 'a changed byte fails');
+
+  WriteTextFile(B, 'same');
+  Err := TVfsError.Ok;
+  VerifyCopiedContent(A, B, TFile.GetSize(A), nil, Err);
+  Assert.AreEqual(Ord(vecIOError), Ord(Err.Code), 'a short copy fails');
+end;
+
+procedure TestVerifyJobCopiesTree;
+var
+  Src, Dst: string;
+  Ok, Ran: Boolean;
+begin
+  Src := TPath.Combine(GRoot, 'vj_src');
+  Dst := TPath.Combine(GRoot, 'vj_dst');
+  TDirectory.CreateDirectory(TPath.Combine(Src, 'sub'));
+  TDirectory.CreateDirectory(Dst);
+  WriteTextFile(TPath.Combine(Src, 'a.txt'), 'alpha');
+  WriteTextFile(TPath.Combine(Src, 'sub', 'b.txt'), 'beta');
+  Ran := RunJobCopy(Src, Dst, jomAsk, Ok, True);
+  Assert.IsTrue(Ran and Ok, 'a verified copy finishes successfully');
+  Assert.AreEqual('alpha', ReadTextFile(TPath.Combine(Dst, 'vj_src', 'a.txt')));
+  Assert.AreEqual('beta', ReadTextFile(TPath.Combine(Dst, 'vj_src', 'sub', 'b.txt')));
 end;
 
 procedure TestFileOntoDirectoryKeepsTheFolder;
@@ -899,6 +1091,46 @@ end;
 procedure TTestCopySkipMerge.TestAskModeAppendAnswer;
 begin
   TestCopySkipMerge.TestAskModeAppendAnswer;
+end;
+
+procedure TTestCopySkipMerge.TestPresetRuleNewerOverwritesOnlyNewer;
+begin
+  TestCopySkipMerge.TestPresetRuleNewerOverwritesOnlyNewer;
+end;
+
+procedure TTestCopySkipMerge.TestPresetRuleDifferentSize;
+begin
+  TestCopySkipMerge.TestPresetRuleDifferentSize;
+end;
+
+procedure TTestCopySkipMerge.TestPresetRuleAutoRenameKeepsBoth;
+begin
+  TestCopySkipMerge.TestPresetRuleAutoRenameKeepsBoth;
+end;
+
+procedure TTestCopySkipMerge.TestPromptRuleAnswerDecidesThatConflict;
+begin
+  TestCopySkipMerge.TestPromptRuleAnswerDecidesThatConflict;
+end;
+
+procedure TTestCopySkipMerge.TestRuleOnFolderFileMismatchAsks;
+begin
+  TestCopySkipMerge.TestRuleOnFolderFileMismatchAsks;
+end;
+
+procedure TTestCopySkipMerge.TestVerifyAcceptsIdenticalCopy;
+begin
+  TestCopySkipMerge.TestVerifyAcceptsIdenticalCopy;
+end;
+
+procedure TTestCopySkipMerge.TestVerifyRejectsChangedByte;
+begin
+  TestCopySkipMerge.TestVerifyRejectsChangedByte;
+end;
+
+procedure TTestCopySkipMerge.TestVerifyJobCopiesTree;
+begin
+  TestCopySkipMerge.TestVerifyJobCopiesTree;
 end;
 
 procedure TTestCopySkipMerge.TestAskModeCancelAnswer;

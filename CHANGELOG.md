@@ -6,6 +6,12 @@ This file describes what changes for the user from version to version: new featu
 
 ## Unreleased
 
+### New
+
+- The "File already exists" prompt has three more answers: overwrite if the existing file is older, overwrite if the size differs, and automatic rename (`name (2).ext`, the first free number). With "Remember choice" the rule is applied to every following conflict of the job, file by file; a pair a rule cannot judge (a folder against a file) is still asked about. The copy dialog's "Already existing files" list offers the same three choices up front.
+- The copy and move dialog has "Verify after copying": each file written is compared byte by byte with its source before it replaces the destination. A difference is reported as an error of that file, with the usual retry / skip / cancel.
+- The job list has "When the queue ends": do nothing (default), sleep, shut down or close the program. The action is armed for one run, fires after the last job finishes without errors or cancels, asks first and goes ahead by itself after 30 seconds.
+
 ## Dev v0.5.11.3 – 2026-11-22
 
 ### Fixed

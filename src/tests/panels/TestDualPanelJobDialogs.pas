@@ -200,6 +200,8 @@ begin
 end;
 
 procedure TestJobOptionMaps;
+var
+  Rule: TJobConflictAction;
 begin
   Assert.IsTrue(JobOverwriteModeFromIndex(-1) = jomAsk, 'negative index -> ask');
   Assert.IsTrue(JobOverwriteModeFromIndex(0) = jomAsk, '0 -> ask');
@@ -213,6 +215,13 @@ begin
   Assert.IsTrue(JobConflictActionFromCommand(cDlgCmdSkip) = jcaSkip, 'skip cmd');
   Assert.IsTrue(JobConflictActionFromCommand(cDlgCmdAppend) = jcaAppend, 'append cmd');
   Assert.IsTrue(JobConflictActionFromCommand(cDlgCmdCancel) = jcaCancel, 'cancel cmd');
+  Assert.IsTrue(JobConflictActionFromCommand(cDlgCmdOverwriteNewer) = jcaOverwriteNewer, 'newer cmd');
+  Assert.IsTrue(JobConflictActionFromCommand(cDlgCmdOverwriteDiffSize) = jcaOverwriteDiffSize, 'diff size cmd');
+  Assert.IsTrue(JobConflictActionFromCommand(cDlgCmdAutoRename) = jcaAutoRename, 'auto-rename cmd');
+  Assert.IsTrue(JobConflictRuleFromIndex(3, Rule) and (Rule = jcaOverwriteNewer), 'index 3 -> newer');
+  Assert.IsTrue(JobConflictRuleFromIndex(4, Rule) and (Rule = jcaOverwriteDiffSize), 'index 4 -> diff size');
+  Assert.IsTrue(JobConflictRuleFromIndex(5, Rule) and (Rule = jcaAutoRename), 'index 5 -> auto-rename');
+  Assert.IsFalse(JobConflictRuleFromIndex(2, Rule), 'index 2 is a plain mode');
   Assert.IsTrue(JobConfirmWantsBackground(cDlgCmdBackground), 'background confirm cmd');
   Assert.IsTrue(not JobConfirmWantsBackground(cDlgCmdOk), 'ok stays foreground');
   Assert.IsTrue(JobDeleteFailActionFromCommand(cDlgCmdOk, True) = jdaPermanent, 'recycle ok -> permanent');

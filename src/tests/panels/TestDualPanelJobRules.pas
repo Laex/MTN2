@@ -25,6 +25,12 @@ type
     [Test] procedure TestSpeedPresetsCycle;
     [Test] procedure TestThrottleLimitsSpeed;
     [Test] procedure TestPausedThrottleEndsOnCancel;
+    [Test] procedure TestConflictRuleNewer;
+    [Test] procedure TestConflictRuleDifferentSize;
+    [Test] procedure TestConflictRuleRenameAndPlainActions;
+    [Test] procedure TestUniqueConflictPathSkipsTakenNames;
+    [Test] procedure TestQueueActionFiresOnlyWhenIdleAndClean;
+    [Test] procedure TestQueueActionFromIndex;
     [TearDown] procedure TearDown;
   end;
 
@@ -545,6 +551,96 @@ begin
   Token.Cancel;
   JobThrottle(Ref, 1);
   Assert.IsTrue(Ref.IsCancellationRequested, 'a paused worker is released by a cancel');
+end;
+
+function FileInfo(ASize: Int64; AWriteUtc: TDateTime): TConflictFileInfo;
+begin
+  Result.Size := ASize;
+  Result.WriteUtc := AWriteUtc;
+end;
+
+procedure TTestDualPanelJobRules.TestConflictRuleNewer;
+const
+  Day = 1;
+begin
+  Assert.IsTrue(ConflictRuleDecision(jcaOverwriteNewer, FileInfo(1, 10 + Day),
+    FileInfo(1, 10)) = vcaOverwrite, 'a newer source overwrites');
+  Assert.IsTrue(ConflictRuleDecision(jcaOverwriteNewer, FileInfo(1, 10),
+    FileInfo(1, 10 + Day)) = vcaSkip, 'an older source is skipped');
+  Assert.IsTrue(ConflictRuleDecision(jcaOverwriteNewer, FileInfo(1, 10),
+    FileInfo(1, 10)) = vcaSkip, 'the same time is skipped');
+  Assert.IsTrue(ConflictRuleDecision(jcaOverwriteNewer,
+    FileInfo(1, 10 + 1 / SecsPerDay), FileInfo(1, 10)) = vcaSkip,
+    'a one second difference is a FAT rounding, not a newer file');
+end;
+
+procedure TTestDualPanelJobRules.TestConflictRuleDifferentSize;
+begin
+  Assert.IsTrue(ConflictRuleDecision(jcaOverwriteDiffSize, FileInfo(5, 10),
+    FileInfo(6, 10)) = vcaOverwrite, 'a different size overwrites');
+  Assert.IsTrue(ConflictRuleDecision(jcaOverwriteDiffSize, FileInfo(6, 99),
+    FileInfo(5, 10)) = vcaOverwrite, 'a larger newer source overwrites too');
+  Assert.IsTrue(ConflictRuleDecision(jcaOverwriteDiffSize, FileInfo(5, 99),
+    FileInfo(5, 10)) = vcaSkip, 'the same size is skipped whatever the time');
+end;
+
+procedure TTestDualPanelJobRules.TestConflictRuleRenameAndPlainActions;
+var
+  Any: TConflictFileInfo;
+begin
+  Any := FileInfo(1, 1);
+  Assert.IsTrue(ConflictRuleDecision(jcaAutoRename, Any, Any) = vcaRename, 'auto-rename');
+  Assert.IsTrue(ConflictRuleDecision(jcaOverwrite, Any, Any) = vcaOverwrite, 'overwrite');
+  Assert.IsTrue(ConflictRuleDecision(jcaSkip, Any, Any) = vcaSkip, 'skip');
+  Assert.IsTrue(ConflictRuleDecision(jcaAppend, Any, Any) = vcaAppend, 'append');
+  Assert.IsTrue(ConflictRuleDecision(jcaCancel, Any, Any) = vcaCancel, 'cancel');
+  Assert.IsTrue(ConflictActionIsRule(jcaOverwriteNewer), 'newer is a rule');
+  Assert.IsTrue(ConflictActionIsRule(jcaOverwriteDiffSize), 'size is a rule');
+  Assert.IsTrue(ConflictActionIsRule(jcaAutoRename), 'auto-rename is a rule');
+  Assert.IsFalse(ConflictActionIsRule(jcaOverwrite), 'overwrite is a plain answer');
+  Assert.IsFalse(ConflictActionIsRule(jcaCancel), 'cancel is a plain answer');
+end;
+
+procedure TTestDualPanelJobRules.TestUniqueConflictPathSkipsTakenNames;
+var
+  Taken: TArray<string>;
+  Exists: TFunc<string, Boolean>;
+begin
+  Taken := ['C:\D\a (2).txt', 'C:\D\a (3).txt'];
+  Exists :=
+    function(APath: string): Boolean
+    var
+      T: string;
+    begin
+      for T in Taken do
+        if SameText(T, APath) then
+          Exit(True);
+      Result := False;
+    end;
+  Assert.AreEqual('C:\D\a (4).txt', UniqueConflictPath('C:\D\a.txt', Exists),
+    'the first free number');
+  Assert.AreEqual('C:\D\b (2)', UniqueConflictPath('C:\D\b', Exists),
+    'a name without an extension');
+  Assert.AreEqual('C:\D\a.tar (2).gz', UniqueConflictPath('C:\D\a.tar.gz', Exists),
+    'only the last extension is kept apart');
+end;
+
+procedure TTestDualPanelJobRules.TestQueueActionFiresOnlyWhenIdleAndClean;
+begin
+  Assert.IsTrue(QueueActionShouldFire(qaShutdown, 0, False), 'idle and clean fires');
+  Assert.IsFalse(QueueActionShouldFire(qaNone, 0, False), 'nothing armed');
+  Assert.IsFalse(QueueActionShouldFire(qaSleep, 1, False), 'a job is still busy');
+  Assert.IsFalse(QueueActionShouldFire(qaClose, 0, True), 'a failure holds it back');
+end;
+
+procedure TTestDualPanelJobRules.TestQueueActionFromIndex;
+begin
+  Assert.IsTrue(QueueActionFromIndex(0) = qaNone, '0 -> none');
+  Assert.IsTrue(QueueActionFromIndex(1) = qaSleep, '1 -> sleep');
+  Assert.IsTrue(QueueActionFromIndex(2) = qaShutdown, '2 -> shut down');
+  Assert.IsTrue(QueueActionFromIndex(3) = qaClose, '3 -> close');
+  Assert.IsTrue(QueueActionFromIndex(-1) = qaNone, 'negative -> none');
+  Assert.IsTrue(QueueActionFromIndex(9) = qaNone, 'out of range -> none');
 end;
 
 initialization

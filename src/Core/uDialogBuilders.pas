@@ -73,7 +73,7 @@ function BuildIOErrorDialog(const AHeadline, APath, AErrorLine: string;
 function BuildFolderHistoryDialog(const AItems: TArray<string>;
   ASelectedIndex: Integer = 0): TDialogDeclaration;
 function BuildJobListDialog(const AItems: TArray<string>;
-  ASelectedIndex: Integer = 0): TDialogDeclaration;
+  ASelectedIndex: Integer = 0; AAfterQueueIndex: Integer = 0): TDialogDeclaration;
 function BuildCmdHistoryDialog(const AItems: TArray<string>;
   ASelectedIndex: Integer = 0): TDialogDeclaration;
 /// <summary>Alt+F11: AItems are "mode mark + path" labels, newest first.</summary>
@@ -690,10 +690,11 @@ begin
 end;
 
 function BuildJobListDialog(const AItems: TArray<string>;
-  ASelectedIndex: Integer): TDialogDeclaration;
+  ASelectedIndex: Integer; AAfterQueueIndex: Integer): TDialogDeclaration;
 begin
   RequireDialogResource(cResDialogJobList, Result);
   DialogFillList(Result, 'jobs', AItems, ASelectedIndex, '(no jobs)');
+  DialogSetDropDownSelected(Result, 'after_queue', AAfterQueueIndex);
 end;
 
 function BuildCommandPaletteDialog(const AItems: TArray<string>;

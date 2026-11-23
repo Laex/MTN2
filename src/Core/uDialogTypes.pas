@@ -185,6 +185,12 @@ const
   cDlgCmdSkipAll = 'skipall';
   cDlgCmdAppend = 'append';
   cDlgCmdRename = 'rename';
+  /// <summary>Overwrite prompt: overwrite when the source is newer.</summary>
+  cDlgCmdOverwriteNewer = 'newer';
+  /// <summary>Overwrite prompt: overwrite when the sizes differ.</summary>
+  cDlgCmdOverwriteDiffSize = 'diffsize';
+  /// <summary>Overwrite prompt: keep both, the new file under a free name.</summary>
+  cDlgCmdAutoRename = 'autorename';
   cDlgCmdDelete = 'delete';
   cDlgCmdRetry = 'retry';
   /// <summary>Error prompt: repeat the rest of the job with administrator rights.</summary>

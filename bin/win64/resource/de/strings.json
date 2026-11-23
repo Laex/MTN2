@@ -177,6 +177,7 @@
       "job_timestamps": "&Alle Zeitstempel beibehalten",
       "job_only_newer": "Nur &neuere Dateien",
       "job_symlinks": "Inhalt &symbolischer Links kopieren",
+      "job_verify": "Nach dem Kopieren &verifizieren",
       "job_filter": "A&usschlussmaske:",
       "ok": "Kopieren",
       "background": "&Hintergrund",
@@ -184,7 +185,10 @@
       "job_existing_items": {
         "Ask": "Nachfragen",
         "Overwrite": "Überschreiben",
-        "Skip": "Überspringen"
+        "Skip": "Überspringen",
+        "Overwrite if newer": "Überschreiben, wenn neuer",
+        "Overwrite if size differs": "Überschreiben bei anderer Größe",
+        "Rename automatically": "Automatisch umbenennen"
       },
       "existing_label": "Bereits vorhandene Dateien:",
       "retry_label": "Wiederholungen bei Fehler:"
@@ -534,6 +538,13 @@
       "pausejob": "&Pause",
       "jobup": "&Hoch",
       "jobdown": "&Runter",
+      "after_label": "Wenn die Warteschlange endet:",
+      "after_queue_items": {
+        "Do nothing": "Nichts tun",
+        "Sleep": "Energiesparmodus",
+        "Shut down": "Herunterfahren",
+        "Close the program": "Programm beenden"
+      },
       "jobspeed": "&Tempo",
       "canceljob": "&Abbrechen",
       "cancelall": "A&lle abbrechen",
@@ -600,6 +611,9 @@
       "skip": "Über&springen",
       "rename": "&Umbenennen",
       "append": "A&nhängen",
+      "newer": "Wenn n&euer",
+      "diffsize": "Wenn &Größe anders",
+      "autorename": "Au&toname",
       "cancel": "Abbrechen"
     },
     "DIALOG_PLUGINLIST": {
@@ -1426,6 +1440,10 @@
     "stop.selected": "Den ausgewählten Vorgang abbrechen?",
     "stop.all": "Alle Vorgänge abbrechen?",
     "stop.search": "Suche beenden?",
+    "queue.sleep": "Alle Aufträge sind erledigt. Der Computer geht in 30 Sekunden in den Energiesparmodus. Jetzt?",
+    "queue.shutdown": "Alle Aufträge sind erledigt. Der Computer fährt in 30 Sekunden herunter. Jetzt?",
+    "queue.close": "Alle Aufträge sind erledigt. Das Programm wird in 30 Sekunden beendet. Jetzt?",
+    "queue.failed": "Das System hat die Anforderung nicht angenommen.",
     "search.results": "Ergebnisse: %d",
     "search.title": "Suchen",
     "workspace.home": "Privat",

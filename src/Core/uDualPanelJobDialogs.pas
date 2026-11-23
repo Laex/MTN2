@@ -97,6 +97,10 @@ type
   end;
 
 function JobOverwriteModeFromIndex(AIdx: Integer): TJobOverwriteMode;
+/// <summary>The rule an item of the "Existing files" list stands for (overwrite
+/// if newer, overwrite if the size differs, rename automatically); False for
+/// the items that are a plain mode.</summary>
+function JobConflictRuleFromIndex(AIdx: Integer; out ARule: TJobConflictAction): Boolean;
 function JobRetryLimitFromIndex(AIdx: Integer): Integer;
 /// <summary>For Pack, ATypeIdx is the archive type picked in the dialog and
 /// AInitialTypeIdx the one it was opened with: a changed pick replaces the
@@ -434,6 +438,19 @@ begin
   end;
 end;
 
+function JobConflictRuleFromIndex(AIdx: Integer; out ARule: TJobConflictAction): Boolean;
+begin
+  Result := True;
+  case AIdx of
+    3: ARule := jcaOverwriteNewer;
+    4: ARule := jcaOverwriteDiffSize;
+    5: ARule := jcaAutoRename;
+  else
+    ARule := jcaCancel;
+    Result := False;
+  end;
+end;
+
 function JobRetryLimitFromIndex(AIdx: Integer): Integer;
 begin
   case AIdx of
@@ -575,6 +592,12 @@ begin
     Result := jcaSkip
   else if DialogCmdIs(AControlId, cDlgCmdAppend) then
     Result := jcaAppend
+  else if DialogCmdIs(AControlId, cDlgCmdOverwriteNewer) then
+    Result := jcaOverwriteNewer
+  else if DialogCmdIs(AControlId, cDlgCmdOverwriteDiffSize) then
+    Result := jcaOverwriteDiffSize
+  else if DialogCmdIs(AControlId, cDlgCmdAutoRename) then
+    Result := jcaAutoRename
   else
     Result := jcaCancel;
 end;
@@ -770,6 +793,7 @@ function TJobDialogController.ApplyJobConfirmOptions(
 var
   DestURI, DestPath, ExcludeMask, ArchivePath, NewNameUri, NameError: string;
   ExistingIdx: Integer;
+  Rule: TJobConflictAction;
 begin
   Result := True;
   if not Assigned(FJobs) then
@@ -791,6 +815,9 @@ begin
   FJobs.ApplyCopyMoveOptions(DestURI, JobOverwriteModeFromIndex(ExistingIdx),
     AFields.PreserveTs, AFields.OnlyNewer, AFields.FollowSymlinks,
     JobRetryLimitFromIndex(AFields.RetryIdx), ExcludeMask);
+  if JobConflictRuleFromIndex(ExistingIdx, Rule) then
+    FJobs.SetConflictRule(Rule);
+  FJobs.SetVerifyCopy(AFields.VerifyCopy);
   // One item and a bare name in the field: the copy or move is made in the
   // item's folder under that name.
   NewNameUri := '';

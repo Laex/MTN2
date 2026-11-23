@@ -421,7 +421,7 @@ The same dialog has the other file flags: **Compressed**, **Encrypted**, **Not i
 
 Only for files and folders on disk: archives, SFTP, the Recycle Bin and search results have no Windows menu.
 
-<!--copy-->The copy/move dialog lets you keep all timestamps, copy only newer files, copy the contents of symbolic links and set an exclusion mask. On a name conflict the program asks what to do (overwrite, skip, rename, for all…).
+<!--copy-->The copy/move dialog lets you keep all timestamps, copy only newer files, copy the contents of symbolic links, set an exclusion mask and compare every copied file with its source before it is kept (**Verify after copying**: a difference is reported as an error of that file). The "Already existing files" list sets the answer for name conflicts in advance: ask, overwrite, skip, overwrite if newer, overwrite if the size differs, or rename automatically (`name (2).ext`). On a name conflict the program asks what to do (overwrite, skip, rename, append, overwrite if newer, overwrite if the size differs, automatic rename; with **Remember choice** for all the following conflicts of the job). The rules "if newer" and "if size differs" are checked file by file; a pair they cannot judge (a folder against a file) is asked about.
 
 <!--checksums-->**Checksums.** They are calculated in the background (Esc – cancel). In the result list: **Copy** – to the clipboard, **Save** – to `<file>.sha256` (one file) or `checksums.sha256` in the panel folder. Verification marks every line `OK`, `FAILED` or `MISSING`. Lines `hash *name`, `hash  name` and `SHA256 (name) = hash` are understood.
 
@@ -959,6 +959,7 @@ Dialog buttons are pressed with **Enter** and **Space**: the button looks presse
 - **Pause/Resume** holds a running copy at its next chunk (chip `||`, state "paused") or keeps a queued job from starting; a held job keeps its drive busy until it is resumed or cancelled;
 - **Up** and **Down** change the start order of queued jobs;
 - **Speed** steps the copy speed limit of the job through none, 1, 5, 20 and 100 MB/s (shown in the state column). The limit applies to copying between local folders.
+- **When the queue ends** (the list under the jobs) arms one action for the moment all jobs have finished without errors or cancels: sleep, shut down or close the program. The program first asks, and does it by itself after 30 seconds unless the question is answered; an error or cancel disarms it for that run. The action runs once and then returns to "Do nothing".
 
 <!--errors-->When a copy, move or delete stops with an error, the error window offers **Retry**, **Skip**, **Skip all**, **Cancel** and, for “Access denied” on a local path, **Admin**: it repeats the item and the rest of the job through the administrator helper (see [File operations](#file-operations)).
 

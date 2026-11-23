@@ -8,14 +8,17 @@ A short overview of the features; details are in the help (F1), the other docume
 
 - **Column modes and column sets** – two views: brief (names in columns of a set width (10-50 characters), details in the status line) and wide (built-in variants size, date, full, created, types plus your own sets); the Custom Columns dialog saves a selection, plugin columns included, under a name, each panel keeps its own columns, vertical lines between columns can be turned on in the settings, and the header row and the sort mode letter can be hidden.
 - **Plugin columns** – in custom mode plugins add their own columns (Docker, processes, services, image, MP3 and program metadata); sort by clicking the header or with `Ctrl+F12`.
+- **Sort modes** – `Ctrl+F12` menu and `Ctrl+F3`...`F9`: by name, extension, modification, creation or access date, size, or unsorted; choosing the same mode again reverses the direction, the letter in the corner of the panel shows the mode.
 - **List grouping** – `Ctrl+Alt+G`: groups by file type or modification date with captions and alternating background; the mode is kept per panel.
 - **Paired folders** – `Ctrl+Alt+P`: entering a subfolder or going up is repeated in the other panel when it has a folder with the same name.
+- **Flat view** – `Ctrl+B`: all files of the current folder and its subfolders in one list of the panel, to sort, select or copy them together.
 - **NDN-style panel footer** – the line for the file under the cursor, totals for the selection, and free disk space with a fill bar.
 - **Folder tree** – `Alt+F10` over the panel: branches expand with the arrow keys, the other panel follows the cursor, folders are read in the background.
 - **Drive selection** – `Alt+F1` / `Alt+F2`: drives with fill bars, recent network shares, plugin entries; `F4` shows volume details, `Del` ejects a removable or network drive.
 - **Folder hotlist** – `Ctrl+D`: groups, manual order, quick letters via `&` in the name and `Ctrl+1`...`Ctrl+0`; the list is protected against loss on a failed write.
 - **Frequent folders** – `Ctrl+Shift+F12`: a list ranked by visits and recency, typing narrows it.
 - **Folder and navigation history** – `Alt+F12` with type-to-filter, `Alt+Left` / `Alt+Right` move back and forward; `Del` and `Ctrl+Del` clear entries.
+- **File history** – `Alt+F11`: the last 100 files opened with `F3` / `F4`, newest first, marked V (view) or E (edit) by the mode they were last opened in.
 - **Far-style navigation** – `Ctrl+PgUp` / `Ctrl+PgDn` go up and into a folder; `Ctrl+PgDn` on a file opens it as an archive by content (`.docx`, `.xlsx`, etc.); `Backspace` with an empty command line goes up a level.
 - **Resilience to missing folders** – if a panel's folder is deleted or unavailable at startup, the panel moves to the nearest existing parent.
 - **Context-aware ".."** – from a folder opened through a link it returns to where the link is; from the Recycle Bin, system folders and plugin folders it returns to where you came from.
@@ -43,19 +46,22 @@ A short overview of the features; details are in the help (F1), the other docume
 ## File operations and background jobs
 
 - **Background copy, move and delete** – operations run as background jobs with a chip and progress in the tab bar; clicking a chip brings back the job window.
-- **Job list** – `Ctrl+Shift+J`: columns, pause, queue order, copy speed limit; operations on the same disk run one after another.
+- **Job list** – `Ctrl+Shift+J`: columns, pause, queue order, copy speed limit; operations on the same disk run one after another; "When the queue ends" puts the computer to sleep, shuts it down or closes the program after the last job (30 seconds to cancel).
 - **Windows taskbar progress** – a bar on the program button colored by state; a notification when a job finishes.
 - **Safe copying** – data is written to a temporary `name.mtnpart` and renamed after a complete write; copying in 256 KB blocks.
 - **Error resilience** – automatic read retries, per-file "Skip" and "Skip all", confirmation before aborting an operation.
 - **Administrator helper** – on "Access denied" the "Admin" button repeats the copy, move, delete, folder creation or extraction with a single UAC prompt.
-- **Folder merge** – copying or moving a folder onto an existing one merges the contents; the "File already exists" prompt offers overwrite, skip, rename, append.
+- **Folder merge** – copying or moving a folder onto an existing one merges the contents; the "File already exists" prompt offers overwrite, skip, rename, append, overwrite if newer, overwrite if the size differs and automatic rename (`name (2).ext`); the same rules can be picked in the copy dialog in advance.
+- **Verified copy** – the "Verify after copying" option compares every copied file with its source before it is kept; a difference is an error of that file with the usual retry / skip.
 - **Far-style delete** – `F8` / `Del` to the Recycle Bin, `Shift+Del` permanently, `Shift+F8` only the item under the cursor; if the Recycle Bin fails, permanent deletion is offered.
 - **Multi-rename** – `Ctrl+Alt+N`: `[N]`, `[E]`, `[C]` masks, date, parent, size and metadata tags, text replacement and regular expressions, case changes, preview with conflict checks.
 - **Attributes** – `Ctrl+A`: three-state check boxes for a group of files, extended NTFS attributes, owner, dates; on Linux – permissions, owner and `chattr` flags.
 - **Link creation** – `Alt+F6`: a symbolic link, junction or hard link depending on rights and source.
 - **Link copying** – symbolic links and junctions are copied as links, their contents only on request.
+- **Link markers** – links in the panels carry a marker before the name: `~` for a folder, `@` for a file; the "Mark links" option turns it off.
 - **Apply command to selection** – `Ctrl+G` runs a command on the selected files with user menu substitutions (`!.!`, `!&`, `!\`, `!#`).
 - **File descriptions** – `Ctrl+Z`: a description in `Descript.ion` in Far and Total Commander format, shown in the status line.
+- **Checksums** – `Ctrl+Alt+H`: MD5, SHA-1, SHA-256 and SHA-512 of the selected files and folders, calculated in the background; the result is copied or saved to a `.sha256` file, and a `.md5` / `.sha1` / `.sha256` / `.sha512` file is verified with OK, FAILED and MISSING marks.
 - **Save list to file** – selected items as text, a Markdown table or CSV with a choice of fields.
 - **Copy names and paths** – `Ctrl+Shift+Ins` copies names, `Alt+Shift+Ins` full paths to the clipboard.
 - **Long paths** – paths longer than 260 characters work in operations, search, comparison and extraction.
@@ -151,9 +157,12 @@ A short overview of the features; details are in the help (F1), the other docume
 - **Function key bar** – captions for all modifiers, mouse clicks, only available actions shown.
 - **Status line** – clicking a section opens the drive list, history, column mode, go to line or encoding choice.
 - **User menu** – `F2`: commands with substitutions and a choice of what happens after the run.
+- **File associations** – `Ctrl+Alt+Shift+A`: what `Enter` does for a given extension: view, edit, open with a Windows program or run your own command.
 - **Windows context menu** – `Shift+F10` or the Menu key for the selected files or the current folder.
 - **Context help** – `F1` in any dialog opens the section about it, including plugin help.
+- **Feature guide and recipes** – the "What MTN2 can do" help page lists the features by task (it opens on the first run), and "Recipes" gives short answers to common tasks.
 - **Key tips** – short notifications about useful keys in new situations, each shown once.
+- **Tips about unused features** – from the third run, one short tip per run about a feature you have not used yet, with its current keys; each appears once, and the "Reset hints" button brings them back.
 - **Keyboard-friendly dialogs** – hotkey letters in any keyboard layout, double click and `Del` in lists, mouse text selection in fields.
 - **Full screen** – `F11`.
 

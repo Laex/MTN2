@@ -36,6 +36,11 @@ type
       AOnDone: TVfsFreeSpaceCallback);
   end;
 
+/// <summary>Compares the first ALength bytes of the written file AWritePath with
+/// ASrc; a difference or a read failure is reported in AError.</summary>
+procedure VerifyCopiedContent(const ASrc, AWritePath: string; ALength: Int64;
+  ACancel: IJobCancelToken; var AError: TVfsError);
+
 var
   /// <summary>A file of a recursive copy that failed with an I/O error is retried
   /// this many times, waiting CopyRetryBaseDelayMs, twice that, four times that
@@ -408,10 +413,65 @@ begin
   end;
 end;
 
+procedure VerifyCopiedContent(const ASrc, AWritePath: string; ALength: Int64;
+  ACancel: IJobCancelToken; var AError: TVfsError);
+var
+  SrcStream, DstStream: TFileStream;
+  BufA, BufB: TBytes;
+  Done: Int64;
+  Want, NA, NB: Integer;
+  Mismatch: Boolean;
+begin
+  SetLength(BufA, 256 * 1024);
+  SetLength(BufB, 256 * 1024);
+  Done := 0;
+  Mismatch := False;
+  try
+    SrcStream := TFileStream.Create(WinApiPath(ASrc), fmOpenRead or fmShareDenyNone);
+    try
+      DstStream := TFileStream.Create(WinApiPath(AWritePath), fmOpenRead or fmShareDenyNone);
+      try
+        while (Done < ALength) and not Mismatch do
+        begin
+          if JobCancelRequested(ACancel) then
+          begin
+            AError := TVfsError.Make(vecCancelled, 'Cancelled', PathToFileUri(ASrc));
+            Exit;
+          end;
+          Want := Length(BufA);
+          if ALength - Done < Want then
+            Want := Integer(ALength - Done);
+          NA := SrcStream.Read(BufA[0], Want);
+          NB := DstStream.Read(BufB[0], Want);
+          if (NA <> NB) or (NA <= 0) or not CompareMem(@BufA[0], @BufB[0], NA) then
+            Mismatch := True
+          else
+            Inc(Done, NA);
+        end;
+      finally
+        DstStream.Free;
+      end;
+    finally
+      SrcStream.Free;
+    end;
+  except
+    on E: Exception do
+    begin
+      AError := TVfsError.Make(vecIOError,
+        'Copy verification failed: ' + E.Message, PathToFileUri(ASrc));
+      Exit;
+    end;
+  end;
+  if Mismatch then
+    AError := TVfsError.Make(vecIOError,
+      'Copy verification failed: content differs', PathToFileUri(ASrc));
+end;
+
 // Checks and publishes a copied file once its bytes are written. AError holds
 // a cancel from the copy loop; a failed check removes the fragment.
 procedure FinishCopiedFile(const ASrc, ADst, AWritePath: string; ACopied, ATotal: Int64;
-  ADstCreated, AStaged, APreserveTimestamps: Boolean; var AError: TVfsError);
+  ADstCreated, AStaged, APreserveTimestamps: Boolean; ACancel: IJobCancelToken;
+  var AError: TVfsError);
 var
   NowSize: Int64;
   MoveMsg: string;
@@ -449,6 +509,10 @@ begin
   if not ADstCreated then
     Exit;
   VerifyCopiedFile(ASrc, AWritePath, ACopied, True, AError);
+  // Runs before the written file replaces an existing destination, so a
+  // failed check keeps the destination as it was.
+  if (AError.Code = vecOk) and JobVerifyCopy(ACancel) then
+    VerifyCopiedContent(ASrc, AWritePath, ACopied, ACancel, AError);
   if AError.Code <> vecOk then
   begin
     CleanupFailedCopy(AWritePath);
@@ -542,7 +606,7 @@ begin
   end;
   // A source that shrank during the copy ends the file where it now ends.
   FinishCopiedFile(ASrc, ADst, WritePath, Copied, Total, DstCreated, Staged,
-    APreserveTimestamps, AError);
+    APreserveTimestamps, ACancel, AError);
 end;
 
 // Asks the job's resolver what to do with a file that already exists at the

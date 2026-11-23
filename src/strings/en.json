@@ -178,6 +178,7 @@
       "job_timestamps": "&Preserve all timestamps",
       "job_only_newer": "&Only newer files",
       "job_symlinks": "Copy contents of &symbolic links",
+      "job_verify": "&Verify after copying",
       "job_filter": "&Exclude mask:",
       "ok": "Copy",
       "background": "&Background",
@@ -186,7 +187,10 @@
       "job_existing_items": {
         "Ask": "Ask",
         "Overwrite": "Overwrite",
-        "Skip": "Skip"
+        "Skip": "Skip",
+        "Overwrite if newer": "Overwrite if newer",
+        "Overwrite if size differs": "Overwrite if size differs",
+        "Rename automatically": "Rename automatically"
       },
       "retry_label": "Retries on error:"
     },
@@ -535,6 +539,13 @@
       "pausejob": "&Pause/Resume",
       "jobup": "&Up",
       "jobdown": "Do&wn",
+      "after_label": "When the queue ends:",
+      "after_queue_items": {
+        "Do nothing": "Do nothing",
+        "Sleep": "Sleep",
+        "Shut down": "Shut down",
+        "Close the program": "Close the program"
+      },
       "jobspeed": "&Speed",
       "canceljob": "&Cancel",
       "cancelall": "Cancel &all",
@@ -601,6 +612,9 @@
       "skip": "&Skip",
       "rename": "&Rename",
       "append": "&Append",
+      "newer": "If &newer",
+      "diffsize": "If si&ze differs",
+      "autorename": "Rename a&uto",
       "cancel": "Cancel"
     },
     "DIALOG_PLUGINLIST": {
@@ -1436,6 +1450,10 @@
     "stop.selected": "Cancel the selected operation?",
     "stop.all": "Cancel all operations?",
     "stop.search": "Stop the search?",
+    "queue.sleep": "All jobs are done. The computer goes to sleep in 30 seconds. Do it now?",
+    "queue.shutdown": "All jobs are done. The computer shuts down in 30 seconds. Do it now?",
+    "queue.close": "All jobs are done. The program closes in 30 seconds. Do it now?",
+    "queue.failed": "The system did not accept the request.",
     "search.results": "Results: %d",
     "search.title": "Find",
     "workspace.home": "Home",

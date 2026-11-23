@@ -40,6 +40,12 @@ function PlatformRunCaptured(const AExe: string; const AArgs: TArray<string>;
   const AStdIn: string; ATimeoutMs: Cardinal; ACancel: IJobCancelToken;
   out AOutput: string; out AExitCode: Cardinal): TSpawnResult;
 
+/// <summary>Puts the computer to sleep; False when the system refused.</summary>
+function PlatformSuspendSystem: Boolean;
+
+/// <summary>Shuts the computer down at once; False when the system refused.</summary>
+function PlatformShutdownSystem: Boolean;
+
 implementation
 
 uses
@@ -76,6 +82,26 @@ end;
 procedure PlatformSetEnvironment(const AName, AValue: string);
 begin
   SetEnvironmentVariable(PChar(AName), PChar(AValue));
+end;
+
+function RunSystemTool(const AExe: string; const AArgs: TArray<string>): Boolean;
+var
+  Output: string;
+  Code: Cardinal;
+begin
+  Result := (PlatformRunCaptured(AExe, AArgs, '', 20000, nil, Output, Code) = srOk) and
+    (Code = 0);
+end;
+
+function PlatformSuspendSystem: Boolean;
+begin
+  Result := RunSystemTool('rundll32.exe',
+    TArray<string>.Create('powrprof.dll,SetSuspendState', '0,1,0'));
+end;
+
+function PlatformShutdownSystem: Boolean;
+begin
+  Result := RunSystemTool('shutdown.exe', TArray<string>.Create('/s', '/t', '0'));
 end;
 
 function PlatformSftpExeName: string;

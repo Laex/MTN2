@@ -123,6 +123,13 @@ type
     function GetErrorResolver: TVfsErrorResolver;
   end;
 
+  /// <summary>Optionally implemented by a cancel token. When it answers True, a
+  /// copy compares every file it wrote with its source before keeping it.</summary>
+  IJobVerifyCopy = interface
+    ['{B3E7D914-52A0-4C68-9F1B-7A4D2E8C6035}']
+    function GetVerifyCopy: Boolean;
+  end;
+
   /// <summary>Optionally implemented by a cancel token. A recursive copy tells it
   /// about every file it leaves out (already there, or skipped after an error)
   /// so the job's progress can show how many were skipped.</summary>
@@ -210,7 +217,8 @@ type
   end;
 
   TJobCancelToken = class(TInterfacedObject, IJobCancelToken, IJobConflictResolver,
-    IJobErrorResolver, IJobSkipCounter, IJobThrottle, IJobReadProgress)
+    IJobErrorResolver, IJobSkipCounter, IJobThrottle, IJobReadProgress,
+    IJobVerifyCopy)
   private
     FOnReadProgress: TJobReadProgressProc;
     FReadProgressTick: UInt64; // the worker's own: when it last queued a report
@@ -225,6 +233,7 @@ type
     FSkipped: Integer;   // incremented by workers, read from UI
     FConflictResolver: TVfsConflictResolver;
     FErrorResolver: TVfsErrorResolver;
+    FVerifyCopy: Boolean;
   public
     function IsCancellationRequested: Boolean;
     procedure Cancel;
@@ -237,6 +246,9 @@ type
       write FConflictResolver;
     procedure NoteSkipped;
     function GetSkippedCount: Integer;
+    function GetVerifyCopy: Boolean;
+    /// <summary>Set once, on the UI thread, before the token reaches a worker.</summary>
+    property VerifyCopy: Boolean read FVerifyCopy write FVerifyCopy;
     function GetErrorResolver: TVfsErrorResolver;
     /// <summary>Set once, on the UI thread, before the token reaches a worker.</summary>
     property ErrorResolver: TVfsErrorResolver read FErrorResolver
@@ -255,6 +267,9 @@ procedure JobNoteSkipped(const ACancel: IJobCancelToken);
 
 /// <summary>How many files the token was told were skipped (0 without a counter).</summary>
 function JobSkippedCount(const ACancel: IJobCancelToken): Integer;
+
+/// <summary>True when the token asks copies to be compared with their sources.</summary>
+function JobVerifyCopy(const ACancel: IJobCancelToken): Boolean;
 
 /// <summary>The token's per-file error resolver, or nil when it has none.</summary>
 function JobErrorResolver(const ACancel: IJobCancelToken): TVfsErrorResolver;
@@ -530,6 +545,11 @@ begin
   Result := TInterlocked.CompareExchange(FSkipped, 0, 0);
 end;
 
+function TJobCancelToken.GetVerifyCopy: Boolean;
+begin
+  Result := FVerifyCopy;
+end;
+
 function TJobCancelToken.GetErrorResolver: TVfsErrorResolver;
 begin
   Result := FErrorResolver;
@@ -651,6 +671,14 @@ begin
   Result := 0;
   if Assigned(ACancel) and Supports(ACancel, IJobSkipCounter, Counter) then
     Result := Counter.GetSkippedCount;
+end;
+
+function JobVerifyCopy(const ACancel: IJobCancelToken): Boolean;
+var
+  Source: IJobVerifyCopy;
+begin
+  Result := Assigned(ACancel) and Supports(ACancel, IJobVerifyCopy, Source) and
+    Source.GetVerifyCopy;
 end;
 
 function JobErrorResolver(const ACancel: IJobCancelToken): TVfsErrorResolver;

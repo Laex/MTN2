@@ -170,6 +170,7 @@ type
     FJobProgressRes: string;
     FStopAccept: TProc;
     FStopReject: TProc;
+    FQueueConfirmSerial: Integer;
     FSyncingJobProgress: Boolean;
     FSearchUi: TSearchController;
     FMenus: TMenuStubController;
@@ -423,6 +424,8 @@ type
     procedure RequestJobListCancel(AIndex: Integer; AAll: Boolean);
     function HandleJobListAction(const AControlId: string): Boolean;
     procedure HostRequestJobStop;
+    procedure HostQueueAction(AAction: TQueueAction);
+    procedure RunQueueAction(AAction: TQueueAction);
     procedure HostRequestSearchStop;
     procedure HostHideSearchResults;
     function HostCurrentFindSession: string;
@@ -2966,6 +2969,9 @@ procedure TDualPanelWindow.HostDialogValueChanged(const AControlId: string);
 begin
   if (FDialogKind = hdkJobConfirm) and SameText(AControlId, 'pack_type') then
     UpdatePackDialogFields;
+  if (FDialogKind = hdkJobList) and SameText(AControlId, 'after_queue') and
+     Assigned(FJobs) then
+    FJobs.AfterQueue := QueueActionFromIndex(FDialog.GetListSelectedIndex(AControlId));
 end;
 
 function TDualPanelWindow.HostPackSecurity(const AArchivePath, APassword: string;
@@ -3258,6 +3264,62 @@ begin
     procedure begin SyncJobProgressDialog; end);
 end;
 
+procedure TDualPanelWindow.HostQueueAction(AAction: TQueueAction);
+var
+  Serial: Integer;
+  Question: string;
+begin
+  case AAction of
+    qaSleep:
+      Question := T('ui.queue.sleep',
+        'All jobs are done. The computer goes to sleep in 30 seconds. Do it now?');
+    qaShutdown:
+      Question := T('ui.queue.shutdown',
+        'All jobs are done. The computer shuts down in 30 seconds. Do it now?');
+    qaClose:
+      Question := T('ui.queue.close',
+        'All jobs are done. The program closes in 30 seconds. Do it now?');
+  else
+    Exit;
+  end;
+  Inc(FQueueConfirmSerial);
+  Serial := FQueueConfirmSerial;
+  RequestStopConfirm(Question,
+    procedure
+    begin
+      FQueueConfirmSerial := 0;
+      RunQueueAction(AAction);
+    end,
+    procedure
+    begin
+      FQueueConfirmSerial := 0;
+    end);
+  // No answer within the grace period counts as "yes".
+  TThread.ForceQueue(nil,
+    procedure
+    begin
+      if FAlive and (FQueueConfirmSerial = Serial) and (FDialogKind = hdkStopConfirm) and
+         Assigned(FDialog) and FDialog.Visible then
+        AnswerStopConfirm(True);
+    end, 30000);
+end;
+
+procedure TDualPanelWindow.RunQueueAction(AAction: TQueueAction);
+var
+  Ok: Boolean;
+begin
+  Ok := True;
+  case AAction of
+    qaSleep: Ok := PlatformSuspendSystem;
+    qaShutdown: Ok := PlatformShutdownSystem;
+    qaClose:
+      if Assigned(FOnQuitRequest) then
+        FOnQuitRequest(Self);
+  end;
+  if not Ok then
+    FToast.Show(T('ui.queue.failed', 'The system did not accept the request.'), '', tkWarning);
+end;
+
 procedure TDualPanelWindow.HostSearchLimitReached;
 begin
   ShowInfo(T('ui.search.title', 'Find'),
@@ -3404,7 +3466,7 @@ begin
     Exit;
   FDialogKind := hdkJobList;
   Lines := FJobs.ListLines;
-  FDialog.Open(BuildJobListDialog(Lines, 0), DialogCommand);
+  FDialog.Open(BuildJobListDialog(Lines, 0, Ord(FJobs.AfterQueue)), DialogCommand);
 end;
 
 function TDualPanelWindow.HostApplyFindResults(const ARoot, AMask: string;
@@ -3773,6 +3835,7 @@ begin
   FJobs.SetElevatedVfs(FElevatedIntf);
   FJobAskDeferred := False;
   FJobs.OnStopRequest := HostRequestJobStop;
+  FJobs.OnQueueAction := HostQueueAction;
   FJobDialogs := TJobDialogController.Create(FDialog, FJobs, DialogCommand,
     HostSetDialogKind);
   FJobDialogs.OnPackSecurity := HostPackSecurity;

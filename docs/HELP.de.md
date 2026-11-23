@@ -311,7 +311,7 @@ Derselbe Dialog enthält die übrigen Dateiattribute: **Komprimiert**, **Verschl
 
 Nur für Dateien und Ordner auf der Festplatte: Archive, SFTP, Papierkorb und Suchergebnisse haben kein Windows-Menü.
 
-<!--copy-->Im Dialog Kopieren/Verschieben lassen sich alle Zeitstempel beibehalten, nur neuere Dateien kopieren, der Inhalt symbolischer Links kopieren und eine Ausschlussmaske festlegen. Bei einem Namenskonflikt fragt das Programm, was zu tun ist (überschreiben, überspringen, umbenennen, für alle…).
+<!--copy-->Im Dialog Kopieren/Verschieben lassen sich alle Zeitstempel beibehalten, nur neuere Dateien kopieren, der Inhalt symbolischer Links kopieren, eine Ausschlussmaske festlegen und jede kopierte Datei vor dem Behalten mit der Quelle vergleichen (**Nach dem Kopieren verifizieren**: eine Abweichung gilt als Fehler dieser Datei). Die Liste „Bereits vorhandene Dateien“ legt die Antwort auf Namenskonflikte im Voraus fest: fragen, überschreiben, überspringen, überschreiben wenn neuer, überschreiben bei anderer Größe oder automatisch umbenennen (`name (2).ext`). Bei einem Namenskonflikt fragt das Programm, was zu tun ist (überschreiben, überspringen, umbenennen, anhängen, wenn neuer, wenn die Größe abweicht, automatisch umbenennen; mit **Auswahl merken** für alle weiteren Konflikte des Auftrags). Die Regeln „wenn neuer“ und „wenn die Größe abweicht“ werden Datei für Datei geprüft; ein Paar, das sie nicht beurteilen können (Ordner gegen Datei), wird erfragt.
 
 <!--checksums-->**Prüfsummen.** Sie werden im Hintergrund berechnet (Esc – abbrechen). In der Ergebnisliste: **Kopieren** – in die Zwischenablage, **Speichern** – nach `<Datei>.sha256` (eine Datei) oder `checksums.sha256` im Panelordner. Die Prüfung markiert jede Zeile mit `OK`, `FAILED` oder `MISSING`. Zeilen der Form `Hash *Name`, `Hash  Name` und `SHA256 (Name) = Hash` werden verstanden.
 
@@ -823,6 +823,7 @@ Dialogschaltflächen werden mit **Enter** und der **Leertaste** gedrückt: die S
 - **Pause** hält ein laufendes Kopieren beim nächsten Block an (Chip `||`, Status „pausiert“) oder verhindert den Start eines wartenden Auftrags; ein angehaltener Auftrag belegt sein Laufwerk, bis er fortgesetzt oder abgebrochen wird;
 - **Hoch** und **Runter** ändern die Startreihenfolge wartender Aufträge;
 - **Tempo** schaltet die Geschwindigkeitsbegrenzung durch: keine, 1, 5, 20 und 100 MB/s (in der Statusspalte). Die Begrenzung gilt beim Kopieren zwischen lokalen Ordnern.
+- **Wenn die Warteschlange endet** (die Liste unter den Aufträgen) legt eine Aktion für den Moment fest, in dem alle Aufträge ohne Fehler oder Abbruch fertig sind: Energiesparmodus, Herunterfahren oder Programm beenden. Das Programm fragt zuerst und führt die Aktion nach 30 Sekunden selbst aus, wenn nicht geantwortet wird; ein Fehler oder Abbruch hebt sie für diesen Durchlauf auf. Die Aktion läuft einmal und springt danach auf „Nichts tun“.
 
 <!--errors-->Hält ein Kopier-, Verschiebe- oder Löschvorgang mit einem Fehler an, bietet das Fehlerfenster **Wiederholen**, **Überspringen**, **Alle überspringen**, **Abbrechen** und, bei „Zugriff verweigert“ auf einem lokalen Pfad, **Admin** an: es wiederholt das Element und den Rest des Auftrags über den Administrator-Helfer (siehe [Dateioperationen](#dateioperationen)).
 
