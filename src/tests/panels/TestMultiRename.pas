@@ -328,7 +328,7 @@ var
   Plan: TRenamePlan;
 begin
   Plan := PlanRenameTo(['a.txt', 'b.txt', 'c.txt', 'd.txt', 'e.txt'],
-    ['a.txt', 'x.txt', 'x.txt', 'b.txt', 'bad|name'], ['a.txt', 'b.txt', 'c.txt', 'd.txt', 'e.txt']);
+    ['a.txt', 'x.txt', 'x.txt', 'b.txt', 'bad/name'], ['a.txt', 'b.txt', 'c.txt', 'd.txt', 'e.txt']);
   Assert.AreEqual(Ord(rpUnchanged), Ord(Plan[0].Problem));
   Assert.AreEqual(Ord(rpDuplicate), Ord(Plan[1].Problem), 'a name used twice');
   Assert.AreEqual(Ord(rpDuplicate), Ord(Plan[2].Problem));

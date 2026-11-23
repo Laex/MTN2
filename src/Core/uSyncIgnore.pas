@@ -351,7 +351,8 @@ begin
   Tokens := SplitJobTokens(AText);
   for Tok in Tokens do
   begin
-    if (Tok <> '') and (Tok[1] = '/') then
+    // A switch has no further slash; a POSIX full path starts with one.
+    if (Tok <> '') and (Tok[1] = '/') and (Pos('/', Copy(Tok, 2, MaxInt)) = 0) then
     begin
       if SameText(Tok, '/XD') then
         Mode := 'D'
