@@ -795,8 +795,10 @@ git commit -am "!?提交说明?!"          提交,并询问提交说明
 
 <!--dir-sync-->- **Ctrl+Alt+S** – 同步活动面板和非活动面板的文件夹: 单向或双向; 勾选"仅预演"会显示将要执行的操作,但不做任何更改。
 - 在同步对话框中,每个差异是一行列表,带有其操作: `->` 复制到右侧,`<-` 复制到左侧,`--` 跳过; 冲突起初为跳过。"向右"、"向左"和"跳过"按钮设置所选行的操作(手动选择以 `*` 标记),"重置"恢复自动操作,"仅显示已跳过"只显示尚未决定的行。被跳过的差异会保留到下一次同步。
-- **镜像**模式使目标与源一致:只存在于目标中的文件会得到操作 `XX`(删除),也可以在某一行按 **X** 手动设置。该模式启动时会勾选"仅预演",因此第一次运行只报告将删除多少个文件;取消勾选后才会执行。先复制,复制成功后才删除;删除会自行确认并显示数量。默认放入回收站;**永久删除多余文件**会直接删除。此模式不会改动内容不同的文件和目标中较新的文件。
+- **镜像**模式使目标与源一致:只存在于目标中的文件会得到操作 `XX`(删除),也可以在某一行按 **X** 手动设置。该模式启动时会勾选"仅预演",因此第一次运行只报告将删除多少个文件;取消勾选后才会执行。先复制,复制成功后才删除;删除会自行确认并显示数量。默认放入回收站;**永久删除多余文件**会直接删除。此模式不会改动内容不同的文件和目标中较新的文件。 **多余文件到面板**按钮会把只存在于目标中的文件放入临时面板,以便检查后有选择地删除。
 - 同步对话框和搜索对话框都支持命名预设:输入名称并按**保存**即可保存当前模式和选项;从列表中选择名称即可加载(搜索对话框中使用**加载**按钮),**删除**则移除该预设。预设保存在配置文件夹中的 `syncpresets.json` 和 `searchpresets.json`。
+- 同步对话框比较文件夹时,会显示已扫描的文件和文件夹数量,随后显示已比较的文件数量。按 **Esc** 可把比较转入后台:标签栏和任务列表中会出现带进度的标签,完成后变为 **OK**(同时弹出通知)。点击该标签可打开完成的计划,状态栏会显示比较时间;在任务列表中取消任务会丢弃结果。
+- 比较开始前,会先弹出一个小对话框,显示两个文件夹,并询问模式、比较方式和要排除的内容:联接点和符号链接(默认跳过)、**.gitignore**、**.geminiignore** 和 **.obsidianignore** 中的规则(子文件夹中的文件只对该文件夹生效)、robocopy 文件 **exclude.rcj** 中的 **/XD** 和 **/XF** 列表、Obsidian 库的忽略过滤器,以及用 **;** 分隔的附加规则。被排除的文件不会出现在计划中,也不会出现在镜像模式的多余文件里。
 <!--compare-files-->- **Ctrl+Alt+C** – 比较两个面板光标所在的文件，或活动面板中标记的两个文件；对话框显示大小、修改时间和内容比较结果。标记两个或更多文件时，会比较同名文件（两个面板都有标记：只比较已标记的；仅一个面板有标记：按名称在另一面板中查找），列表显示每一对是相同还是不同，按 Enter 打开差异。文件夹会被跳过。
   For text files a compare-and-merge window opens: two columns with line numbers and the differences marked in the middle (`~` changed, `<` only on the left, `>` only on the right). **Ctrl+Down** and **Ctrl+Up** move between differences, **Right** copies a difference from left to right, **Left** from right to left, **Ctrl+Z** undoes a copy, **Ctrl+S** writes the changed files with their original encoding and line breaks. Closing with unsaved changes asks for confirmation (a second close discards them). Binary, very large (over 16 MB or 60000 lines) and identical files are shown in the earlier summary window.
 <!--compare-folders-->- **Ctrl+Shift+C** – 比较文件夹: 两个面板会选中对方没有的文件,以及同名文件中较新的一个; 时间相同但大小不同则两边都选中。

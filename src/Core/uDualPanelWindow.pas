@@ -457,6 +457,7 @@ type
     procedure HostSetDialogKind(AKind: THostDialogKind);
     procedure HostUnfocusCmd;
     procedure HostShowShellStub(const ATitle, ADetail: string);
+    procedure ShowPathsInTmpPanel(APaths: TArray<string>);
     procedure HostWorkspaceEmptySave;
     function HostTryGetHotlistUri(out AUri: string): Boolean;
     function HostTryGetCmdHistory(out AItems: TArray<string>): Boolean;
@@ -3861,6 +3862,7 @@ begin
   FDirSync := TDirSyncDialogController.Create(FDialog, FJobs, DialogCommand,
     HostSetDialogKind, CloseTransientUiBeforeDialog, HostShowShellStub,
     CloseStub, NotifyChanged, HostIsAlive);
+  FDirSync.OnShowExtras := ShowPathsInTmpPanel;
   FModalInputHost.HandleDirSyncList := FDirSync.HandleListInput;
   FMultiRename := TMultiRenameController.Create(FDialog, DialogCommand,
     HostSetDialogKind, CloseTransientUiBeforeDialog, HostShowShellStub,
@@ -8156,6 +8158,46 @@ begin
   Ws := ActiveWorkspace;
   Result := (Ws.Kind = wkPanels) and
     IsWorkspaceUri(ActiveTab(ActivePanel(Ws)).CurrentURI);
+end;
+
+// Replaces the Temporary panel contents with the given local paths and shows
+// the panel on the active side.
+procedure TDualPanelWindow.ShowPathsInTmpPanel(APaths: TArray<string>);
+var
+  Life: ILifeFlag;
+  Backend: IVirtualFileSystem;
+  Paths: TArray<string>;
+  Remaining: Integer;
+begin
+  if Length(APaths) = 0 then
+    Exit;
+  if not GlobalVfsRegistry.TryResolve('tmp:///', Backend) then
+  begin
+    HostShowShellStub(T('ui.dirSync.title', 'Synchronize'),
+      T('ui.dirSync.noTmpPanel', 'The Temporary panel plugin is not available'));
+    Exit;
+  end;
+  Life := FLife;
+  Paths := Copy(APaths);
+  Backend.DeleteAsync('tmp:///', vdmPermanent, nil, nil,
+    procedure(const ASuccess: Boolean; const AError: TVfsError)
+    begin
+      if not Life.Alive then
+        Exit;
+      Remaining := Length(Paths);
+      for var Path in Paths do
+        Backend.CopyAsync(PathToFileUri(Path), 'tmp:///', nil, nil,
+          procedure(const AOk: Boolean; const AErr: TVfsError)
+          begin
+            Dec(Remaining);
+            if Remaining <> 0 then
+              Exit;
+            if not Life.Alive then
+              Exit;
+            NavigateActiveTo('tmp:///');
+            NotifyChanged;
+          end);
+    end);
 end;
 
 procedure TDualPanelWindow.TmpRemoveSelected;

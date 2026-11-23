@@ -135,6 +135,10 @@ function BuildUserMenuEditDialog(const AHotKey, ACaption, ACommand: string;
 function BuildDirSyncDialog(const ASrcPath, ADstPath, AStatus: string;
   const APreview: TArray<string>; ADryRun: Boolean = False;
   ATwoWay: Boolean = False; AByContent: Boolean = False): TDialogDeclaration;
+/// <summary>Folders and exclusion sources asked before a folder comparison.</summary>
+function BuildDirSyncOptionsDialog(const ASrcPath, ADstPath: string;
+  ATwoWay, AByContent, ASkipJunctions, AUseIgnore, AUseRcj, AUseObsidian: Boolean;
+  const AExtra: string): TDialogDeclaration;
 function BuildFileDiffDialog(const ALeftName, ARightName, AStatus: string;
   const ASummary: TArray<string>; const ASwatches: TArray<TListSwatch>;
   const ALines: TArray<string>): TDialogDeclaration;
@@ -873,6 +877,22 @@ begin
     DialogSetRadio(Result, 'compare_by', 'bycontent')
   else
     DialogSetRadio(Result, 'compare_by', 'bydate');
+end;
+
+function BuildDirSyncOptionsDialog(const ASrcPath, ADstPath: string;
+  ATwoWay, AByContent, ASkipJunctions, AUseIgnore, AUseRcj, AUseObsidian: Boolean;
+  const AExtra: string): TDialogDeclaration;
+begin
+  RequireDialogResource(cResDialogDirSyncOpts, Result);
+  DialogSetLabelText(Result, 'src_path', ASrcPath);
+  DialogSetLabelText(Result, 'dst_path', ADstPath);
+  DialogSetRadio(Result, 'sync_mode', IfThen(ATwoWay, 'twoway', 'oneway'));
+  DialogSetRadio(Result, 'compare_by', IfThen(AByContent, 'bycontent', 'bydate'));
+  DialogSetCheckbox(Result, 'skip_junctions', ASkipJunctions);
+  DialogSetCheckbox(Result, 'use_ignore', AUseIgnore);
+  DialogSetCheckbox(Result, 'use_rcj', AUseRcj);
+  DialogSetCheckbox(Result, 'use_obsidian', AUseObsidian);
+  DialogSetInputValue(Result, 'extra', AExtra);
 end;
 
 function BuildFileDiffDialog(const ALeftName, ARightName, AStatus: string;

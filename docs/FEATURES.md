@@ -85,7 +85,7 @@ A short overview of the features; details are in the help (F1), the other docume
 - **File compare and merge** – `Ctrl+Alt+C`: a full-screen window, lines aligned by similarity, jumps between differences, copying differences both ways, undo and save.
 - **Group comparison** – with several files marked, files with the same names are compared in pairs, and a summary list leads to the differences.
 - **Folder comparison** – `Ctrl+Shift+C` by time, size or contents; contents are compared in the background.
-- **Folder synchronization** – `Ctrl+Alt+S`: an action per file (`->`, `<-`, `--`), conflict resolution, counts of copies and skips; the Mirror mode also deletes files that exist only on the target, after a dry run and a confirmation.
+- **Folder synchronization** – `Ctrl+Alt+S`: an action per file (`->`, `<-`, `--`), conflict resolution, counts of copies and skips; the Mirror mode also deletes files that exist only on the target, after a dry run and a confirmation. A dialog before the comparison picks the mode and leaves out junctions, `.gitignore`-style files, a robocopy `exclude.rcj` and Obsidian ignore filters; the comparison shows its progress and can run in the background.
 
 ## Archives
 

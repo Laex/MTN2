@@ -38,6 +38,7 @@ const
   cResDialogWorkspaces = 'DIALOG_WORKSPACES';
   cResDialogCreateLink = 'DIALOG_CREATELINK';
   cResDialogDirSync = 'DIALOG_DIRSYNC';
+  cResDialogDirSyncOpts = 'DIALOG_DIRSYNCOPTS';
   cResDialogFileDiff = 'DIALOG_FILEDIFF';
   cResDialogCompareGroup = 'DIALOG_COMPAREGROUP';
   cResDialogTerminalProfile = 'DIALOG_TERMINALPROFILE';

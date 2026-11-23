@@ -40,6 +40,7 @@ uses
   TestDualPanelPanelDraw in 'TestDualPanelPanelDraw.pas',
   TestDualPanelStatus in 'TestDualPanelStatus.pas',
   TestDualPanelSync in 'TestDualPanelSync.pas',
+  TestSyncIgnore in 'TestSyncIgnore.pas',
   TestDualPanelTabs in 'TestDualPanelTabs.pas',
   TestDualPanelTopMenu in 'TestDualPanelTopMenu.pas',
   TestCommandPalette in 'TestCommandPalette.pas',

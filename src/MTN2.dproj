@@ -296,6 +296,7 @@
         <DCCReference Include="Core\uDescriptIon.pas"/>
         <DCCReference Include="Core\uDualPanelJobList.pas"/>
         <DCCReference Include="Core\uDualPanelSync.pas"/>
+        <DCCReference Include="Core\uSyncIgnore.pas"/>
         <DCCReference Include="Core\uDualPanelSearch.pas"/>
         <DCCReference Include="Core\uDualPanelMenus.pas"/>
         <DCCReference Include="Core\uTopMenuBar.pas"/>

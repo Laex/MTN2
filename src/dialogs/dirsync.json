@@ -3,7 +3,7 @@
   "version": "2.0",
   "title": "Synchronize directories",
   "width": 110,
-  "height": 29,
+  "height": 31,
   "children": [
     {
       "type": "label",
@@ -91,7 +91,7 @@
       "text": "0 to copy",
       "col": 1,
       "row": 4,
-      "width": 78,
+      "width": 106,
       "height": 1
     },
     {
@@ -99,7 +99,7 @@
       "id": "preset_del",
       "text": "Delete &preset",
       "col": 82,
-      "row": 4,
+      "row": 5,
       "width": 25,
       "height": 1
     },
@@ -112,23 +112,23 @@
       ],
       "col": 1,
       "row": 5,
-      "width": 40,
+      "width": 26,
       "height": 1
     },
     {
       "type": "input",
       "id": "preset_name",
       "value": "",
-      "col": 44,
+      "col": 28,
       "row": 5,
-      "width": 36,
+      "width": 26,
       "height": 1
     },
     {
       "type": "button",
       "id": "preset_save",
       "text": "Sa&ve preset",
-      "col": 82,
+      "col": 55,
       "row": 5,
       "width": 25,
       "height": 1
@@ -141,7 +141,7 @@
         "(none)"
       ],
       "col": 1,
-      "row": 6,
+      "row": 7,
       "width": 106,
       "height": 10
     },
@@ -207,7 +207,7 @@
       "text": "&Mirror: delete extras (X)",
       "checked": false,
       "col": 1,
-      "row": 18,
+      "row": 20,
       "width": 40,
       "height": 1
     },
@@ -217,14 +217,23 @@
       "text": "Delete e&xtras for good",
       "checked": false,
       "col": 44,
-      "row": 18,
-      "width": 40,
+      "row": 20,
+      "width": 37,
+      "height": 1
+    },
+    {
+      "type": "button",
+      "id": "show_extras",
+      "text": "&Extras to panel",
+      "col": 82,
+      "row": 20,
+      "width": 25,
       "height": 1
     },
     {
       "type": "separator",
       "col": 0,
-      "row": 20,
+      "row": 22,
       "width": 108,
       "height": 1
     },
@@ -233,7 +242,7 @@
       "id": "hint_keys",
       "text": "",
       "col": 1,
-      "row": 21,
+      "row": 23,
       "width": 106,
       "height": 1
     },
@@ -242,14 +251,14 @@
       "id": "hint_legend",
       "text": "",
       "col": 1,
-      "row": 22,
+      "row": 24,
       "width": 106,
       "height": 1
     },
     {
       "type": "separator",
       "col": 0,
-      "row": 23,
+      "row": 25,
       "width": 108,
       "height": 1
     },
@@ -259,7 +268,7 @@
       "text": "Synchronize",
       "default": true,
       "col": 36,
-      "row": 25,
+      "row": 27,
       "width": 16,
       "height": 1
     },
@@ -269,7 +278,7 @@
       "text": "Cancel",
       "cancel": true,
       "col": 58,
-      "row": 25,
+      "row": 27,
       "width": 16,
       "height": 1
     }

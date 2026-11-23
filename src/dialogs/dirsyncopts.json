@@ -1,0 +1,174 @@
+{
+  "type": "dialog",
+  "version": "2.0",
+  "title": "Folders to synchronize",
+  "width": 72,
+  "height": 20,
+  "children": [
+    {
+      "type": "label",
+      "id": "src_label",
+      "text": "Source:",
+      "col": 1,
+      "row": 0,
+      "width": 10,
+      "height": 1
+    },
+    {
+      "type": "label",
+      "id": "src_path",
+      "text": "",
+      "col": 12,
+      "row": 0,
+      "width": 58,
+      "height": 1
+    },
+    {
+      "type": "label",
+      "id": "dst_label",
+      "text": "Target:",
+      "col": 1,
+      "row": 1,
+      "width": 10,
+      "height": 1
+    },
+    {
+      "type": "label",
+      "id": "dst_path",
+      "text": "",
+      "col": 12,
+      "row": 1,
+      "width": 58,
+      "height": 1
+    },
+    {
+      "type": "radio",
+      "id": "oneway",
+      "group": "sync_mode",
+      "text": "&One-way (→)",
+      "checked": true,
+      "col": 1,
+      "row": 3,
+      "width": 30,
+      "height": 1
+    },
+    {
+      "type": "radio",
+      "id": "twoway",
+      "group": "sync_mode",
+      "text": "&Two-way (⇄)",
+      "checked": false,
+      "col": 33,
+      "row": 3,
+      "width": 30,
+      "height": 1
+    },
+    {
+      "type": "radio",
+      "id": "bydate",
+      "group": "compare_by",
+      "text": "&Date / size",
+      "checked": true,
+      "col": 1,
+      "row": 4,
+      "width": 30,
+      "height": 1
+    },
+    {
+      "type": "radio",
+      "id": "bycontent",
+      "group": "compare_by",
+      "text": "&Content",
+      "checked": false,
+      "col": 33,
+      "row": 4,
+      "width": 30,
+      "height": 1
+    },
+    {
+      "type": "checkbox",
+      "id": "skip_junctions",
+      "text": "Skip &junctions and symbolic links",
+      "checked": true,
+      "col": 1,
+      "row": 6,
+      "width": 68,
+      "height": 1
+    },
+    {
+      "type": "checkbox",
+      "id": "use_ignore",
+      "text": "&Use .gitignore, .geminiignore and .obsidianignore",
+      "checked": false,
+      "col": 1,
+      "row": 7,
+      "width": 68,
+      "height": 1
+    },
+    {
+      "type": "checkbox",
+      "id": "use_rcj",
+      "text": "Use robocopy &exclude.rcj (/XD and /XF)",
+      "checked": false,
+      "col": 1,
+      "row": 8,
+      "width": 68,
+      "height": 1
+    },
+    {
+      "type": "checkbox",
+      "id": "use_obsidian",
+      "text": "Use Obs&idian ignore filters (.obsidian)",
+      "checked": false,
+      "col": 1,
+      "row": 9,
+      "width": 68,
+      "height": 1
+    },
+    {
+      "type": "label",
+      "id": "lbl_extra",
+      "text": "E&xtra patterns (separated by ;):",
+      "col": 1,
+      "row": 11,
+      "width": 68,
+      "height": 1
+    },
+    {
+      "type": "input",
+      "id": "extra",
+      "value": "",
+      "col": 1,
+      "row": 12,
+      "width": 68,
+      "height": 1
+    },
+    {
+      "type": "separator",
+      "col": 0,
+      "row": 14,
+      "width": 70,
+      "height": 1
+    },
+    {
+      "type": "button",
+      "id": "ok",
+      "text": "Compare",
+      "default": true,
+      "col": 18,
+      "row": 16,
+      "width": 16,
+      "height": 1
+    },
+    {
+      "type": "button",
+      "id": "cancel",
+      "text": "Cancel",
+      "cancel": true,
+      "col": 36,
+      "row": 16,
+      "width": 16,
+      "height": 1
+    }
+  ]
+}

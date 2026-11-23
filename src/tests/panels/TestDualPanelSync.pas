@@ -27,6 +27,9 @@ type
     [Test] procedure TestFitSyncPathKeepsBothEnds;
     [Test] procedure TestMirrorDeletesOnlyTargetExtras;
     [Test] procedure TestMirrorPlanShowsDeletions;
+    [Test] procedure TestCompareCountsFilesAndFolders;
+    [Test] procedure TestCancelledCompareReturnsNothing;
+    [Test] procedure TestProgressTextFollowsStage;
   end;
 
 implementation
@@ -117,6 +120,70 @@ begin
     'delete can be chosen by hand');
   Assert.AreEqual(1, Integer(Length(CollectDirSyncDeletePaths(Items, False, True))),
     'a chosen delete is collected');
+end;
+
+procedure TestCompareCountsFilesAndFolders;
+var
+  Root, Src, Dst: string;
+  Progress: ISyncProgress;
+  Items: TArray<TSyncItem>;
+  Info: TSyncProgressInfo;
+begin
+  Root := TPath.Combine(TPath.GetTempPath, 'mtn2-sync-progress');
+  if TDirectory.Exists(Root) then
+    TDirectory.Delete(Root, True);
+  Src := TPath.Combine(Root, 'src');
+  Dst := TPath.Combine(Root, 'dst');
+  WriteFileUtc(TPath.Combine(Src, 'a.txt'), 'a', Now);
+  WriteFileUtc(TPath.Combine(Src, 'sub' + PathDelim + 'b.txt'), 'b', Now);
+  WriteFileUtc(TPath.Combine(Dst, 'a.txt'), 'a', Now);
+  Progress := NewSyncProgress;
+  Items := CompareDirsTwoWay(Src, Dst, nil, False, Progress);
+  Info := Progress.Snapshot;
+  Assert.AreEqual(Int64(3), Info.Files, 'files seen on both sides');
+  Assert.AreEqual(Int64(3), Info.Dirs, 'both roots and the sub folder');
+  Assert.AreEqual(Ord(ssComparing), Ord(Info.Stage), 'the scan is over');
+  Assert.AreEqual(Int64(2), Info.Total, 'distinct relative paths');
+  Assert.AreEqual(Info.Total, Info.Done, 'every path classified');
+  Assert.AreEqual(100, SyncProgressPercent(Info));
+  Assert.IsTrue(Length(Items) > 0, 'sub/b.txt is missing on the target');
+end;
+
+procedure TestCancelledCompareReturnsNothing;
+var
+  Root, Src, Dst: string;
+  Progress: ISyncProgress;
+  Items: TArray<TSyncItem>;
+begin
+  Root := TPath.Combine(TPath.GetTempPath, 'mtn2-sync-cancel');
+  if TDirectory.Exists(Root) then
+    TDirectory.Delete(Root, True);
+  Src := TPath.Combine(Root, 'src');
+  Dst := TPath.Combine(Root, 'dst');
+  WriteFileUtc(TPath.Combine(Src, 'a.txt'), 'a', Now);
+  Progress := NewSyncProgress;
+  Progress.Cancel;
+  Assert.IsTrue(Progress.Cancelled, 'the stop flag is set');
+  Items := CompareDirsTwoWay(Src, Dst, nil, False, Progress);
+  Assert.AreEqual(0, Integer(Length(Items)), 'a stopped comparison reports nothing');
+end;
+
+procedure TestProgressTextFollowsStage;
+var
+  Info: TSyncProgressInfo;
+begin
+  Info := Default(TSyncProgressInfo);
+  Info.Files := 12;
+  Info.Dirs := 3;
+  Assert.AreEqual(-1, SyncProgressPercent(Info), 'unknown while scanning');
+  Assert.AreEqual('12', SyncProgressBadge(Info), 'the chip counts files while scanning');
+  Assert.IsTrue(Pos('12', FormatSyncProgress(Info, False)) > 0, 'scan text has the count');
+  Info.Stage := ssComparing;
+  Info.Total := 40;
+  Info.Done := 10;
+  Assert.AreEqual(25, SyncProgressPercent(Info));
+  Assert.AreEqual('25%', SyncProgressBadge(Info));
+  Assert.IsTrue(Pos('10', FormatSyncProgress(Info, False)) > 0, 'compare text has the done count');
 end;
 
 procedure TestMirrorPlanShowsDeletions;
@@ -608,6 +675,21 @@ end;
 procedure TTestDualPanelSync.TestMirrorPlanShowsDeletions;
 begin
   TestDualPanelSync.TestMirrorPlanShowsDeletions;
+end;
+
+procedure TTestDualPanelSync.TestCompareCountsFilesAndFolders;
+begin
+  TestDualPanelSync.TestCompareCountsFilesAndFolders;
+end;
+
+procedure TTestDualPanelSync.TestCancelledCompareReturnsNothing;
+begin
+  TestDualPanelSync.TestCancelledCompareReturnsNothing;
+end;
+
+procedure TTestDualPanelSync.TestProgressTextFollowsStage;
+begin
+  TestDualPanelSync.TestProgressTextFollowsStage;
 end;
 
 procedure TTestDualPanelSync.TestFitSyncPathKeepsBothEnds;

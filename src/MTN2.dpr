@@ -113,6 +113,7 @@ uses
   uDescriptIon in 'Core\uDescriptIon.pas',
   uDualPanelJobList in 'Core\uDualPanelJobList.pas',
   uDualPanelSync in 'Core\uDualPanelSync.pas',
+  uSyncIgnore in 'Core\uSyncIgnore.pas',
   uDualPanelSearch in 'Core\uDualPanelSearch.pas',
   uDualPanelMenus in 'Core\uDualPanelMenus.pas',
   uTopMenuBar in 'Core\uTopMenuBar.pas',

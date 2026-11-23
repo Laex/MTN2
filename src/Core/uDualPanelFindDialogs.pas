@@ -9,7 +9,7 @@ uses
   System.SysUtils, System.Classes, System.IOUtils, System.UITypes,
   uDialogHost, uDialogTypes, uDialogBuilders, uDialogJson, uDualPanelUiTypes, uDualPanelSearch,
   uDualPanelSync, uDualPanelJobs, uDualPanelJobList, uVfsTypes, uFindSession, uDialogHistory,
-  uSearchEngines, uDialogPresets;
+  uSearchEngines, uDialogPresets, uSyncIgnore;
 
 type
   TFindKindSetter = reference to procedure(AKind: THostDialogKind);
@@ -97,6 +97,29 @@ type
     FOnCloseStub: TProc;
     FOnNotify: TProc;
     FOnAlive: TFindAliveFn;
+    FOnShowExtras: TProc<TArray<string>>;
+    // The running comparison: its counters and stop flag, and the entry in the
+    // job list that lets it go on out of sight.
+    FProgress: ISyncProgress;
+    FJobKey: string;
+    FJobSeq: Integer;
+    FForeground: Boolean;
+    // A comparison that finished while its progress was hidden waits in the
+    // job list until the user opens it.
+    FResultReady: Boolean;
+    FReadyByContent: Boolean;
+    FReadyAt: TDateTime;
+    // What the comparison leaves out; asked in the dialog that precedes it.
+    FFilterOpts: TSyncFilterOptions;
+    FOptionsOpen: Boolean;
+    procedure ShowOptions;
+    procedure DispatchOptionsCommand(const AControlId: string);
+    procedure BeginCompareJob;
+    procedure EndCompareJob;
+    procedure ShowProgress(AGen: Integer; AByContent: Boolean);
+    procedure CancelCompare;
+    procedure OpenCompareJob;
+    procedure ShowCompareResult(AByContent, AFromBackground: Boolean);
     procedure StartCompare;
     procedure ApplyCompareResult(const AItems: TArray<TSyncItem>;
       const AError: string; AByContent: Boolean; AGen: Integer);
@@ -108,6 +131,7 @@ type
     procedure ApplyPreset(const AName: string);
     procedure SavePreset;
     procedure DeletePreset;
+    procedure ShowExtras(ATwoWay: Boolean);
   public
     constructor Create(ADialog: TDialogHost; AJobs: TPanelJobList;
       const AOnCommand: TDialogCommandEvent; const AOnSetKind: TFindKindSetter;
@@ -119,6 +143,10 @@ type
       const AFields: TDialogCommandFields): Boolean;
     procedure NotifyJobFinished(ASuccess: Boolean);
     procedure NotifyDialogChanged;
+    /// <summary>Receives the target-only files of the mirror plan when the
+    /// user asks to review them in a panel instead of deleting them.</summary>
+    property OnShowExtras: TProc<TArray<string>> read FOnShowExtras
+      write FOnShowExtras;
     /// <summary>Right / Left / Space / Del on the difference list set the
     /// action of the current row.</summary>
     function HandleListInput(var AKey: Word; AShift: TShiftState;
@@ -131,7 +159,7 @@ function ResolveSearchRootPath(const ACurrentUri: string): string;
 implementation
 
 uses
-  System.DateUtils, uFileFind, uStrings, uConfigLocation;
+  System.DateUtils, uFileFind, uStrings, uConfigLocation, uPluginServices, uNotice;
 
 const
   // Cells of the path labels in dirsync.json.
@@ -141,6 +169,7 @@ const
   cDirSyncCmdSkip = 'act_skip';
   cDirSyncCmdAuto = 'act_auto';
   cDirSyncPresetFile = 'syncpresets.json';
+  cSyncJobOwner = 'sync';
   cSearchPresetFile = 'searchpresets.json';
 
 function BoolText(AValue: Boolean): string;
@@ -646,6 +675,7 @@ begin
   FTwoWay := False;
   FMirror := False;
   FOnlySkipped := False;
+  FFilterOpts := DefaultSyncFilterOptions;
   FPendingDeleteToBin := True;
   SetLength(FPendingDeletes, 0);
   SetLength(FItems, 0);
@@ -655,6 +685,12 @@ end;
 
 destructor TDirSyncDialogController.Destroy;
 begin
+  if FProgress <> nil then
+  begin
+    FProgress.Cancel;
+    FProgress.SetOnChanged(nil);
+  end;
+  EndCompareJob;
   FPresets.Free;
   inherited;
 end;
@@ -756,12 +792,32 @@ begin
   end;
 end;
 
+// Hands the target-only files to a panel so the user can review and delete
+// them selectively; the dialog closes only when there is something to show.
+procedure TDirSyncDialogController.ShowExtras(ATwoWay: Boolean);
+var
+  Extras: TArray<string>;
+  I: Integer;
+begin
+  Extras := CollectDirSyncDeletePaths(FItems, ATwoWay, True);
+  for I := 0 to High(Extras) do
+    Extras[I] := FileUriToPath(Extras[I]);
+  if (Length(Extras) = 0) or not Assigned(FOnShowExtras) then
+  begin
+    FDialog.SetLabelText('status',
+      T('ui.dirSync.noExtras', 'No extra files on the target'));
+    Exit;
+  end;
+  FDialog.Close;
+  SetLength(FItems, 0);
+  SetLength(FViewIdx, 0);
+  FOnShowExtras(Extras);
+end;
+
 procedure TDirSyncDialogController.Open(const ASrcURI, ADstURI: string);
 var
   SrcPath, DstPath: string;
 begin
-  if FBusy then
-    Exit;
   if Assigned(FOnPrepare) then
     FOnPrepare();
 
@@ -782,6 +838,17 @@ begin
     Exit;
   end;
 
+  if FBusy or FResultReady then
+  begin
+    if SameText(SrcPath, FSrcRoot) and SameText(DstPath, FDstRoot) then
+      OpenCompareJob
+    else if Assigned(FOnOpenStub) then
+      FOnOpenStub(T('ui.dirSync.title', 'Synchronize'),
+        T('ui.dirSync.compareRunning',
+          'Another folder comparison is running or waiting in the job list'));
+    Exit;
+  end;
+
   FSrcRoot := SrcPath;
   FDstRoot := DstPath;
   FPresets.Free;
@@ -795,7 +862,134 @@ begin
   FOnlySkipped := False;
   SetLength(FPendingConflictRels, 0);
   SetLength(FPendingDeletes, 0);
-  StartCompare;
+  ShowOptions;
+end;
+
+// The folders and the exclusion sources are confirmed before anything is
+// scanned; OK starts the comparison.
+procedure TDirSyncDialogController.ShowOptions;
+begin
+  FOptionsOpen := True;
+  if Assigned(FOnSetKind) then
+    FOnSetKind(hdkDirSync);
+  FDialog.Open(BuildDirSyncOptionsDialog(FitSyncPath(FSrcRoot, 56),
+    FitSyncPath(FDstRoot, 56), FTwoWay, FByContent, FFilterOpts.SkipJunctions,
+    FFilterOpts.UseIgnoreFiles, FFilterOpts.UseRobocopyFile,
+    FFilterOpts.UseObsidian, FFilterOpts.Extra), FOnCommand);
+  if Assigned(FOnNotify) then
+    FOnNotify();
+end;
+
+procedure TDirSyncDialogController.DispatchOptionsCommand(
+  const AControlId: string);
+var
+  Accepted: Boolean;
+begin
+  Accepted := DialogCmdIsAccept(AControlId);
+  if Accepted then
+  begin
+    FTwoWay := SameText(FDialog.GetRadio('sync_mode'), 'twoway');
+    FByContent := SameText(FDialog.GetRadio('compare_by'), 'bycontent');
+    FFilterOpts.SkipJunctions := FDialog.GetCheckbox('skip_junctions');
+    FFilterOpts.UseIgnoreFiles := FDialog.GetCheckbox('use_ignore');
+    FFilterOpts.UseRobocopyFile := FDialog.GetCheckbox('use_rcj');
+    FFilterOpts.UseObsidian := FDialog.GetCheckbox('use_obsidian');
+    FFilterOpts.Extra := Trim(FDialog.GetInputValue('extra'));
+  end;
+  FOptionsOpen := False;
+  FDialog.Close;
+  if Accepted then
+    StartCompare;
+end;
+
+function SyncRootLabel(const APath: string): string;
+begin
+  Result := ExtractFileName(ExcludeTrailingPathDelimiter(APath));
+  if Result = '' then
+    Result := APath;
+end;
+
+procedure TDirSyncDialogController.BeginCompareJob;
+begin
+  Inc(FJobSeq);
+  FJobKey := 'sync:' + IntToStr(FJobSeq);
+  PluginJobBegin(cSyncJobOwner, FJobKey,
+    T('ui.dirSync.jobTitle', 'Compare: %s - %s',
+      [SyncRootLabel(FSrcRoot), SyncRootLabel(FDstRoot)]),
+    procedure
+    begin
+      CancelCompare;
+    end,
+    procedure
+    begin
+      OpenCompareJob;
+    end,
+    procedure(AForeground: Boolean)
+    begin
+      FForeground := AForeground;
+    end,
+    False);
+  // The progress dialog of the job is the window shown while the comparison
+  // runs in front; its Background button hides it and leaves the chip.
+  PluginJobSetForeground(PluginJobIdByKey(cSyncJobOwner, FJobKey), True);
+end;
+
+procedure TDirSyncDialogController.EndCompareJob;
+begin
+  if FJobKey <> '' then
+    PluginJobEnd(cSyncJobOwner, FJobKey);
+  FJobKey := '';
+  FForeground := False;
+  FResultReady := False;
+end;
+
+procedure TDirSyncDialogController.ShowProgress(AGen: Integer;
+  AByContent: Boolean);
+var
+  Info: TSyncProgressInfo;
+  Text: string;
+begin
+  if (AGen <> FCompareGen) or (FProgress = nil) then
+    Exit;
+  if Assigned(FOnAlive) and not FOnAlive() then
+    Exit;
+  Info := FProgress.Snapshot;
+  Text := FormatSyncProgress(Info, AByContent);
+  if FJobKey <> '' then
+  begin
+    PluginJobUpdate(cSyncJobOwner, FJobKey,
+      Text + #10 + FitSyncPath(Info.Current, 70), SyncProgressPercent(Info));
+    PluginJobSetBadge(cSyncJobOwner, FJobKey, SyncProgressBadge(Info));
+  end
+  else if Assigned(FDialog) and FDialog.Visible then
+    FDialog.SetLabelText('status', Text);
+end;
+
+procedure TDirSyncDialogController.CancelCompare;
+begin
+  if FBusy and (FProgress <> nil) then
+    FProgress.Cancel
+  else if FResultReady then
+  begin
+    SetLength(FItems, 0);
+    SetLength(FViewIdx, 0);
+    EndCompareJob;
+  end;
+end;
+
+procedure TDirSyncDialogController.OpenCompareJob;
+begin
+  if FResultReady then
+  begin
+    EndCompareJob;
+    ShowCompareResult(FReadyByContent, True);
+  end
+  else if FBusy and (FJobKey <> '') then
+  begin
+    if Assigned(FOnPrepare) then
+      FOnPrepare();
+    PluginJobSetForeground(PluginJobIdByKey(cSyncJobOwner, FJobKey), True);
+  end;
 end;
 
 procedure TDirSyncDialogController.StartCompare;
@@ -803,6 +997,8 @@ var
   Snap: TArray<TSyncSnapshotEntry>;
   Gen: Integer;
   ByContent: Boolean;
+  Progress: ISyncProgress;
+  Filter: ISyncFilter;
 begin
   if FBusy then
     Exit;
@@ -810,32 +1006,58 @@ begin
   Inc(FCompareGen);
   Gen := FCompareGen;
   ByContent := FByContent;
+  Progress := NewSyncProgress;
+  FProgress := Progress;
+  Progress.SetOnChanged(
+    procedure
+    begin
+      ShowProgress(Gen, ByContent);
+    end);
   if Assigned(FDialog) and FDialog.Visible then
     FDialog.SetLabelText('status', T('ui.dirSync.comparing', 'Comparing...'))
-  else if Assigned(FOnOpenStub) then
-    FOnOpenStub(T('ui.dirSync.title', 'Synchronize'),
-      T('ui.dirSync.comparingWait', 'Comparing directories... Esc=wait'));
+  else
+  begin
+    BeginCompareJob;
+    ShowProgress(Gen, ByContent);
+  end;
   Snap := LoadDirSyncSnapshot(FSrcRoot, FDstRoot);
+  if SyncFilterOptionsActive(FFilterOpts) then
+    Filter := NewSyncFilter(FFilterOpts, [FSrcRoot, FDstRoot])
+  else
+    Filter := nil;
   CompareDirsTwoWayAsync(FSrcRoot, FDstRoot, Snap,
     procedure(const AItems: TArray<TSyncItem>; const AError: string)
     begin
       ApplyCompareResult(AItems, AError, ByContent, Gen);
-    end, ByContent);
+    end, ByContent, Progress, Filter);
 end;
 
 procedure TDirSyncDialogController.ApplyCompareResult(
   const AItems: TArray<TSyncItem>; const AError: string;
   AByContent: Boolean; AGen: Integer);
 var
-  Preview: TArray<string>;
+  Stopped: Boolean;
 begin
   if AGen <> FCompareGen then
     Exit;
   FBusy := False;
+  Stopped := (FProgress <> nil) and FProgress.Cancelled;
+  if FProgress <> nil then
+    FProgress.SetOnChanged(nil);
+  FProgress := nil;
   if Assigned(FOnAlive) and not FOnAlive() then
+  begin
+    EndCompareJob;
     Exit;
+  end;
+  if Stopped then
+  begin
+    EndCompareJob;
+    Exit;
+  end;
   if AError <> '' then
   begin
+    EndCompareJob;
     if Assigned(FOnCloseStub) then
       FOnCloseStub();
     if Assigned(FOnOpenStub) then
@@ -843,6 +1065,32 @@ begin
     Exit;
   end;
   FItems := AItems;
+  FComparedByContent := AByContent;
+  if (FJobKey <> '') and not FForeground then
+  begin
+    FResultReady := True;
+    FReadyByContent := AByContent;
+    FReadyAt := Now;
+    PluginJobUpdate(cSyncJobOwner, FJobKey,
+      T('ui.dirSync.readyJob', 'Done: %d differences', [Length(AItems)]), 100);
+    PluginJobSetBadge(cSyncJobOwner, FJobKey, T('ui.dirSync.readyBadge', 'OK'));
+    NoticeRequest(TNoticeRequest.Make('%s',
+      T('ui.dirSync.readyNotice',
+        'Folder comparison finished: %d differences', [Length(AItems)])));
+    Exit;
+  end;
+  EndCompareJob;
+  ShowCompareResult(AByContent, False);
+end;
+
+procedure TDirSyncDialogController.ShowCompareResult(AByContent,
+  AFromBackground: Boolean);
+var
+  Preview: TArray<string>;
+  Status: string;
+begin
+  if AFromBackground and Assigned(FOnPrepare) then
+    FOnPrepare();
   FComparedByContent := AByContent;
   if Assigned(FDialog) and FDialog.Visible then
     ReadViewMode;
@@ -860,9 +1108,12 @@ begin
       FOnCloseStub();
     if Assigned(FOnSetKind) then
       FOnSetKind(hdkDirSync);
+    Status := FormatDirSyncPlanStatus(FItems, FTwoWay, FMirror);
+    if AFromBackground then
+      Status := Status + T('ui.dirSync.comparedAt', '  (compared at %s)',
+        [FormatDateTime('hh:nn', FReadyAt)]);
     FDialog.Open(BuildDirSyncDialog(FitSyncPath(FSrcRoot, cDirSyncPathCells),
-      FitSyncPath(FDstRoot, cDirSyncPathCells),
-      FormatDirSyncPlanStatus(FItems, FTwoWay, FMirror), Preview, False, FTwoWay,
+      FitSyncPath(FDstRoot, cDirSyncPathCells), Status, Preview, False, FTwoWay,
       AByContent), FOnCommand);
     RefreshPresetList('');
   end;
@@ -951,7 +1202,7 @@ var
   WantContent, OldTwoWay, OldOnlySkipped, OldMirror: Boolean;
   Idx: Integer;
 begin
-  if FBusy or FApplyingPreset then
+  if FBusy or FApplyingPreset or FOptionsOpen then
     Exit;
   if not Assigned(FDialog) or not FDialog.Visible then
     Exit;
@@ -992,6 +1243,11 @@ var
   Deletes: TArray<string>;
 begin
   Result := True;
+  if FOptionsOpen then
+  begin
+    DispatchOptionsCommand(AControlId);
+    Exit;
+  end;
   if DialogCmdIs(AControlId, cDirSyncCmdRight) then
   begin
     ApplyRowAction(saCopyRight);
@@ -1010,6 +1266,11 @@ begin
   if DialogCmdIs(AControlId, cDirSyncCmdAuto) then
   begin
     ApplyRowAction(saAuto);
+    Exit;
+  end;
+  if DialogCmdIs(AControlId, 'show_extras') then
+  begin
+    ShowExtras(AFields.SyncTwoWay);
     Exit;
   end;
   if DialogCmdIs(AControlId, 'preset_save') then

@@ -12,7 +12,7 @@ interface
 
 uses
   System.SysUtils, System.Classes, System.IOUtils, System.Threading,
-  uVfsTypes;
+  System.SyncObjs, uVfsTypes, uSyncIgnore;
 
 type
   TSyncReason = (srMissing, srNewer, srMissingOnSrc, srNewerOnDst, srConflict,
@@ -40,16 +40,56 @@ type
   TSyncCompareDone = reference to procedure(const AItems: TArray<TSyncItem>;
     const AError: string);
 
+  TSyncStage = (ssScanning, ssComparing);
+
+  TSyncProgressInfo = record
+    Stage: TSyncStage;
+    Files, Dirs: Int64;
+    /// <summary>Pairs classified so far and the pairs to classify.</summary>
+    Done, Total: Int64;
+    /// <summary>Bytes read by the content comparison.</summary>
+    Bytes: Int64;
+    /// <summary>The folder being scanned, or the path being compared.</summary>
+    Current: string;
+  end;
+
+  /// <summary>Counters and the stop flag shared by a running comparison and
+  /// its owner. The counters are written on the worker thread; OnChanged runs
+  /// on the main thread, at most a few times a second.</summary>
+  ISyncProgress = interface
+    ['{6C1D7B52-3F0E-4B7A-9D55-2A8E41C0B9F3}']
+    procedure Cancel;
+    function Cancelled: Boolean;
+    function Snapshot: TSyncProgressInfo;
+    procedure NoteDir(const ADir: string);
+    procedure NoteFile;
+    procedure BeginCompare(ATotal: Int64);
+    procedure NoteCompared(const ARel: string);
+    procedure NoteBytes(AValue: Int64);
+    procedure SetOnChanged(const AValue: TProc);
+  end;
+
 function CompareDirsOneWay(const ASrcRoot, ADstRoot: string;
   AByContent: Boolean = False): TArray<TSyncItem>;
 procedure CompareDirsOneWayAsync(const ASrcRoot, ADstRoot: string;
   AOnDone: TSyncCompareDone; AByContent: Boolean = False);
+function NewSyncProgress: ISyncProgress;
+/// <summary>"Scanning: N files in M folders" or "Comparing: N of M files".</summary>
+function FormatSyncProgress(const AInfo: TSyncProgressInfo;
+  AByContent: Boolean): string;
+/// <summary>-1 while the total is not known yet.</summary>
+function SyncProgressPercent(const AInfo: TSyncProgressInfo): Integer;
+/// <summary>Short chip text: the file count while scanning, then the percentage.</summary>
+function SyncProgressBadge(const AInfo: TSyncProgressInfo): string;
+/// <summary>A cancelled comparison returns no items.</summary>
 function CompareDirsTwoWay(const ASrcRoot, ADstRoot: string;
   const ASnapshot: TArray<TSyncSnapshotEntry>;
-  AByContent: Boolean = False): TArray<TSyncItem>;
+  AByContent: Boolean = False; const AProgress: ISyncProgress = nil;
+  const AFilter: ISyncFilter = nil): TArray<TSyncItem>;
 procedure CompareDirsTwoWayAsync(const ASrcRoot, ADstRoot: string;
   const ASnapshot: TArray<TSyncSnapshotEntry>; AOnDone: TSyncCompareDone;
-  AByContent: Boolean = False);
+  AByContent: Boolean = False; const AProgress: ISyncProgress = nil;
+  const AFilter: ISyncFilter = nil);
 function CountSyncReasons(const AItems: TArray<TSyncItem>;
   out AMissing, ANewer: Integer): Integer;
 function FormatSyncPreviewLines(const AItems: TArray<TSyncItem>;
@@ -72,7 +112,8 @@ function CountSyncContentDiffs(const AItems: TArray<TSyncItem>): Integer;
 function CollectDirSyncConflictRels(const AItems: TArray<TSyncItem>): TArray<string>;
 function CollectDirSyncUnresolvedRels(const AItems: TArray<TSyncItem>;
   ATwoWay: Boolean; AMirror: Boolean = False): TArray<string>;
-function FilesContentEqual(const ALeft, ARight: string): Boolean;
+function FilesContentEqual(const ALeft, ARight: string;
+  const AProgress: ISyncProgress = nil): Boolean;
 
 function SyncItemLeftURI(const AItem: TSyncItem): string;
 function SyncItemRightURI(const AItem: TSyncItem): string;
@@ -113,7 +154,7 @@ implementation
 
 uses
   System.JSON, System.Generics.Collections, System.Generics.Defaults,
-  uConfigLocation, uStrings;
+  System.Math, uConfigLocation, uStrings;
 
 const
   cDirSyncStateFile = 'dirsync-state.json';
@@ -174,7 +215,8 @@ begin
       Inc(Result);
 end;
 
-function FilesContentEqual(const ALeft, ARight: string): Boolean;
+function FilesContentEqual(const ALeft, ARight: string;
+  const AProgress: ISyncProgress): Boolean;
 const
   cChunk = 64 * 1024;
 var
@@ -208,6 +250,12 @@ begin
             Exit(False);
           if NL = 0 then
             Exit(True);
+          if AProgress <> nil then
+          begin
+            AProgress.NoteBytes(NL);
+            if AProgress.Cancelled then
+              Exit(False);
+          end;
           if not CompareMem(@BL[0], @BR[0], NL) then
             Exit(False);
         until False;
@@ -327,16 +375,21 @@ begin
 end;
 
 procedure CollectFiles(const ADir, ARelBase: string;
-  APaths: TDictionary<string, string>);
+  APaths: TDictionary<string, string>; const AProgress: ISyncProgress = nil;
+  const AFilter: ISyncFilter = nil);
 var
   SR: TSearchRec;
   Code: Integer;
   ChildDir, ChildRel: string;
 begin
+  if AProgress <> nil then
+    AProgress.NoteDir(ADir);
   Code := FindFirst(SafeCombinePath(ADir, '*'), faAnyFile, SR);
   try
     while Code = 0 do
     begin
+      if (AProgress <> nil) and AProgress.Cancelled then
+        Exit;
       if (SR.Name <> '.') and (SR.Name <> '..') then
       begin
         if ARelBase = '' then
@@ -345,11 +398,21 @@ begin
           ChildRel := ARelBase + PathDelim + SR.Name;
         if (SR.Attr and faDirectory) <> 0 then
         begin
-          ChildDir := SafeCombinePath(ADir, SR.Name);
-          CollectFiles(ChildDir, ChildRel, APaths);
+          if (AFilter = nil) or not AFilter.Skip(ChildRel, True,
+             (SR.Attr and faSymLink) <> 0) then
+          begin
+            ChildDir := SafeCombinePath(ADir, SR.Name);
+            if AFilter <> nil then
+              AFilter.EnterDir(ChildRel, ChildDir);
+            CollectFiles(ChildDir, ChildRel, APaths, AProgress, AFilter);
+          end;
         end
-        else
+        else if (AFilter = nil) or not AFilter.Skip(ChildRel, False, False) then
+        begin
           APaths.AddOrSetValue(ChildRel, SafeCombinePath(ADir, SR.Name));
+          if AProgress <> nil then
+            AProgress.NoteFile;
+        end;
       end;
       Code := FindNext(SR);
     end;
@@ -387,6 +450,205 @@ begin
   for I := 0 to High(ASnapshot) do
     if ASnapshot[I].RelPath <> '' then
       Result.AddOrSetValue(ASnapshot[I].RelPath, ASnapshot[I]);
+end;
+
+type
+  TSyncProgress = class(TInterfacedObject, ISyncProgress)
+  private
+    FLock: TCriticalSection;
+    FInfo: TSyncProgressInfo;
+    FCancelled: Integer;
+    FQueued: Boolean;
+    FLastTick: UInt64;
+    FOnChanged: TProc;
+    procedure Touch;
+  public
+    constructor Create;
+    destructor Destroy; override;
+    procedure Cancel;
+    function Cancelled: Boolean;
+    function Snapshot: TSyncProgressInfo;
+    procedure NoteDir(const ADir: string);
+    procedure NoteFile;
+    procedure BeginCompare(ATotal: Int64);
+    procedure NoteCompared(const ARel: string);
+    procedure NoteBytes(AValue: Int64);
+    procedure SetOnChanged(const AValue: TProc);
+  end;
+
+constructor TSyncProgress.Create;
+begin
+  inherited Create;
+  FLock := TCriticalSection.Create;
+  FInfo := Default(TSyncProgressInfo);
+end;
+
+destructor TSyncProgress.Destroy;
+begin
+  FLock.Free;
+  inherited;
+end;
+
+// Wakes the owner at most every 150 ms; a wake-up already queued absorbs the
+// updates that arrive before it runs.
+procedure TSyncProgress.Touch;
+var
+  Fire: Boolean;
+  Keep: ISyncProgress;
+begin
+  FLock.Enter;
+  try
+    Fire := Assigned(FOnChanged) and not FQueued and
+      (TThread.GetTickCount64 - FLastTick >= 150);
+    if Fire then
+    begin
+      FQueued := True;
+      FLastTick := TThread.GetTickCount64;
+    end;
+  finally
+    FLock.Leave;
+  end;
+  if not Fire then
+    Exit;
+  Keep := Self;
+  TThread.Queue(nil,
+    procedure
+    var
+      Handler: TProc;
+    begin
+      FLock.Enter;
+      try
+        FQueued := False;
+        Handler := FOnChanged;
+      finally
+        FLock.Leave;
+      end;
+      if Assigned(Handler) then
+        Handler();
+      Keep := nil;
+    end);
+end;
+
+procedure TSyncProgress.Cancel;
+begin
+  TInterlocked.Exchange(FCancelled, 1);
+end;
+
+function TSyncProgress.Cancelled: Boolean;
+begin
+  Result := TInterlocked.CompareExchange(FCancelled, 0, 0) <> 0;
+end;
+
+function TSyncProgress.Snapshot: TSyncProgressInfo;
+begin
+  FLock.Enter;
+  try
+    Result := FInfo;
+  finally
+    FLock.Leave;
+  end;
+end;
+
+procedure TSyncProgress.NoteDir(const ADir: string);
+begin
+  FLock.Enter;
+  try
+    Inc(FInfo.Dirs);
+    FInfo.Current := ADir;
+  finally
+    FLock.Leave;
+  end;
+  Touch;
+end;
+
+procedure TSyncProgress.NoteFile;
+begin
+  FLock.Enter;
+  try
+    Inc(FInfo.Files);
+  finally
+    FLock.Leave;
+  end;
+  Touch;
+end;
+
+procedure TSyncProgress.BeginCompare(ATotal: Int64);
+begin
+  FLock.Enter;
+  try
+    FInfo.Stage := ssComparing;
+    FInfo.Total := ATotal;
+    FInfo.Done := 0;
+  finally
+    FLock.Leave;
+  end;
+  Touch;
+end;
+
+procedure TSyncProgress.NoteCompared(const ARel: string);
+begin
+  FLock.Enter;
+  try
+    Inc(FInfo.Done);
+    FInfo.Current := ARel;
+  finally
+    FLock.Leave;
+  end;
+  Touch;
+end;
+
+procedure TSyncProgress.NoteBytes(AValue: Int64);
+begin
+  FLock.Enter;
+  try
+    Inc(FInfo.Bytes, AValue);
+  finally
+    FLock.Leave;
+  end;
+  Touch;
+end;
+
+procedure TSyncProgress.SetOnChanged(const AValue: TProc);
+begin
+  FLock.Enter;
+  try
+    FOnChanged := AValue;
+  finally
+    FLock.Leave;
+  end;
+end;
+
+function NewSyncProgress: ISyncProgress;
+begin
+  Result := TSyncProgress.Create;
+end;
+
+function FormatSyncProgress(const AInfo: TSyncProgressInfo;
+  AByContent: Boolean): string;
+begin
+  if AInfo.Stage = ssScanning then
+    Exit(T('ui.dirSync.scanning', 'Scanning: %d files in %d folders',
+      [AInfo.Files, AInfo.Dirs]));
+  Result := T('ui.dirSync.comparingFiles', 'Comparing: %d of %d files',
+    [AInfo.Done, AInfo.Total]);
+  if AByContent and (AInfo.Bytes >= 1024 * 1024) then
+    Result := Result + T('ui.dirSync.readMb', ' (%d MB read)',
+      [AInfo.Bytes div (1024 * 1024)]);
+end;
+
+function SyncProgressPercent(const AInfo: TSyncProgressInfo): Integer;
+begin
+  if (AInfo.Stage <> ssComparing) or (AInfo.Total <= 0) then
+    Exit(-1);
+  Result := Integer((AInfo.Done * 100) div AInfo.Total);
+end;
+
+function SyncProgressBadge(const AInfo: TSyncProgressInfo): string;
+begin
+  if AInfo.Stage = ssScanning then
+    Result := IntToStr(AInfo.Files)
+  else
+    Result := IntToStr(Max(SyncProgressPercent(AInfo), 0)) + '%';
 end;
 
 function CompareDirsOneWay(const ASrcRoot, ADstRoot: string;
@@ -455,14 +717,15 @@ end;
 // snapshot-driven newer-or-conflict / mtime fallback when there's no snapshot).
 procedure ClassifyTwoWaySyncPair(const ARel, ALeftPath, ARightPath: string;
   ALeftExists, ARightExists, AHasSnap: Boolean; const ASnap: TSyncSnapshotEntry;
-  AByContent: Boolean; var ACopies, AConflicts: TArray<TSyncItem>);
+  AByContent: Boolean; var ACopies, AConflicts: TArray<TSyncItem>;
+  const AProgress: ISyncProgress = nil);
 var
   LeftChanged, RightChanged: Boolean;
 
   procedure MaybeContentDiff;
   begin
     if AByContent and ALeftExists and ARightExists and
-       not FilesContentEqual(ALeftPath, ARightPath) then
+       not FilesContentEqual(ALeftPath, ARightPath, AProgress) then
       AppendSyncItem(ACopies, MakeSyncItem(ARel, ALeftPath, ARightPath, srContentDiff));
   end;
 
@@ -518,7 +781,8 @@ end;
 
 function CompareDirsTwoWay(const ASrcRoot, ADstRoot: string;
   const ASnapshot: TArray<TSyncSnapshotEntry>;
-  AByContent: Boolean): TArray<TSyncItem>;
+  AByContent: Boolean; const AProgress: ISyncProgress;
+  const AFilter: ISyncFilter): TArray<TSyncItem>;
 var
   Left, Right, Rel, LeftPath, RightPath: string;
   LeftMap, RightMap: TDictionary<string, string>;
@@ -547,16 +811,27 @@ begin
     Keys.CaseSensitive := False;
     Keys.Duplicates := dupIgnore;
     Keys.Sorted := True;
-    CollectFiles(Left, '', LeftMap);
-    if TDirectory.Exists(Right) then
-      CollectFiles(Right, '', RightMap);
+    CollectFiles(Left, '', LeftMap, AProgress, AFilter);
+    if (AProgress = nil) or not AProgress.Cancelled then
+      if TDirectory.Exists(Right) then
+        CollectFiles(Right, '', RightMap, AProgress, AFilter);
+    if (AProgress <> nil) and AProgress.Cancelled then
+      Exit;
     for Rel in LeftMap.Keys do
       Keys.Add(Rel);
     for Rel in RightMap.Keys do
       Keys.Add(Rel);
+    if AProgress <> nil then
+      AProgress.BeginCompare(Keys.Count);
 
     for I := 0 to Keys.Count - 1 do
     begin
+      if AProgress <> nil then
+      begin
+        if AProgress.Cancelled then
+          Exit;
+        AProgress.NoteCompared(Keys[I]);
+      end;
       Rel := Keys[I];
       LeftExists := LeftMap.TryGetValue(Rel, LeftPath);
       RightExists := RightMap.TryGetValue(Rel, RightPath);
@@ -567,9 +842,11 @@ begin
         RightPath := SafeCombinePath(Right, Rel);
 
       ClassifyTwoWaySyncPair(Rel, LeftPath, RightPath, LeftExists, RightExists,
-        HasSnap, Snap, AByContent, Copies, Conflicts);
+        HasSnap, Snap, AByContent, Copies, Conflicts, AProgress);
     end;
 
+    if (AProgress <> nil) and AProgress.Cancelled then
+      Exit;
     SetLength(Result, Length(Copies) + Length(Conflicts));
     for I := 0 to High(Copies) do
       Result[I] := Copies[I];
@@ -585,7 +862,8 @@ end;
 
 procedure CompareDirsTwoWayAsync(const ASrcRoot, ADstRoot: string;
   const ASnapshot: TArray<TSyncSnapshotEntry>; AOnDone: TSyncCompareDone;
-  AByContent: Boolean);
+  AByContent: Boolean; const AProgress: ISyncProgress;
+  const AFilter: ISyncFilter);
 begin
   if not Assigned(AOnDone) then
     Exit;
@@ -600,7 +878,8 @@ begin
       Snap := Copy(ASnapshot);
       SetLength(Items, 0);
       try
-        Items := CompareDirsTwoWay(ASrcRoot, ADstRoot, Snap, AByContent);
+        Items := CompareDirsTwoWay(ASrcRoot, ADstRoot, Snap, AByContent, AProgress,
+          AFilter);
       except
         on E: Exception do
           Err := E.Message;
