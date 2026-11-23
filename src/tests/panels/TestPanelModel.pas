@@ -22,6 +22,7 @@ type
     [Test] procedure TestSlowHintDoesNotFireForAFastAnswer;
     [Test] procedure TestSlowHintIgnoredAfterNavigatingAway;
     [Test] procedure TestCalculatedFolderSizeSurvivesReload;
+    [Test] procedure TestCalculatedFolderSizeReturnsAfterNavigatingBack;
     [Test] procedure TestSortByLocalFolderPluginColumn;
     [Test] procedure TestNeedleFilterKeepsMatchingNames;
   end;
@@ -403,6 +404,41 @@ begin
   Assert.IsTrue(FolderRow.Size < 0, 'sizes are not carried into another directory');
 end;
 
+procedure TestCalculatedFolderSizeReturnsAfterNavigatingBack;
+var
+  Model: IPanelModel;
+  FolderUri: string;
+
+  function FolderRow: TPanelRow;
+  var
+    J: Integer;
+  begin
+    for J := 0 to Model.ItemCount - 1 do
+      if Model.GetRow(J).IsDirectory and not Model.GetRow(J).IsParent then
+        Exit(Model.GetRow(J));
+    Result := Default(TPanelRow);
+    Result.Size := -2;
+  end;
+
+  procedure OpenAndWait(const AURI: string);
+  begin
+    Model.Open(AURI);
+    Assert.IsTrue(WaitUntil(function: Boolean begin Result := not Model.IsLoading; end, 5000),
+      'listing of ' + AURI + ' finishes');
+  end;
+
+begin
+  Model := TFilePanelModel.Create(TOneFolderVfs.Create);
+  OpenAndWait('file:///C:/cachehome');
+  FolderUri := FolderRow.URI;
+  Assert.IsTrue(Model.SetRowSize(FolderUri, 777, '777B'), 'size applied');
+  OpenAndWait('file:///C:/cacheaway');
+  Assert.IsTrue(FolderRow.Size < 0, 'the other directory has no size');
+  OpenAndWait('file:///C:/cachehome');
+  Assert.AreEqual<Int64>(777, FolderRow.Size, 'size comes back with the folder');
+  Assert.AreEqual('777B', FolderRow.SizeText, 'size text comes back too');
+end;
+
 procedure TestSlowHintIgnoredAfterNavigatingAway;
 var
   Model: IPanelModel;
@@ -449,6 +485,11 @@ end;
 procedure TTestPanelModel.TestNeedleFilterKeepsMatchingNames;
 begin
   TestPanelModel.TestNeedleFilterKeepsMatchingNames;
+end;
+
+procedure TTestPanelModel.TestCalculatedFolderSizeReturnsAfterNavigatingBack;
+begin
+  TestPanelModel.TestCalculatedFolderSizeReturnsAfterNavigatingBack;
 end;
 
 procedure TTestPanelModel.TestCalculatedFolderSizeSurvivesReload;

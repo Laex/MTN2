@@ -179,6 +179,54 @@ uses
   System.JSON, System.Generics.Collections, uPanelColumns, uColorCoding, uMessageBus, uFileFind, uPanelPluginRegistry, uStrings,
   uPluginColumns;
 
+type
+  TKnownFolderSize = record
+    Size: Int64;
+    SizeText: string;
+    Modified: TDateTime;
+  end;
+
+var
+  // Folder sizes calculated earlier in this run, keyed by folder URI. An entry
+  // is used only while the folder's own modification time is unchanged, so a
+  // folder edited since is listed without a size again.
+  GKnownFolderSizes: TDictionary<string, TKnownFolderSize>;
+
+function KnownSizesMap: TDictionary<string, TKnownFolderSize>;
+begin
+  if GKnownFolderSizes = nil then
+    GKnownFolderSizes := TDictionary<string, TKnownFolderSize>.Create;
+  Result := GKnownFolderSizes;
+end;
+
+procedure NoteKnownFolderSize(const AURI: string; ASize: Int64;
+  const ASizeText: string; AModified: TDateTime);
+var
+  Known: TKnownFolderSize;
+begin
+  Known.Size := ASize;
+  Known.SizeText := ASizeText;
+  Known.Modified := AModified;
+  KnownSizesMap.AddOrSetValue(AURI, Known);
+end;
+
+procedure RestoreKnownFolderSizes(var ARows: TPanelRows);
+var
+  I: Integer;
+  Known: TKnownFolderSize;
+begin
+  if (GKnownFolderSizes = nil) or (GKnownFolderSizes.Count = 0) then
+    Exit;
+  for I := 0 to High(ARows) do
+    if ARows[I].IsDirectory and not ARows[I].IsParent and (ARows[I].Size < 0) and
+       GKnownFolderSizes.TryGetValue(ARows[I].URI, Known) and
+       (Known.Modified = ARows[I].ModificationTime) then
+    begin
+      ARows[I].Size := Known.Size;
+      ARows[I].SizeText := Known.SizeText;
+    end;
+end;
+
 function PanelRowToJson(const ARow: TPanelRow): string;
 var
   O: TJSONObject;
@@ -327,6 +375,7 @@ begin
   end
   else
     FRawRows := ARows;
+  RestoreKnownFolderSizes(FRawRows);
   FRowsURI := FURI;
   RebuildSortedRows;
   FLoading := False;
@@ -788,6 +837,9 @@ begin
     begin
       FRawRows[I].Size := ASize;
       FRawRows[I].SizeText := ASizeText;
+      if FRawRows[I].IsDirectory then
+        NoteKnownFolderSize(FRawRows[I].URI, ASize, ASizeText,
+          FRawRows[I].ModificationTime);
       Changed := True;
       Break;
     end;
@@ -803,5 +855,10 @@ begin
   NotifyChanged;
   Result := True;
 end;
+
+initialization
+
+finalization
+  GKnownFolderSizes.Free;
 
 end.

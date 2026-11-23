@@ -1,6 +1,7 @@
 {
   "dialogs": {
     "DIALOG_ABOUT": {
+      "undo": "撤销(&U)",
       "$title": "关于 MTN2",
       "lbl_sub": "高性能双面板文件管理器",
       "lbl_pty": "平台: Win64 | ConPty 持久 Shell",
@@ -1375,6 +1376,8 @@
     "multiRename.nothingSelected": "请先选择文件或文件夹",
     "multiRename.status": "待重命名 %d,不变 %d,有问题 %d",
     "multiRename.blocked": "请先修正标有 ! 的名称",
+    "multiRename.nothingToUndo": "没有可撤销的重命名",
+    "multiRename.undone": "已撤销: %d, 保持原样: %d",
     "multiRename.problemEmpty": "名称为空",
     "multiRename.problemInvalid": "名称无效",
     "multiRename.problemDuplicate": "名称重复",

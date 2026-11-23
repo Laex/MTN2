@@ -259,7 +259,7 @@ Im Dialog „Nach Maske auswählen“ wendet das Kontrollfeld „Ordner auswähl
 
 | Taste | Aktion |
 | --- | --- |
-| F3 | Datei ansehen; bei Ordnern – Größe der ausgewählten Ordner berechnen (Esc – abbrechen) |
+| F3 | Datei ansehen; bei Ordnern – Größe der ausgewählten Ordner berechnen, auf der Zeile `..` – aller Ordner des Panels; die Größen bleiben in der Spalte Größe, solange der Ordner unverändert ist (Esc – abbrechen) |
 | F4 | bearbeiten |
 | Shift+F4 | Datei erstellen |
 | F5 | kopieren |
@@ -329,6 +329,8 @@ Suchen und Ersetzen wirken auf den neuen Namen und die Erweiterung, die Groß-/K
 **Fehler.** Ein leerer, ungültiger, doppelter oder im Ordner bereits vergebener Name (auch von einem anderen Element der Auswahl) ist mit `!` markiert; solange einer übrig ist, tut **Umbenennen** nichts.
 
 Es lassen sich nur Elemente eines Ordners wählen. Das Umbenennen läuft wie ein Verschieben als Hintergrundauftrag.
+
+**Rückgängig.** Die Schaltfläche **Rückgängig** im Dialog nimmt den letzten Durchlauf zurück: Jedes Element, dessen neuer Name noch existiert und dessen alter Name frei ist, erhält als Hintergrundauftrag seinen alten Namen; die übrigen bleiben unverändert. Gemerkt wird nur der letzte Durchlauf auf lokalen Laufwerken; nach dem Zurücksetzen wird der Eintrag gelöscht.
 
 ---
 

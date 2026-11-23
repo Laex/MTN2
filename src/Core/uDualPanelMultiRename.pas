@@ -38,6 +38,7 @@ type
     FOnStart: TMultiRenameStartProc;
     FOnNotify: TProc;
     FOnAreaCols: TMultiRenameAreaFn;
+    FOnUndo: TProc;
     function ItemInfo(const ARow: TPanelRow; const AName, AParent: string): TRenameItemInfo;
     function ReadRules: TMultiRenameRules;
     function RulesSignature(const ARules: TMultiRenameRules): string;
@@ -55,6 +56,9 @@ type
     /// <summary>Recomputes the preview after a field changed.</summary>
     procedure NotifyDialogChanged;
     function DispatchCommand(const AControlId: string): Boolean;
+    /// <summary>Called, after the dialog closed, when the user asks to undo the
+    /// last batch.</summary>
+    property OnUndo: TProc read FOnUndo write FOnUndo;
   end;
 
 implementation
@@ -338,6 +342,13 @@ begin
   if DialogCmdIsReject(AControlId) then
   begin
     FDialog.Close;
+    Exit;
+  end;
+  if SameText(AControlId, 'undo') then
+  begin
+    FDialog.Close;
+    if Assigned(FOnUndo) then
+      FOnUndo();
     Exit;
   end;
   if not DialogCmdIsAccept(AControlId) then

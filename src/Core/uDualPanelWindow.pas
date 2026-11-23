@@ -1019,6 +1019,7 @@ type
     procedure BeginChecksums;
     procedure BeginMultiRename;
     procedure StartMultiRenameJob(const ASources, ADests: TArray<string>);
+    procedure HostUndoMultiRename;
     procedure StartChecksumJob(AAlgoIndex: Integer; AVerify: Boolean);
     procedure ShowChecksumResult(const ATitle, AStatus: string;
       const ALines: TArray<string>; AVerify: Boolean);
@@ -1687,7 +1688,7 @@ uses
   uFindRouter,
   uPlatformInfo, uPlatformProcess, uPlatformFolders, uPlatformPaths, uImageInfo, uFileClip, uWinFileDragDrop, uStrings, uFileHistory, uChromeRows,
   uExternalTools, uEnvProfiles, uDialogHistory, uChecksums, uKeyChord, uConsoleSettings, uZipVfs,
-  uCharWidth, uConfigMode, uPluginChrome, uColorPickerControl;
+  uCharWidth, uConfigMode, uPluginChrome, uColorPickerControl, uRenameJournal, uConfigLocation;
 
 const
   cLiveFilterHistory = 'livefilter';
@@ -3867,6 +3868,7 @@ begin
     begin
       Result := Area.Width;
     end);
+  FMultiRename.OnUndo := HostUndoMultiRename;
   FMenus := TMenuStubController.Create(Theme, NotifyChanged,
     HostUserMenuAction, HostPanelBounds, KeymapActiveSide);
   FMenus.SetOnSortSelect(HostMenuSortSelect);
@@ -9389,6 +9391,7 @@ var
   Panel: TPanelState;
   Side: TPanelSide;
   Targets: TArray<string>;
+  I: Integer;
 begin
   if not GetActiveRow(Ws, Panel, Tab, Rows, Row, Idx) then
     Exit;
@@ -9398,10 +9401,22 @@ begin
   if Length(Targets) = 0 then
   begin
     Row := Rows[Idx];
-    if (not PanelRowIsDirectory(Row)) or Row.IsParent or (Row.URI = '') then
-      Exit;
-    SetLength(Targets, 1);
-    Targets[0] := Row.URI;
+    if Row.IsParent then
+    begin
+      // On the ".." row: every folder of the panel.
+      for I := 0 to High(Rows) do
+        if PanelRowIsDirectory(Rows[I]) and not Rows[I].IsParent and (Rows[I].URI <> '') then
+          Targets := Targets + [Rows[I].URI];
+      if Length(Targets) = 0 then
+        Exit;
+    end
+    else
+    begin
+      if (not PanelRowIsDirectory(Row)) or (Row.URI = '') then
+        Exit;
+      SetLength(Targets, 1);
+      Targets[0] := Row.URI;
+    end;
   end;
 
   if Assigned(FFolderSizeMgr) then
@@ -9498,6 +9513,11 @@ var
 begin
   if not GetActiveRow(Ws, Panel, Tab, Rows, Row, Idx) then
     Exit;
+  if Row.IsParent and not AEdit then
+  begin
+    CalculateFolderSizeUnderCursor;
+    Exit;
+  end;
   if Row.IsParent or (Row.URI = '') then
     Exit;
   if (not AEdit) and TabHasSelectedDirectories(Tab, Rows) then
@@ -10041,15 +10061,77 @@ end;
 // Conflicts are ruled out by the dialog, so the batch is a plain move of
 // each item to its new name in the same folder.
 procedure TDualPanelWindow.StartMultiRenameJob(const ASources, ADests: TArray<string>);
+var
+  OldPaths, NewPaths: TArray<string>;
+  I: Integer;
 begin
   if not CanBeginAnotherJob then
     Exit;
+  // Only batches on local disks can be undone later.
+  OldPaths := FileUrisToLocalPaths(ASources);
+  if Length(OldPaths) = Length(ASources) then
+  begin
+    SetLength(NewPaths, Length(ADests));
+    for I := 0 to High(ADests) do
+      NewPaths[I] := FileUriToPath(ADests[I]);
+    try
+      SaveRenameJournal(GetConfigFilePath(cRenameJournalFile), OldPaths, NewPaths);
+    except
+      // A journal that cannot be written only costs the undo.
+    end;
+  end
+  else
+    ClearRenameJournal(GetConfigFilePath(cRenameJournalFile));
   RunAfterShellRelease(ASources,
     procedure
     begin
       if not CanBeginAnotherJob then
         Exit;
       FJobs.BeginJobPairs(ASources, ADests, pjkMove, jomAsk);
+      NotifyChanged;
+    end);
+end;
+
+procedure TDualPanelWindow.HostUndoMultiRename;
+var
+  Olds, News, From, Back, FromUris, BackUris: TArray<string>;
+  Skipped, I: Integer;
+  JournalFile: string;
+begin
+  if not CanBeginAnotherJob then
+    Exit;
+  JournalFile := GetConfigFilePath(cRenameJournalFile);
+  if not LoadRenameJournal(JournalFile, Olds, News) then
+  begin
+    FToast.Show(T('ui.multiRename.nothingToUndo', 'Nothing to undo'), '', tkInfo);
+    Exit;
+  end;
+  Skipped := PlanRenameUndo(Olds, News,
+    function(APath: string): Boolean
+    begin
+      Result := TFile.Exists(APath) or TDirectory.Exists(APath);
+    end, From, Back);
+  ClearRenameJournal(JournalFile);
+  if Length(From) = 0 then
+  begin
+    FToast.Show(T('ui.multiRename.nothingToUndo', 'Nothing to undo'), '', tkInfo);
+    Exit;
+  end;
+  SetLength(FromUris, Length(From));
+  SetLength(BackUris, Length(From));
+  for I := 0 to High(From) do
+  begin
+    FromUris[I] := PathToFileUri(From[I]);
+    BackUris[I] := PathToFileUri(Back[I]);
+  end;
+  FToast.Show(Format(T('ui.multiRename.undone', 'Undone: %d, left as is: %d'),
+    [Length(From), Skipped]), '', tkInfo);
+  RunAfterShellRelease(FromUris,
+    procedure
+    begin
+      if not CanBeginAnotherJob then
+        Exit;
+      FJobs.BeginJobPairs(FromUris, BackUris, pjkMove, jomAsk);
       NotifyChanged;
     end);
 end;

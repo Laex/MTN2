@@ -2,6 +2,7 @@
   "//": "Deutsche Oberflaechentexte. Fehlende Schluessel fallen auf den englischen Standardtext zurueck.",
   "dialogs": {
     "DIALOG_ABOUT": {
+      "undo": "&Rückgängig",
       "$title": "Über MTN2",
       "lbl_sub": "Leistungsstarker Dual-Panel-Dateimanager",
       "lbl_pty": "Plattform: Win64 | ConPty-Dauershell",
@@ -1376,6 +1377,8 @@
     "multiRename.nothingSelected": "Zuerst Dateien oder Ordner auswählen",
     "multiRename.status": "%d umzubenennen, %d unverändert, %d mit Problem",
     "multiRename.blocked": "Zuerst die mit ! markierten Namen korrigieren",
+    "multiRename.nothingToUndo": "Nichts rückgängig zu machen",
+    "multiRename.undone": "Zurückgesetzt: %d, unverändert: %d",
     "multiRename.problemEmpty": "leerer Name",
     "multiRename.problemInvalid": "ungültiger Name",
     "multiRename.problemDuplicate": "Name doppelt",

@@ -369,7 +369,7 @@ The column modes menu lists the named column sets after the preset modes. Choosi
 
 | Key | Action |
 | --- | --- |
-| F3 | view a file; on folders – calculate the size of the selected folders (Esc – cancel) |
+| F3 | view a file; on folders – calculate the size of the selected folders, on the `..` row – of all folders of the panel; the sizes stay in the Size column while the folder is unchanged (Esc – cancel) |
 | F4 | edit |
 | Shift+F4 | create a file |
 | F5 | copy |
@@ -439,6 +439,10 @@ Search and Replace work on the new name and extension, and the letter case comes
 **Errors.** A name that is empty, invalid, used twice or already taken in the folder (also by another item of the batch) is marked with `!`, and **Rename** does nothing while any is left.
 
 Only items of one folder can be chosen. The renaming runs as a background job, like a move.
+
+**Undo.** The dialog's **Undo last** button takes the previous batch back: every item whose new name still exists and whose old name is free goes back to its old name, as a background job; the rest are left as they are. Only the last batch on local disks is remembered, and undoing it clears the record.
+
+**Undo.** The dialog's **Undo last** button takes the previous batch back: every item whose new name still exists and whose old name is free goes back to its old name, as a background job; the rest are left as they are. Only the last batch on local disks is remembered, and undoing it clears the record.
 
 ---
 

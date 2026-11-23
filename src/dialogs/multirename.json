@@ -224,6 +224,15 @@
     },
     {
       "type": "button",
+      "id": "undo",
+      "text": "&Undo last",
+      "col": 1,
+      "row": 25,
+      "width": 17,
+      "height": 1
+    },
+    {
+      "type": "button",
       "id": "ok",
       "text": "Rename",
       "default": true,

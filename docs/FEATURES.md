@@ -51,10 +51,11 @@ A short overview of the features; details are in the help (F1), the other docume
 - **Safe copying** – data is written to a temporary `name.mtnpart` and renamed after a complete write; copying in 256 KB blocks.
 - **Error resilience** – automatic read retries, per-file "Skip" and "Skip all", confirmation before aborting an operation.
 - **Administrator helper** – on "Access denied" the "Admin" button repeats the copy, move, delete, folder creation or extraction with a single UAC prompt.
+- **Folder sizes** – `F3` on a folder (or the selected folders) calculates the size into the Size column, `F3` on the `..` row does it for all folders of the panel; the sizes are kept while a folder is unchanged.
 - **Folder merge** – copying or moving a folder onto an existing one merges the contents; the "File already exists" prompt offers overwrite, skip, rename, append, overwrite if newer, overwrite if the size differs and automatic rename (`name (2).ext`); the same rules can be picked in the copy dialog in advance.
 - **Verified copy** – the "Verify after copying" option compares every copied file with its source before it is kept; a difference is an error of that file with the usual retry / skip.
 - **Far-style delete** – `F8` / `Del` to the Recycle Bin, `Shift+Del` permanently, `Shift+F8` only the item under the cursor; if the Recycle Bin fails, permanent deletion is offered.
-- **Multi-rename** – `Ctrl+Alt+N`: `[N]`, `[E]`, `[C]` masks, date, parent, size and metadata tags, text replacement and regular expressions, case changes, preview with conflict checks.
+- **Multi-rename** – `Ctrl+Alt+N`: `[N]`, `[E]`, `[C]` masks, date, parent, size and metadata tags, text replacement and regular expressions, case changes, preview with conflict checks; "Undo last" in the dialog takes the previous batch back.
 - **Attributes** – `Ctrl+A`: three-state check boxes for a group of files, extended NTFS attributes, owner, dates; on Linux – permissions, owner and `chattr` flags.
 - **Link creation** – `Alt+F6`: a symbolic link, junction or hard link depending on rights and source.
 - **Link copying** – symbolic links and junctions are copied as links, their contents only on request.

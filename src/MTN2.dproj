@@ -220,6 +220,7 @@
         <DCCReference Include="Core\uConfigLocation.pas"/>
         <DCCReference Include="Core\uFolderHistory.pas"/>
         <DCCReference Include="Core\uFolderFrecent.pas"/>
+        <DCCReference Include="Core\uRenameJournal.pas"/>
         <DCCReference Include="Core\uRowDecorations.pas"/>
         <DCCReference Include="Core\uPluginColumns.pas"/>
         <DCCReference Include="Core\uPluginSaver.pas"/>

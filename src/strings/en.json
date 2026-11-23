@@ -4,6 +4,7 @@
 
   "dialogs": {
     "DIALOG_ABOUT": {
+      "undo": "&Undo last",
       "$title": "About MTN2",
       "lbl_sub": "High-Performance Dual Panel File Manager",
       "lbl_pty": "Platform: Win64 | ConPty Persistent Shell",
@@ -1382,6 +1383,8 @@
     "multiRename.nothingSelected": "Select files or folders first",
     "multiRename.status": "%d to rename, %d unchanged, %d with a problem",
     "multiRename.blocked": "Fix the names marked with ! first",
+    "multiRename.nothingToUndo": "Nothing to undo",
+    "multiRename.undone": "Undone: %d, left as is: %d",
     "multiRename.problemEmpty": "empty name",
     "multiRename.problemInvalid": "invalid name",
     "multiRename.problemDuplicate": "same name twice",

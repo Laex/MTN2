@@ -1,6 +1,7 @@
 {
   "dialogs": {
     "DIALOG_ABOUT": {
+      "undo": "&Откат",
       "$title": "О программе MTN2",
       "lbl_sub": "Высокопроизводительный двухпанельный файловый менеджер",
       "lbl_pty": "Платформа: Win64 | Постоянная оболочка ConPty",
@@ -1379,6 +1380,8 @@
     "multiRename.nothingSelected": "Сначала выделите файлы или папки",
     "multiRename.status": "К переименованию: %d, без изменений: %d, с ошибкой: %d",
     "multiRename.blocked": "Сначала исправьте имена, отмеченные знаком !",
+    "multiRename.nothingToUndo": "Нечего откатывать",
+    "multiRename.undone": "Возвращено: %d, оставлено как есть: %d",
     "multiRename.problemEmpty": "пустое имя",
     "multiRename.problemInvalid": "недопустимое имя",
     "multiRename.problemDuplicate": "одинаковое имя",
