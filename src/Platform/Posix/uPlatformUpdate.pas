@@ -134,15 +134,16 @@ function PlatformMoveFile(const ASource, ADest: string; AReplace: Boolean;
   out AError: string): Boolean;
 begin
   AError := '';
-  if (not AReplace) and TFile.Exists(ADest) then
+  if (not AReplace) and (TFile.Exists(ADest) or TDirectory.Exists(ADest)) then
   begin
     AError := SysErrorMessage(EEXIST);
     Exit(False);
   end;
-  // rename() replaces an existing destination in one step, so a reader never
-  // sees a missing or half-written file; it only fails across volumes.
-  if AReplace and (c_rename(MarshaledAString(UTF8String(ASource)),
-    MarshaledAString(UTF8String(ADest))) = 0) then
+  // rename() moves a file or a folder and, with AReplace, replaces an existing
+  // destination in one step, so a reader never sees a missing or half-written
+  // file; it only fails across volumes.
+  if c_rename(MarshaledAString(UTF8String(ASource)),
+    MarshaledAString(UTF8String(ADest))) = 0 then
     Exit(True);
   try
     if AReplace and TFile.Exists(ADest) then

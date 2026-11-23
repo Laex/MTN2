@@ -6,6 +6,12 @@ This file describes what changes for the user from version to version: new featu
 
 ## Unreleased
 
+## Dev v0.5.11.15 – 2026-11-23
+
+### Fixed
+
+- On Linux, replacing an existing folder on copy works again instead of failing with "file not found".
+
 ## Dev v0.5.11.14 – 2026-11-23
 
 ### Fixed
