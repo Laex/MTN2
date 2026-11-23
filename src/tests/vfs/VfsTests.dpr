@@ -19,6 +19,7 @@ uses
   TestJobBackgroundNotice in 'TestJobBackgroundNotice.pas',
   TestCreateLink in 'TestCreateLink.pas',
   TestDeleteErrorResolver in 'TestDeleteErrorResolver.pas',
+  TestDeleteLinks in 'TestDeleteLinks.pas',
   TestDeleteProgress in 'TestDeleteProgress.pas',
   TestDirWatchSlowDrive in 'TestDirWatchSlowDrive.pas',
   TestDriveInfo in 'TestDriveInfo.pas',

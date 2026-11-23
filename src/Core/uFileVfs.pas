@@ -1602,10 +1602,12 @@ procedure CopyDeleteMove(const ASrc, ADst, AFromURI: string; AWasDirectory: Bool
   ACancel: IJobCancelToken; AOnProgress: TVfsProgressCallback;
   AOverwrite, APreserve: Boolean; var AErr: TVfsError);
 var
-  DoneBytes, TotalBytes: Int64;
+  DoneBytes, TotalBytes, DeleteDone: Int64;
   AnySkipped, DestWasDir: Boolean;
+  DeleteErr: TVfsError;
 begin
   AnySkipped := False;
+  DeleteErr := TVfsError.Ok;
   TotalBytes := EstimateTreeBytes(ASrc, ACancel, AOnProgress);
   if TotalBytes <= 0 then
     TotalBytes := 1;
@@ -1638,7 +1640,15 @@ begin
     Exit;
   try
     if AWasDirectory then
-      TDirectory.Delete(WinApiPath(ASrc), True)
+    begin
+      // The copy is verified, so the source goes regardless of a cancel
+      // request: stopping half way would leave a duplicate tree behind. A link
+      // inside the tree is removed as a node, never walked into.
+      DeleteDone := 0;
+      DeleteTree(ASrc, nil, nil, DeleteDone, 1, DeleteErr, AnySkipped);
+      if DeleteErr.Code <> vecOk then
+        AErr := DeleteErr;
+    end
     else
       TFile.Delete(WinApiPath(ASrc));
   except

@@ -6,6 +6,10 @@ This file describes what changes for the user from version to version: new featu
 
 ## Unreleased
 
+### Fixed
+
+- Permanent delete of a junction or a folder symbolic link on Windows no longer wipes the files in the folder it points at: only the link is removed. The same applies to links inside a deleted folder and to the source folder of a move between drives.
+
 ## Dev v0.5.11.10 – 2026-11-23
 
 ### New

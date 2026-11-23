@@ -209,8 +209,22 @@ begin
 end;
 
 function PlatformIsLinkNode(const APath: string): Boolean;
+const
+  cTagMountPoint = $A0000003;
+  cTagSymlink = $A000000C;
+var
+  H: THandle;
+  FD: TWin32FindData;
 begin
   Result := False;
+  H := FindFirstFile(PChar(WinApiPath(ExcludeTrailingPathDelimiter(APath))), FD);
+  if H = INVALID_HANDLE_VALUE then
+    Exit;
+  Winapi.Windows.FindClose(H);
+  // Other reparse points (cloud placeholders, deduplicated files) hold real
+  // content and are walked like a plain folder.
+  Result := ((FD.dwFileAttributes and FILE_ATTRIBUTE_REPARSE_POINT) <> 0) and
+    ((FD.dwReserved0 = cTagMountPoint) or (FD.dwReserved0 = cTagSymlink));
 end;
 
 procedure ClearDeleteBlockingAttr(const APath: string);
@@ -245,13 +259,20 @@ const
 var
   I: Integer;
   P: string;
-  Ok: Boolean;
+  Ok, IsDir: Boolean;
+  Attr: DWORD;
 begin
   P := ExtendedWinPath(APath);
+  // A link to a folder is removed with RemoveDirectory even when the caller
+  // treats it as a single non-directory node.
+  Attr := GetFileAttributes(PChar(P));
+  IsDir := AIsDir or ((Attr <> INVALID_FILE_ATTRIBUTES) and
+    ((Attr and FILE_ATTRIBUTE_DIRECTORY) <> 0) and
+    ((Attr and FILE_ATTRIBUTE_REPARSE_POINT) <> 0));
   for I := 1 to cMaxTries do
   begin
     ClearDeleteBlockingAttr(P);
-    if AIsDir then
+    if IsDir then
       Ok := RemoveDirectory(PChar(P))
     else
       Ok := DeleteFile(PChar(P));
