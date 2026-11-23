@@ -13,6 +13,7 @@ type
   TTestDialogValues = class
   public
     [Test] procedure EmptyIdIsLeftOut;
+    [Test] procedure BackslashesAndControlCharsSurviveTheRoundTrip;
     [Test] procedure CheckedRadioOfAGroupIsEmittedOnce;
     [Test] procedure ListMirrorOverridesSelectedIndex;
   end;
@@ -42,7 +43,7 @@ type
 implementation
 
 uses
-  System.SysUtils, System.UITypes,
+  System.SysUtils, System.UITypes, System.JSON,
   uDialogTypes, uDialogValues, uDialogV2Layout, uDialogLayout, uDialogListDraw,
   uDialogHost, uTerminalTypes, uThemeTypes;
 
@@ -72,6 +73,25 @@ begin
     Assert.IsTrue(Pos('"name":"visible"', Json) > 0, 'the host keeps a named input');
   finally
     Host.Free;
+  end;
+end;
+
+procedure TTestDialogValues.BackslashesAndControlCharsSurviveTheRoundTrip;
+const
+  cValue = 'C:\nonexistent\key "x"' + #9 + 'end\';
+var
+  Controls: TArray<TDialogControl>;
+  Root: TJSONValue;
+begin
+  SetLength(Controls, 1);
+  Controls[0] := MakeInput('path', cValue);
+  Root := TJSONObject.ParseJSONValue(DialogValuesJson(Controls, '', 0));
+  try
+    Assert.IsTrue(Root is TJSONObject, 'the values form a JSON object');
+    Assert.AreEqual(cValue, TJSONObject(Root).GetValue<string>('path'),
+      'an input value comes back unchanged');
+  finally
+    Root.Free;
   end;
 end;
 
@@ -274,5 +294,11 @@ begin
   Assert.IsTrue(Grid[1][7].CharValue = 'G', 'text stops one cell short of the bar');
   Assert.IsTrue(Grid[1][8].CharValue = #$25B2, 'the right column is the scrollbar');
 end;
+
+initialization
+  TDUnitX.RegisterTestFixture(TTestDialogValues);
+  TDUnitX.RegisterTestFixture(TTestDialogV2Layout);
+  TDUnitX.RegisterTestFixture(TTestDialogFlowLayout);
+  TDUnitX.RegisterTestFixture(TTestDialogListDraw);
 
 end.

@@ -6,6 +6,16 @@ This file describes what changes for the user from version to version: new featu
 
 ## Unreleased
 
+## Dev v0.5.11.10 – 2026-11-23
+
+### New
+
+- In the connection list of the network plugin, F5 and Shift+F5 copy a saved connection under a new name, and F6 renames it.
+
+### Fixed
+
+- Backslashes in dialog fields (for example a Windows path in the key file field of a connection) are kept as typed; before, a sequence such as backslash-n or backslash-t in a path turned into a control character and the value was saved broken.
+
 ## Dev v0.5.11.8 – 2026-11-23
 
 ### New

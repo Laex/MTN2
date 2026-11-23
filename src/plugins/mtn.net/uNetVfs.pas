@@ -28,7 +28,7 @@ implementation
 
 uses
   System.SysUtils, System.Classes, System.IOUtils, System.JSON, System.Generics.Collections,
-  System.SyncObjs, System.DateUtils, uVfsTypes, uNetTypes, uNetClient, uNetCurlApi;
+  System.SyncObjs, System.DateUtils, uVfsTypes, uNetTypes, uNetSessions, uNetClient, uNetCurlApi;
 
 const
   cPageEntries = 1500;
@@ -800,9 +800,49 @@ begin
   end;
 end;
 
+// The saved connection a URI names as an entry of the connection list:
+// net://name/ or net:///name.
+function SessionNameOfUri(const AUri: string; out AName: string): Boolean;
+var
+  T: TNetTarget;
+begin
+  AName := '';
+  if not ParseNetUri(AUri, T) or T.IsDirect then
+    Exit(False);
+  if (T.Authority <> '') and (T.Path = '/') then
+    AName := T.Authority
+  else if (T.Authority = '') and (T.Path <> '/') and (Pos('/', Copy(T.Path, 2, MaxInt)) = 0) then
+    AName := Copy(T.Path, 2, MaxInt);
+  Result := AName <> '';
+end;
+
+// Copy or rename of a connection list entry: the saved connection is
+// duplicated under the new name, or renamed.
+function TransferSession(const AFromName, AToName: string; AMove: Boolean): TNetResult;
+var
+  S: TNetSession;
+begin
+  if not GManager.FindSession(AFromName, S) then
+    Exit(nrNotFound);
+  if SameText(AFromName, AToName) then
+    Exit(nrAlreadyExists);
+  S.Name := SanitizeSessionName(AToName);
+  if S.Name = '' then
+    Exit(nrInvalid);
+  if AMove then
+  begin
+    if GManager.UpdateSession(AFromName, S) then
+      Exit(nrOk);
+  end
+  else if GManager.AddSession(S) then
+    Exit(nrOk);
+  Result := nrAlreadyExists;
+end;
+
 function VfsCopyItem(AFromURI, AToURI: PAnsiChar; AFlags: Int64; AUserData: Pointer;
   ACtx: PVfsOpContext): Int64; cdecl;
 var
+  FromName, ToName: string;
   From, To_, LocalPath: string;
   Op: TNetOp;
   R: TNetResult;
@@ -817,7 +857,9 @@ begin
     To_ := NormalizeNetUri(string(UTF8String(AToURI)));
     Overwrite := (AFlags and 1) <> 0;
     KeepTime := (AFlags and 2) <> 0;
-    if IsNetUri(From) and IsNetUri(To_) then
+    if SessionNameOfUri(From, FromName) and SessionNameOfUri(To_, ToName) then
+      R := TransferSession(FromName, ToName, False)
+    else if IsNetUri(From) and IsNetUri(To_) then
       R := CopyRemoteToRemote(From, To_, Overwrite, KeepTime, Op)
     else if IsNetUri(To_) then
     begin
@@ -882,6 +924,7 @@ var
   Overwrite: Boolean;
   SF, ST: TNetSession;
   PF, PT: string;
+  FromName, ToName: string;
 begin
   Op := MakeOp(ACtx);
   try
@@ -890,6 +933,8 @@ begin
     From := NormalizeNetUri(string(UTF8String(AFromURI)));
     To_ := NormalizeNetUri(string(UTF8String(AToURI)));
     Overwrite := (AFlags and 1) <> 0;
+    if SessionNameOfUri(From, FromName) and SessionNameOfUri(To_, ToName) then
+      Exit(Finish(ACtx, Op, TransferSession(FromName, ToName, True)));
     R := GManager.Resolve(From, SF, PF);
     if R = nrOk then
       R := GManager.Resolve(To_, ST, PT);

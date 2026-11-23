@@ -75,6 +75,7 @@ type
     [Test] procedure TestCopyRefusesToOverwriteWithoutTheFlag;
     [Test] procedure TestMoveInsideASessionRenames;
     [Test] procedure TestMoveBetweenSessionsGoesThroughALocalCopy;
+    [Test] procedure TestCopyAndMoveOfASessionRowDuplicateAndRename;
     [Test] procedure TestDeleteRemovesTreesAndSessions;
     [Test] procedure TestCreateDirectoryMakesParents;
     [Test] procedure TestExistsOfSessionRootNeedsNoConnection;
@@ -658,6 +659,28 @@ begin
   Assert.IsTrue(ExistsAt('net://ftp2/docs/mvx.txt', IsDir), 'a copy keeps the source');
   Delete_('net://ftp2/docs/mvx.txt');
   Delete_('net://ftp1/copy-of-mvx.txt');
+end;
+
+procedure TTestNetVfs.TestCopyAndMoveOfASessionRowDuplicateAndRename;
+var
+  Err: TVfsError;
+  S: TNetSession;
+  Before: Integer;
+begin
+  if FSkipReason <> '' then
+    Assert.Pass('SKIP: ' + FSkipReason);
+  Before := FManager.SessionCount;
+  Err := Copy_('net:///ftp2', 'net:///ftp2-copy', False);
+  Assert.IsTrue(Err.Code = vecOk, 'copy of a session row: ' + Err.Message);
+  Assert.AreEqual(Before + 1, FManager.SessionCount, 'the copy is a new saved connection');
+  Assert.IsTrue(FManager.FindSession('ftp2', S), 'the source stays');
+  Err := Copy_('net:///ftp2', 'net://ftp2-copy/', False);
+  Assert.IsFalse(Err.Code = vecOk, 'a name that is taken is refused');
+  Err := Move_('net:///ftp2-copy', 'net:///ftp2-renamed', False);
+  Assert.IsTrue(Err.Code = vecOk, 'rename of a session row: ' + Err.Message);
+  Assert.IsFalse(FManager.FindSession('ftp2-copy', S), 'the old name is gone');
+  Assert.IsTrue(FManager.FindSession('ftp2-renamed', S), 'the new name is there');
+  Assert.AreEqual(Before + 1, FManager.SessionCount);
 end;
 
 procedure TTestNetVfs.TestDeleteRemovesTreesAndSessions;

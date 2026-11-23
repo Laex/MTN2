@@ -36,10 +36,31 @@ begin
     Result := AControl.Items[Idx];
 end;
 
+// Backslash, quote and control characters are escaped: a Windows path or a
+// tab in an input must reach the JSON parser unchanged.
+function EscapeJsonValue(const AValue: string): string;
+var
+  C: Char;
+begin
+  Result := '';
+  for C in AValue do
+    case C of
+      '\': Result := Result + '\\';
+      '"': Result := Result + '\"';
+      #8: Result := Result + '\b';
+      #9: Result := Result + '\t';
+      #10: Result := Result + '\n';
+      #12: Result := Result + '\f';
+      #13: Result := Result + '\r';
+      #0..#7, #11, #14..#31: Result := Result + '\u' + IntToHex(Ord(C), 4);
+    else
+      Result := Result + C;
+    end;
+end;
+
 function JsonStringField(const AId, AValue: string): string;
 begin
-  Result := Format('"%s":"%s"', [AId,
-    StringReplace(AValue, '"', '\"', [rfReplaceAll])]);
+  Result := Format('"%s":"%s"', [AId, EscapeJsonValue(AValue)]);
 end;
 
 function ChoiceIndex(const AControls: TArray<TDialogControl>; AIndex: Integer;
