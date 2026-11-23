@@ -42,7 +42,7 @@ function ImportSettings(const AZipPath: string; out ACount: Integer;
 implementation
 
 uses
-  System.Classes, System.IOUtils, System.Zip, uConfigLocation;
+  System.Classes, System.IOUtils, System.Zip, uConfigLocation, uVfsUtils;
 
 const
   cFileNames: array[0..12] of string = (
@@ -85,18 +85,21 @@ function ExportSettingsFrom(const ASourceDir, AZipPath: string; out ACount: Inte
 var
   Zip: TZipFile;
   Marker: TBytesStream;
-  Name, Path, ThemesDir: string;
+  Name, Path, ThemesDir, Staged, SwapError: string;
 begin
   Result := False;
   ACount := 0;
   AError := '';
+  // The archive is built beside the target and swapped in at the end, so a
+  // failed export leaves an existing file as it was.
+  Staged := AZipPath + '.mtntmp';
   try
-    if TFile.Exists(AZipPath) then
-      TFile.Delete(AZipPath);
+    if TFile.Exists(Staged) then
+      TFile.Delete(Staged);
     ForceDirectories(ExtractFilePath(TPath.GetFullPath(AZipPath)));
     Zip := TZipFile.Create;
     try
-      Zip.Open(AZipPath, zmWrite);
+      Zip.Open(Staged, zmWrite);
       for Name in SettingsFileNames do
       begin
         Path := TPath.Combine(ASourceDir, Name);
@@ -126,10 +129,19 @@ begin
     finally
       Zip.Free;
     end;
-    Result := True;
+    Result := ReplacePathWith(Staged, AZipPath, SwapError);
+    if not Result then
+      AError := SwapError;
   except
     on E: Exception do
+    begin
       AError := E.Message;
+      try
+        if TFile.Exists(Staged) then
+          TFile.Delete(Staged);
+      except
+      end;
+    end;
   end;
 end;
 

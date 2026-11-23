@@ -2010,24 +2010,15 @@ begin
       AError := Format('UpdateItems failed: 0x%x', [Hr]);
       Exit;
     end;
-    if ExistsArc then
+    // One replacing rename: the archive keeps its name until the rebuilt one
+    // takes over, so a failure never leaves the path empty.
+    if not MoveFileEx(PChar(TmpPath), PChar(AArchivePath),
+      MOVEFILE_REPLACE_EXISTING or MOVEFILE_COPY_ALLOWED) then
     begin
-      if not System.SysUtils.DeleteFile(AArchivePath) then
-      begin
-        if FileExists(TmpPath) then
-          TFile.Delete(TmpPath);
-        AError := 'Cannot replace archive';
-        Exit;
-      end;
-    end;
-    try
-      TFile.Move(TmpPath, AArchivePath);
-    except
-      on E: Exception do
-      begin
-        AError := 'Cannot write archive: ' + E.Message;
-        Exit;
-      end;
+      if FileExists(TmpPath) then
+        TFile.Delete(TmpPath);
+      AError := 'Cannot replace archive: ' + SysErrorMessage(GetLastError);
+      Exit;
     end;
     Result := True;
   finally
@@ -2119,21 +2110,13 @@ begin
       AError := Format('UpdateItems failed: 0x%x', [Hr]);
       Exit;
     end;
-    if not System.SysUtils.DeleteFile(AArchivePath) then
+    if not MoveFileEx(PChar(TmpPath), PChar(AArchivePath),
+      MOVEFILE_REPLACE_EXISTING or MOVEFILE_COPY_ALLOWED) then
     begin
       if FileExists(TmpPath) then
         TFile.Delete(TmpPath);
-      AError := 'Cannot replace archive';
+      AError := 'Cannot replace archive: ' + SysErrorMessage(GetLastError);
       Exit;
-    end;
-    try
-      TFile.Move(TmpPath, AArchivePath);
-    except
-      on E: Exception do
-      begin
-        AError := 'Cannot write archive: ' + E.Message;
-        Exit;
-      end;
     end;
     Result := True;
   finally

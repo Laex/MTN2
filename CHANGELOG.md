@@ -6,8 +6,14 @@ This file describes what changes for the user from version to version: new featu
 
 ## Unreleased
 
+## Dev v0.5.11.14 – 2026-11-23
+
 ### Fixed
 
+- Updating a 7z archive (adding, deleting or editing files inside) replaces it in one step on Windows, so a failure no longer leaves the archive missing.
+- Saving a text file restores its previous content when the write fails half way, for example on a full disk.
+- Exporting settings to an existing file keeps that file if the export fails.
+- Installing, replacing and removing a plugin folder no longer follow a link into the folder it points at.
 - Deleting the root of a drive, a network share, the file system or an FTP/SFTP server is refused, including delete with administrator rights.
 - Replacing a folder on copy, cleaning up a failed copy and moving a folder from an SFTP session no longer follow links into the folders they point at.
 - Permanent delete of a junction or a folder symbolic link on Windows no longer wipes the files in the folder it points at: only the link is removed. The same applies to links inside a deleted folder and to the source folder of a move between drives.

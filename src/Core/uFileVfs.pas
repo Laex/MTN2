@@ -113,6 +113,9 @@ begin
     end);
 end;
 
+const
+  cWriteBackupLimit = 64 * 1024 * 1024; // larger files are rewritten without a safety copy
+
 procedure QueueProgress(AOnProgress: TVfsProgressCallback; ADone, ATotal: Int64;
   const AName: string; AItemDone: Int64 = 0; AItemTotal: Int64 = 0;
   const AItemSrcPath: string = ''; const AItemDstPath: string = '');
@@ -1876,7 +1879,7 @@ begin
       Err: TVfsError;
       {$WARN SYMBOL_PLATFORM OFF}
       {$WARN SYMBOL_PLATFORM ON}
-      Bytes: TBytes;
+      Bytes, Previous: TBytes;
       FS: TFileStream;
     begin
       Err := TVfsError.Ok;
@@ -1899,12 +1902,32 @@ begin
             if Err.Code = vecOk then
             begin
               Bytes := EncodeTextBytes(Text, Encoding);
-              FS := TFileStream.Create(WinApiPath(Path), fmCreate);
+              // The file is rewritten in place (links, rights and hard links
+              // stay), so keep its content to put back when the write fails
+              // half way, e.g. on a full disk.
+              Previous := nil;
+              if TFile.Exists(WinApiPath(Path)) and
+                (TFile.GetSize(WinApiPath(Path)) <= cWriteBackupLimit) then
+                try
+                  Previous := TFile.ReadAllBytes(WinApiPath(Path));
+                except
+                  Previous := nil;
+                end;
               try
-                if Length(Bytes) > 0 then
-                  FS.WriteBuffer(Bytes[0], Length(Bytes));
-              finally
-                FS.Free;
+                FS := TFileStream.Create(WinApiPath(Path), fmCreate);
+                try
+                  if Length(Bytes) > 0 then
+                    FS.WriteBuffer(Bytes[0], Length(Bytes));
+                finally
+                  FS.Free;
+                end;
+              except
+                if Length(Previous) > 0 then
+                  try
+                    TFile.WriteAllBytes(WinApiPath(Path), Previous);
+                  except
+                  end;
+                raise;
               end;
             end;
           end;
