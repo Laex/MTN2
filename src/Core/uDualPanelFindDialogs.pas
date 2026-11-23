@@ -9,7 +9,7 @@ uses
   System.SysUtils, System.Classes, System.IOUtils, System.UITypes,
   uDialogHost, uDialogTypes, uDialogBuilders, uDialogJson, uDualPanelUiTypes, uDualPanelSearch,
   uDualPanelSync, uDualPanelJobs, uDualPanelJobList, uVfsTypes, uFindSession, uDialogHistory,
-  uSearchEngines;
+  uSearchEngines, uDialogPresets;
 
 type
   TFindKindSetter = reference to procedure(AKind: THostDialogKind);
@@ -34,7 +34,12 @@ type
     FHexMode: Boolean;
     FLastText: string;
     FLastHex: string;
+    FPresets: TDialogPresets;
+    FPresetName: string;
     function ReadDialogFields: TDialogCommandFields;
+    procedure ShowPresets;
+    procedure RunPresetCommand(const AControlId: string;
+      const AFields: TDialogCommandFields);
     procedure ApplyFields(const AFields: TDialogCommandFields);
     procedure BeginDatePick(const AFieldId: string);
     procedure OpenPipeline;
@@ -44,6 +49,7 @@ type
       const AOnCommand: TDialogCommandEvent; const AOnSetKind: TFindKindSetter;
       const AOnBlocked: TFindBlockedFn; const AOnPrepare: TFindPrepareProc;
       const AOnGetUri: TFindGetUriFn; const AOnNotify: TProc);
+    destructor Destroy; override;
     procedure Open;
     /// <summary>Keeps the text and hex fields in step while either is edited:
     /// text shows its UTF-8 bytes; bytes that spell text show it; bytes typed
@@ -76,7 +82,14 @@ type
     // List row -> index in FItems (the list can show a filtered view).
     FViewIdx: TArray<Integer>;
     FTwoWay: Boolean;
+    FMirror: Boolean;
     FOnlySkipped: Boolean;
+    // Target-only files to remove once the copy job succeeds.
+    FPendingDeletes: TArray<string>;
+    FPendingDeleteToBin: Boolean;
+    FPresets: TDialogPresets;
+    FPresetIdx: Integer;
+    FApplyingPreset: Boolean;
     FOnCommand: TDialogCommandEvent;
     FOnSetKind: TFindKindSetter;
     FOnPrepare: TFindPrepareProc;
@@ -90,11 +103,17 @@ type
     procedure ReadViewMode;
     procedure RefreshPlan(ASelect: Integer);
     procedure ApplyRowAction(AAction: TSyncAction);
+    procedure StartPendingDeletes;
+    procedure RefreshPresetList(const ASelectName: string);
+    procedure ApplyPreset(const AName: string);
+    procedure SavePreset;
+    procedure DeletePreset;
   public
     constructor Create(ADialog: TDialogHost; AJobs: TPanelJobList;
       const AOnCommand: TDialogCommandEvent; const AOnSetKind: TFindKindSetter;
       const AOnPrepare: TFindPrepareProc; const AOnOpenStub: TFindStubProc;
       const AOnCloseStub, AOnNotify: TProc; const AOnAlive: TFindAliveFn);
+    destructor Destroy; override;
     procedure Open(const ASrcURI, ADstURI: string);
     function DispatchCommand(const AControlId: string;
       const AFields: TDialogCommandFields): Boolean;
@@ -112,7 +131,7 @@ function ResolveSearchRootPath(const ACurrentUri: string): string;
 implementation
 
 uses
-  System.DateUtils, uFileFind, uStrings;
+  System.DateUtils, uFileFind, uStrings, uConfigLocation;
 
 const
   // Cells of the path labels in dirsync.json.
@@ -121,6 +140,16 @@ const
   cDirSyncCmdLeft = 'act_left';
   cDirSyncCmdSkip = 'act_skip';
   cDirSyncCmdAuto = 'act_auto';
+  cDirSyncPresetFile = 'syncpresets.json';
+  cSearchPresetFile = 'searchpresets.json';
+
+function BoolText(AValue: Boolean): string;
+begin
+  if AValue then
+    Result := '1'
+  else
+    Result := '0';
+end;
 
 function ResolveSearchRootPath(const ACurrentUri: string): string;
 var
@@ -156,6 +185,139 @@ begin
   FOnPrepare := AOnPrepare;
   FOnGetUri := AOnGetUri;
   FOnNotify := AOnNotify;
+end;
+
+destructor TSearchDialogController.Destroy;
+begin
+  FPresets.Free;
+  inherited;
+end;
+
+function SearchPresetValues(ASearch: TSearchController): TPresetValues;
+var
+  F: TFindFilterText;
+begin
+  F := ASearch.Filters;
+  SetLength(Result, 0);
+  PresetAdd(Result, 'mask', ASearch.Mask);
+  PresetAdd(Result, 'text', ASearch.ContainingText);
+  PresetAdd(Result, 'case', BoolText(ASearch.CaseSensitive));
+  PresetAdd(Result, 'words', BoolText(ASearch.WholeWords));
+  PresetAdd(Result, 'folders', BoolText(ASearch.SearchFolders));
+  PresetAdd(Result, 'regex', BoolText(ASearch.UseRegex));
+  PresetAdd(Result, 'subdirs', BoolText(ASearch.Subdirs));
+  PresetAdd(Result, 'archives', BoolText(ASearch.SearchArchives));
+  PresetAdd(Result, 'encoding', IntToStr(ASearch.EncodingIdx));
+  PresetAdd(Result, 'size_min', F.SizeMin);
+  PresetAdd(Result, 'size_max', F.SizeMax);
+  PresetAdd(Result, 'date_from', F.DateFrom);
+  PresetAdd(Result, 'date_to', F.DateTo);
+  PresetAdd(Result, 'attr_ro', IntToStr(Ord(F.AttrReadOnly)));
+  PresetAdd(Result, 'attr_hidden', IntToStr(Ord(F.AttrHidden)));
+  PresetAdd(Result, 'attr_system', IntToStr(Ord(F.AttrSystem)));
+  PresetAdd(Result, 'attr_archive', IntToStr(Ord(F.AttrArchive)));
+end;
+
+function PresetAttr(const AValues: TPresetValues; const AKey: string): TFindAttrState;
+var
+  N: Integer;
+begin
+  N := StrToIntDef(PresetGet(AValues, AKey, '0'), 0);
+  if (N < Ord(Low(TFindAttrState))) or (N > Ord(High(TFindAttrState))) then
+    N := 0;
+  Result := TFindAttrState(N);
+end;
+
+procedure ApplySearchPreset(ASearch: TSearchController; const AValues: TPresetValues);
+var
+  F: TFindFilterText;
+begin
+  ASearch.Mask := PresetGet(AValues, 'mask', '*.*');
+  ASearch.ContainingText := PresetGet(AValues, 'text', '');
+  ASearch.CaseSensitive := PresetGet(AValues, 'case', '0') = '1';
+  ASearch.WholeWords := PresetGet(AValues, 'words', '0') = '1';
+  ASearch.SearchFolders := PresetGet(AValues, 'folders', '0') = '1';
+  ASearch.UseRegex := PresetGet(AValues, 'regex', '0') = '1';
+  ASearch.Subdirs := PresetGet(AValues, 'subdirs', '1') = '1';
+  ASearch.SearchArchives := PresetGet(AValues, 'archives', '0') = '1';
+  ASearch.EncodingIdx := StrToIntDef(PresetGet(AValues, 'encoding', '0'), 0);
+  ASearch.HexMode := False;
+  F.SizeMin := PresetGet(AValues, 'size_min', '');
+  F.SizeMax := PresetGet(AValues, 'size_max', '');
+  F.DateFrom := PresetGet(AValues, 'date_from', '');
+  F.DateTo := PresetGet(AValues, 'date_to', '');
+  F.AttrReadOnly := PresetAttr(AValues, 'attr_ro');
+  F.AttrHidden := PresetAttr(AValues, 'attr_hidden');
+  F.AttrSystem := PresetAttr(AValues, 'attr_system');
+  F.AttrArchive := PresetAttr(AValues, 'attr_archive');
+  ASearch.Filters := F;
+end;
+
+// The preset list and the name box under the options. The dialog is rebuilt
+// from the search state by every preset command, so the list is refilled here.
+procedure TSearchDialogController.ShowPresets;
+var
+  Names, Items: TArray<string>;
+  I, Sel: Integer;
+begin
+  if FPresets = nil then
+    FPresets := TDialogPresets.Create(GetConfigFilePath(cSearchPresetFile));
+  Names := FPresets.Names;
+  SetLength(Items, Length(Names) + 1);
+  Items[0] := T('ui.search.noPreset', '(no preset)');
+  Sel := 0;
+  for I := 0 to High(Names) do
+  begin
+    Items[I + 1] := Names[I];
+    if SameText(Names[I], FPresetName) then
+      Sel := I + 1;
+  end;
+  FDialog.SetDropDownItems('preset', Items, Sel);
+  FDialog.SetInputValue('preset_name', FPresetName);
+end;
+
+procedure TSearchDialogController.RunPresetCommand(const AControlId: string;
+  const AFields: TDialogCommandFields);
+var
+  Names: TArray<string>;
+  Idx: Integer;
+  Typed, Chosen: string;
+  Values: TPresetValues;
+begin
+  if FPresets = nil then
+    FPresets := TDialogPresets.Create(GetConfigFilePath(cSearchPresetFile));
+  Names := FPresets.Names;
+  Typed := Trim(FDialog.GetInputValue('preset_name'));
+  Idx := FDialog.GetListSelectedIndex('preset');
+  if (Idx > 0) and (Idx <= Length(Names)) then
+    Chosen := Names[Idx - 1]
+  else
+    Chosen := '';
+  ApplyFields(AFields);
+  if DialogCmdIs(AControlId, 'preset_save') then
+  begin
+    if Typed = '' then
+      Typed := Chosen;
+    if (Typed <> '') and FPresets.Put(Typed, SearchPresetValues(FSearch)) then
+      FPresetName := Typed;
+  end
+  else if DialogCmdIs(AControlId, 'preset_load') then
+  begin
+    if (Chosen <> '') and FPresets.Find(Chosen, Values) then
+    begin
+      ApplySearchPreset(FSearch, Values);
+      FPresetName := Chosen;
+    end;
+  end
+  else if DialogCmdIs(AControlId, 'preset_del') then
+  begin
+    if Chosen = '' then
+      Chosen := Typed;
+    if (Chosen <> '') and FPresets.Delete(Chosen) then
+      FPresetName := '';
+  end;
+  FDialog.Close;
+  Open;
 end;
 
 procedure TSearchDialogController.Open;
@@ -199,6 +361,7 @@ begin
       FSearch.CaseSensitive, FSearch.WholeWords, FSearch.SearchFolders,
       FSearch.UseRegex, FSearch.HexText, FSearch.Subdirs, FSearch.SearchArchives,
       PipelineCaption, FSearch.EncodingIdx, FSearch.Filters), FOnCommand);
+  ShowPresets;
   if Assigned(FOnNotify) then
     FOnNotify();
 end;
@@ -427,6 +590,14 @@ begin
     OpenPipeline;
     Exit;
   end;
+  if DialogCmdIs(AControlId, 'preset_save') or
+     DialogCmdIs(AControlId, 'preset_load') or
+     DialogCmdIs(AControlId, 'preset_del') then
+  begin
+    if Assigned(FSearch) then
+      RunPresetCommand(AControlId, AFields);
+    Exit;
+  end;
   FDialog.Close;
   if not Assigned(FSearch) then
     Exit;
@@ -473,10 +644,116 @@ begin
   FComparedByContent := False;
   FCompareGen := 0;
   FTwoWay := False;
+  FMirror := False;
   FOnlySkipped := False;
+  FPendingDeleteToBin := True;
+  SetLength(FPendingDeletes, 0);
   SetLength(FItems, 0);
   SetLength(FViewIdx, 0);
   SetLength(FPendingConflictRels, 0);
+end;
+
+destructor TDirSyncDialogController.Destroy;
+begin
+  FPresets.Free;
+  inherited;
+end;
+
+procedure TDirSyncDialogController.RefreshPresetList(const ASelectName: string);
+var
+  Names, Items: TArray<string>;
+  I, Sel: Integer;
+begin
+  Names := FPresets.Names;
+  SetLength(Items, Length(Names) + 1);
+  Items[0] := T('ui.dirSync.noPreset', '(no preset)');
+  Sel := 0;
+  for I := 0 to High(Names) do
+  begin
+    Items[I + 1] := Names[I];
+    if SameText(Names[I], ASelectName) then
+      Sel := I + 1;
+  end;
+  FApplyingPreset := True;
+  try
+    FDialog.SetDropDownItems('preset', Items, Sel);
+    FPresetIdx := Sel;
+  finally
+    FApplyingPreset := False;
+  end;
+end;
+
+// Mode, comparison, mirror and delete options come from the preset; the
+// report-only run is never part of one, and the mirror mode turns it on.
+procedure TDirSyncDialogController.ApplyPreset(const AName: string);
+var
+  Values: TPresetValues;
+begin
+  if not FPresets.Find(AName, Values) then
+    Exit;
+  FApplyingPreset := True;
+  FDialog.BeginUpdate;
+  try
+    FDialog.SetRadio('sync_mode', PresetGet(Values, 'mode', 'oneway'));
+    FDialog.SetRadio('compare_by', PresetGet(Values, 'compare', 'bydate'));
+    FDialog.SetCheckbox('mirror', PresetGet(Values, 'mirror', '0') = '1');
+    FDialog.SetCheckbox('del_perm', PresetGet(Values, 'del_perm', '0') = '1');
+    FDialog.SetCheckbox('only_skipped', PresetGet(Values, 'only_skipped', '0') = '1');
+    FDialog.SetInputValue('preset_name', AName);
+  finally
+    FDialog.EndUpdate;
+    FApplyingPreset := False;
+  end;
+end;
+
+procedure TDirSyncDialogController.SavePreset;
+var
+  Name: string;
+  Values: TPresetValues;
+begin
+  Name := Trim(FDialog.GetInputValue('preset_name'));
+  if Name = '' then
+  begin
+    FDialog.SetLabelText('status',
+      T('ui.dirSync.presetNeedName', 'Type a name for the preset first'));
+    Exit;
+  end;
+  SetLength(Values, 0);
+  PresetAdd(Values, 'mode', FDialog.GetRadio('sync_mode'));
+  PresetAdd(Values, 'compare', FDialog.GetRadio('compare_by'));
+  PresetAdd(Values, 'mirror', BoolText(FDialog.GetCheckbox('mirror')));
+  PresetAdd(Values, 'del_perm', BoolText(FDialog.GetCheckbox('del_perm')));
+  PresetAdd(Values, 'only_skipped', BoolText(FDialog.GetCheckbox('only_skipped')));
+  if FPresets.Put(Name, Values) then
+  begin
+    RefreshPresetList(Name);
+    FDialog.SetLabelText('status',
+      T('ui.dirSync.presetSaved', 'Preset "%s" saved', [Name]));
+  end
+  else
+    FDialog.SetLabelText('status',
+      T('ui.dirSync.presetFailed', 'The preset could not be saved'));
+end;
+
+procedure TDirSyncDialogController.DeletePreset;
+var
+  Names: TArray<string>;
+  Idx: Integer;
+  Name: string;
+begin
+  Names := FPresets.Names;
+  Idx := FDialog.GetListSelectedIndex('preset');
+  if (Idx > 0) and (Idx <= Length(Names)) then
+    Name := Names[Idx - 1]
+  else
+    Name := Trim(FDialog.GetInputValue('preset_name'));
+  if (Name <> '') and FPresets.Delete(Name) then
+  begin
+    RefreshPresetList('');
+    FDialog.SetInputValue('preset_name', '');
+    FDialog.SetLabelText('status',
+      T('ui.dirSync.presetDeleted', 'Preset "%s" deleted', [Name]));
+  end;
 end;
 
 procedure TDirSyncDialogController.Open(const ASrcURI, ADstURI: string);
@@ -507,12 +784,17 @@ begin
 
   FSrcRoot := SrcPath;
   FDstRoot := DstPath;
+  FPresets.Free;
+  FPresets := TDialogPresets.Create(GetConfigFilePath(cDirSyncPresetFile));
+  FPresetIdx := 0;
   FSnapshotPending := False;
   FByContent := False;
   FComparedByContent := False;
   FTwoWay := False;
+  FMirror := False;
   FOnlySkipped := False;
   SetLength(FPendingConflictRels, 0);
+  SetLength(FPendingDeletes, 0);
   StartCompare;
 end;
 
@@ -564,10 +846,12 @@ begin
   FComparedByContent := AByContent;
   if Assigned(FDialog) and FDialog.Visible then
     ReadViewMode;
-  Preview := FormatSyncPlanLines(FItems, FTwoWay, FOnlySkipped, FViewIdx);
+  Preview := FormatSyncPlanLines(FItems, FTwoWay, FOnlySkipped, FViewIdx,
+    FMirror);
   if Assigned(FDialog) and FDialog.Visible then
   begin
-    FDialog.SetLabelText('status', FormatDirSyncPlanStatus(FItems, FTwoWay));
+    FDialog.SetLabelText('status',
+      FormatDirSyncPlanStatus(FItems, FTwoWay, FMirror));
     FDialog.SetListItems('preview', Preview, 0);
   end
   else
@@ -578,8 +862,9 @@ begin
       FOnSetKind(hdkDirSync);
     FDialog.Open(BuildDirSyncDialog(FitSyncPath(FSrcRoot, cDirSyncPathCells),
       FitSyncPath(FDstRoot, cDirSyncPathCells),
-      FormatDirSyncPlanStatus(FItems, FTwoWay), Preview, False, FTwoWay,
+      FormatDirSyncPlanStatus(FItems, FTwoWay, FMirror), Preview, False, FTwoWay,
       AByContent), FOnCommand);
+    RefreshPresetList('');
   end;
   if Assigned(FOnNotify) then
     FOnNotify();
@@ -594,6 +879,7 @@ end;
 procedure TDirSyncDialogController.ReadViewMode;
 begin
   FTwoWay := SameText(FDialog.GetRadio('sync_mode'), 'twoway');
+  FMirror := FDialog.GetCheckbox('mirror') and not FTwoWay;
   FOnlySkipped := FDialog.GetCheckbox('only_skipped');
 end;
 
@@ -602,9 +888,10 @@ var
   Lines: TArray<string>;
   ScrollTop: Integer;
 begin
-  Lines := FormatSyncPlanLines(FItems, FTwoWay, FOnlySkipped, FViewIdx);
+  Lines := FormatSyncPlanLines(FItems, FTwoWay, FOnlySkipped, FViewIdx, FMirror);
   ScrollTop := FDialog.GetListScrollTop;
-  FDialog.SetLabelText('status', FormatDirSyncPlanStatus(FItems, FTwoWay));
+  FDialog.SetLabelText('status',
+    FormatDirSyncPlanStatus(FItems, FTwoWay, FMirror));
   FDialog.SetListItems('preview', Lines, ASelect);
   FDialog.SetListScrollTop(ScrollTop);
 end;
@@ -648,6 +935,8 @@ begin
   else
     if AKeyChar = ' ' then
       Action := saSkip
+    else if (AKeyChar = 'x') or (AKeyChar = 'X') then
+      Action := saDelete
     else
       Exit;
   end;
@@ -659,16 +948,30 @@ end;
 
 procedure TDirSyncDialogController.NotifyDialogChanged;
 var
-  WantContent, OldTwoWay, OldOnlySkipped: Boolean;
+  WantContent, OldTwoWay, OldOnlySkipped, OldMirror: Boolean;
+  Idx: Integer;
 begin
-  if FBusy then
+  if FBusy or FApplyingPreset then
     Exit;
   if not Assigned(FDialog) or not FDialog.Visible then
     Exit;
+  Idx := FDialog.GetListSelectedIndex('preset');
+  if Idx <> FPresetIdx then
+  begin
+    FPresetIdx := Idx;
+    if (Idx > 0) and (Idx <= Length(FPresets.Names)) then
+      ApplyPreset(FPresets.Names[Idx - 1]);
+  end;
   OldTwoWay := FTwoWay;
+  OldMirror := FMirror;
   OldOnlySkipped := FOnlySkipped;
   ReadViewMode;
-  if (FTwoWay <> OldTwoWay) or (FOnlySkipped <> OldOnlySkipped) then
+  // Deleting is never the first step: choosing the mirror mode turns on the
+  // report-only run, which the user has to clear on purpose.
+  if FMirror and not OldMirror then
+    FDialog.SetCheckbox('dry_run', True);
+  if (FTwoWay <> OldTwoWay) or (FMirror <> OldMirror) or
+     (FOnlySkipped <> OldOnlySkipped) then
     RefreshPlan(0);
   WantContent := SameText(FDialog.GetRadio('compare_by'), 'bycontent');
   if WantContent = FComparedByContent then
@@ -685,6 +988,8 @@ var
   Unresolved: Integer;
   CopyCount: Integer;
   Msg: string;
+  Mirror, ToBin: Boolean;
+  Deletes: TArray<string>;
 begin
   Result := True;
   if DialogCmdIs(AControlId, cDirSyncCmdRight) then
@@ -707,14 +1012,28 @@ begin
     ApplyRowAction(saAuto);
     Exit;
   end;
+  if DialogCmdIs(AControlId, 'preset_save') then
+  begin
+    SavePreset;
+    Exit;
+  end;
+  if DialogCmdIs(AControlId, 'preset_del') then
+  begin
+    DeletePreset;
+    Exit;
+  end;
   Accepted := DialogCmdIsAccept(AControlId);
+  Mirror := FDialog.GetCheckbox('mirror') and not AFields.SyncTwoWay;
+  ToBin := not FDialog.GetCheckbox('del_perm');
   FDialog.Close;
   if Accepted then
   begin
-    CollectDirSyncJobPairs(FItems, Sources, DestURIs, AFields.SyncTwoWay);
+    CollectDirSyncJobPairs(FItems, Sources, DestURIs, AFields.SyncTwoWay,
+      Mirror);
+    Deletes := CollectDirSyncDeletePaths(FItems, AFields.SyncTwoWay, Mirror);
     CopyCount := Length(Sources);
     Unresolved := Length(CollectDirSyncUnresolvedRels(FItems,
-      AFields.SyncTwoWay));
+      AFields.SyncTwoWay, Mirror));
     if AFields.DryRun then
     begin
       if Unresolved > 0 then
@@ -723,8 +1042,17 @@ begin
           [CopyCount, Unresolved])
       else
         Msg := T('ui.dirSync.wouldCopy', 'Would copy %d file(s)', [CopyCount]);
+      if Length(Deletes) > 0 then
+        Msg := Msg + T('ui.dirSync.wouldDelete', '; would delete %d file(s)',
+          [Length(Deletes)]);
       if Assigned(FOnOpenStub) then
         FOnOpenStub(T('ui.dirSync.title', 'Synchronize'), Msg);
+    end
+    else if (CopyCount = 0) and (Length(Deletes) > 0) then
+    begin
+      FPendingDeletes := Deletes;
+      FPendingDeleteToBin := ToBin;
+      StartPendingDeletes;
     end
     else if CopyCount = 0 then
     begin
@@ -744,13 +1072,29 @@ begin
     else if Assigned(FJobs) and FJobs.CanStartAnother then
     begin
       FPendingConflictRels := CollectDirSyncUnresolvedRels(FItems,
-        AFields.SyncTwoWay);
+        AFields.SyncTwoWay, Mirror);
       FSnapshotPending := True;
+      // The removals wait for the copy: a failed copy leaves the target
+      // untouched.
+      FPendingDeletes := Deletes;
+      FPendingDeleteToBin := ToBin;
       FJobs.BeginJobPairs(Sources, DestURIs, pjkCopy);
     end;
   end;
   SetLength(FItems, 0);
   SetLength(FViewIdx, 0);
+end;
+
+// The delete job asks its own confirmation (with the count and whether the
+// files go to the Recycle Bin) before anything is removed.
+procedure TDirSyncDialogController.StartPendingDeletes;
+var
+  Paths: TArray<string>;
+begin
+  Paths := FPendingDeletes;
+  SetLength(FPendingDeletes, 0);
+  if (Length(Paths) > 0) and Assigned(FJobs) and FJobs.CanStartAnother then
+    FJobs.BeginJob(Paths, '', pjkDelete, FPendingDeleteToBin);
 end;
 
 procedure TDirSyncDialogController.NotifyJobFinished(ASuccess: Boolean);
@@ -761,6 +1105,7 @@ begin
   if not ASuccess then
   begin
     SetLength(FPendingConflictRels, 0);
+    SetLength(FPendingDeletes, 0);
     Exit;
   end;
   try
@@ -768,6 +1113,7 @@ begin
   except
   end;
   SetLength(FPendingConflictRels, 0);
+  StartPendingDeletes;
 end;
 
 end.

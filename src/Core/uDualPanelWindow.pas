@@ -1020,6 +1020,7 @@ type
     procedure BeginMultiRename;
     procedure StartMultiRenameJob(const ASources, ADests: TArray<string>);
     procedure HostUndoMultiRename;
+    procedure HostEditRenameNames(const AText: string; const AOnDone: TProc<string>);
     procedure StartChecksumJob(AAlgoIndex: Integer; AVerify: Boolean);
     procedure ShowChecksumResult(const ATitle, AStatus: string;
       const ALines: TArray<string>; AVerify: Boolean);
@@ -3869,6 +3870,7 @@ begin
       Result := Area.Width;
     end);
   FMultiRename.OnUndo := HostUndoMultiRename;
+  FMultiRename.OnEditNames := HostEditRenameNames;
   FMenus := TMenuStubController.Create(Theme, NotifyChanged,
     HostUserMenuAction, HostPanelBounds, KeymapActiveSide);
   FMenus.SetOnSortSelect(HostMenuSortSelect);
@@ -10090,6 +10092,43 @@ begin
       FJobs.BeginJobPairs(ASources, ADests, pjkMove, jomAsk);
       NotifyChanged;
     end);
+end;
+
+// The names go to a temporary file opened in the editor; closing the editor
+// hands the file's text back, so saving first is what makes edits count.
+procedure TDualPanelWindow.HostEditRenameNames(const AText: string;
+  const AOnDone: TProc<string>);
+const
+  cSubscriber = 'mtn.core.multirename';
+var
+  Path, Uri: string;
+begin
+  Path := TPath.Combine(TPath.GetTempPath, 'mtn2-rename-names.txt');
+  try
+    TFile.WriteAllText(Path, AText, TUTF8Encoding.Create(False));
+  except
+    AOnDone(AText);
+    Exit;
+  end;
+  Uri := PathToFileUri(Path);
+  PluginSubscribe(cSubscriber, 'doc.closed',
+    procedure(const ATopic, APayloadJson: string)
+    var
+      Text: string;
+    begin
+      if not SameText(APayloadJson, PluginUriPayload(Uri)) then
+        Exit;
+      PluginEventsUnregister(cSubscriber);
+      Text := AText;
+      try
+        Text := TFile.ReadAllText(Path, TEncoding.UTF8);
+        TFile.Delete(Path);
+      except
+      end;
+      AOnDone(Text);
+    end);
+  RequestOpenEditor(Uri);
+  NotifyChanged;
 end;
 
 procedure TDualPanelWindow.HostUndoMultiRename;

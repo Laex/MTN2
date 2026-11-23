@@ -40,6 +40,7 @@ uses
   uConfigLocation in 'Core\uConfigLocation.pas',
   uFolderHistory in 'Core\uFolderHistory.pas',
   uFolderFrecent in 'Core\uFolderFrecent.pas',
+  uDialogPresets in 'Core\uDialogPresets.pas',
   uRenameJournal in 'Core\uRenameJournal.pas',
   uRowDecorations in 'Core\uRowDecorations.pas',
   uPluginColumns in 'Core\uPluginColumns.pas',

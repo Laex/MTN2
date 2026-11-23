@@ -19,8 +19,9 @@ type
     srContentDiff);
 
   // saAuto follows Reason and the sync mode; the other values are a manual
-  // choice that overrides both.
-  TSyncAction = (saAuto, saCopyRight, saCopyLeft, saSkip);
+  // choice that overrides both. saDelete removes a file that exists only on
+  // the target and applies to srMissingOnSrc items only.
+  TSyncAction = (saAuto, saCopyRight, saCopyLeft, saSkip, saDelete);
 
   TSyncItem = record
     RelPath: string;
@@ -55,7 +56,12 @@ function FormatSyncPreviewLines(const AItems: TArray<TSyncItem>;
   AMaxLines: Integer = 12): TArray<string>;
 function FormatDirSyncStatus(const AItems: TArray<TSyncItem>): string;
 procedure CollectDirSyncJobPairs(const AItems: TArray<TSyncItem>;
-  out ASources, ADestURIs: TArray<string>; ATwoWay: Boolean = False);
+  out ASources, ADestURIs: TArray<string>; ATwoWay: Boolean = False;
+  AMirror: Boolean = False);
+/// <summary>Files that exist only on the target and are to be removed (mirror
+/// mode, or a manual delete choice); empty in two-way mode.</summary>
+function CollectDirSyncDeletePaths(const AItems: TArray<TSyncItem>;
+  ATwoWay, AMirror: Boolean): TArray<string>;
 function DirSyncUrisAreLocalFolders(const ASrcURI, ADstURI: string): Boolean;
 function SyncItemCopiesToRight(const AItem: TSyncItem): Boolean;
 function SyncItemCopiesToLeft(const AItem: TSyncItem): Boolean;
@@ -65,13 +71,13 @@ function CountSyncConflicts(const AItems: TArray<TSyncItem>): Integer;
 function CountSyncContentDiffs(const AItems: TArray<TSyncItem>): Integer;
 function CollectDirSyncConflictRels(const AItems: TArray<TSyncItem>): TArray<string>;
 function CollectDirSyncUnresolvedRels(const AItems: TArray<TSyncItem>;
-  ATwoWay: Boolean): TArray<string>;
+  ATwoWay: Boolean; AMirror: Boolean = False): TArray<string>;
 function FilesContentEqual(const ALeft, ARight: string): Boolean;
 
 function SyncItemLeftURI(const AItem: TSyncItem): string;
 function SyncItemRightURI(const AItem: TSyncItem): string;
 function EffectiveSyncAction(const AItem: TSyncItem;
-  ATwoWay: Boolean): TSyncAction;
+  ATwoWay: Boolean; AMirror: Boolean = False): TSyncAction;
 function SyncActionAllowed(const AItem: TSyncItem;
   AAction: TSyncAction): Boolean;
 /// <summary>Sets a manual action; False when the action does not apply to the
@@ -80,9 +86,10 @@ function ApplySyncAction(var AItem: TSyncItem; AAction: TSyncAction): Boolean;
 /// <summary>One list row per item: action glyph, reason tag, relative path.
 /// AViewIdx maps rows back to AItems.</summary>
 function FormatSyncPlanLines(const AItems: TArray<TSyncItem>;
-  ATwoWay, AOnlySkipped: Boolean; out AViewIdx: TArray<Integer>): TArray<string>;
+  ATwoWay, AOnlySkipped: Boolean; out AViewIdx: TArray<Integer>;
+  AMirror: Boolean = False): TArray<string>;
 function FormatDirSyncPlanStatus(const AItems: TArray<TSyncItem>;
-  ATwoWay: Boolean): string;
+  ATwoWay: Boolean; AMirror: Boolean = False): string;
 /// <summary>A path longer than AMaxLen keeps its start and, with more room,
 /// its end (the folder names that tell two roots apart); the middle becomes
 /// "...".</summary>
@@ -230,14 +237,14 @@ begin
 end;
 
 function CollectDirSyncUnresolvedRels(const AItems: TArray<TSyncItem>;
-  ATwoWay: Boolean): TArray<string>;
+  ATwoWay: Boolean; AMirror: Boolean): TArray<string>;
 var
   I, N: Integer;
 begin
   SetLength(Result, 0);
   for I := 0 to High(AItems) do
   begin
-    if EffectiveSyncAction(AItems[I], ATwoWay) <> saSkip then
+    if EffectiveSyncAction(AItems[I], ATwoWay, AMirror) <> saSkip then
       Continue;
     if (AItems[I].Reason in [srConflict, srContentDiff]) or
        (AItems[I].Action = saSkip) then
@@ -266,7 +273,7 @@ begin
 end;
 
 function EffectiveSyncAction(const AItem: TSyncItem;
-  ATwoWay: Boolean): TSyncAction;
+  ATwoWay: Boolean; AMirror: Boolean): TSyncAction;
 begin
   if AItem.Action <> saAuto then
     Exit(AItem.Action);
@@ -281,6 +288,8 @@ begin
     srMissingOnSrc, srNewerOnDst:
       if ATwoWay then
         Result := saCopyLeft
+      else if AMirror and (AItem.Reason = srMissingOnSrc) then
+        Result := saDelete
       else
         Result := saSkip;
   else
@@ -294,6 +303,7 @@ begin
   case AAction of
     saCopyRight: Result := AItem.Reason <> srMissingOnSrc;
     saCopyLeft: Result := AItem.Reason <> srMissing;
+    saDelete: Result := AItem.Reason = srMissingOnSrc;
   else
     Result := True;
   end;
@@ -675,13 +685,15 @@ begin
   case AAction of
     saCopyRight: Result := '->';
     saCopyLeft: Result := '<-';
+    saDelete: Result := 'XX';
   else
     Result := '--';
   end;
 end;
 
 function FormatSyncPlanLines(const AItems: TArray<TSyncItem>;
-  ATwoWay, AOnlySkipped: Boolean; out AViewIdx: TArray<Integer>): TArray<string>;
+  ATwoWay, AOnlySkipped: Boolean; out AViewIdx: TArray<Integer>;
+  AMirror: Boolean): TArray<string>;
 var
   I, N: Integer;
   Action: TSyncAction;
@@ -691,7 +703,7 @@ begin
   SetLength(AViewIdx, 0);
   for I := 0 to High(AItems) do
   begin
-    Action := EffectiveSyncAction(AItems[I], ATwoWay);
+    Action := EffectiveSyncAction(AItems[I], ATwoWay, AMirror);
     if AOnlySkipped and (Action <> saSkip) then
       Continue;
     if AItems[I].Action = saAuto then
@@ -708,23 +720,27 @@ begin
 end;
 
 function FormatDirSyncPlanStatus(const AItems: TArray<TSyncItem>;
-  ATwoWay: Boolean): string;
+  ATwoWay: Boolean; AMirror: Boolean): string;
 var
-  I, ToRight, ToLeft, Skipped, Open: Integer;
+  I, ToRight, ToLeft, Skipped, Open, ToDelete: Integer;
 begin
   ToRight := 0;
   ToLeft := 0;
   Skipped := 0;
+  ToDelete := 0;
   for I := 0 to High(AItems) do
-    case EffectiveSyncAction(AItems[I], ATwoWay) of
+    case EffectiveSyncAction(AItems[I], ATwoWay, AMirror) of
       saCopyRight: Inc(ToRight);
       saCopyLeft: Inc(ToLeft);
+      saDelete: Inc(ToDelete);
     else
       Inc(Skipped);
     end;
-  Open := Length(CollectDirSyncUnresolvedRels(AItems, ATwoWay));
+  Open := Length(CollectDirSyncUnresolvedRels(AItems, ATwoWay, AMirror));
   Result := T('ui.dirSync.status', '%d to copy (%d ->, %d <-), %d skipped',
     [ToRight + ToLeft, ToRight, ToLeft, Skipped]);
+  if AMirror or (ToDelete > 0) then
+    Result := Result + T('ui.dirSync.statusDelete', ', %d to delete', [ToDelete]);
   if Open > 0 then
     Result := Result + T('ui.dirSync.statusOpen', ', %d unresolved', [Open]);
 end;
@@ -768,7 +784,7 @@ begin
 end;
 
 procedure CollectDirSyncJobPairs(const AItems: TArray<TSyncItem>;
-  out ASources, ADestURIs: TArray<string>; ATwoWay: Boolean);
+  out ASources, ADestURIs: TArray<string>; ATwoWay: Boolean; AMirror: Boolean);
 var
   I, N: Integer;
   Action: TSyncAction;
@@ -777,7 +793,7 @@ begin
   SetLength(ADestURIs, 0);
   for I := 0 to High(AItems) do
   begin
-    Action := EffectiveSyncAction(AItems[I], ATwoWay);
+    Action := EffectiveSyncAction(AItems[I], ATwoWay, AMirror);
     if not (Action in [saCopyRight, saCopyLeft]) or
        not SyncActionAllowed(AItems[I], Action) then
       Continue;
@@ -795,6 +811,26 @@ begin
       ADestURIs[N] := SyncItemLeftURI(AItems[I]);
     end;
   end;
+end;
+
+function CollectDirSyncDeletePaths(const AItems: TArray<TSyncItem>;
+  ATwoWay, AMirror: Boolean): TArray<string>;
+var
+  I, N: Integer;
+begin
+  SetLength(Result, 0);
+  if ATwoWay then
+    Exit;
+  for I := 0 to High(AItems) do
+    if (EffectiveSyncAction(AItems[I], ATwoWay, AMirror) = saDelete) and
+       SyncActionAllowed(AItems[I], saDelete) then
+    begin
+      N := Length(Result);
+      SetLength(Result, N + 1);
+      // The file that exists is the item's source: the item is listed as a
+      // copy from the target back to the source folder.
+      Result[N] := AItems[I].SrcURI;
+    end;
 end;
 
 function DirSyncUrisAreLocalFolders(const ASrcURI, ADstURI: string): Boolean;

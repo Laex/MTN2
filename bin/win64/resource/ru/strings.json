@@ -1,7 +1,6 @@
 {
   "dialogs": {
     "DIALOG_ABOUT": {
-      "undo": "&Откат",
       "$title": "О программе MTN2",
       "lbl_sub": "Высокопроизводительный двухпанельный файловый менеджер",
       "lbl_pty": "Платформа: Win64 | Постоянная оболочка ConPty",
@@ -253,6 +252,7 @@
       "dst_label": "Назначение:",
       "oneway": "В &одну сторону (→)",
       "twoway": "В о&бе стороны (⇄)",
+      "mirror": "&Зеркало: удалять лишнее (X)",
       "bydate": "&Дата / размер",
       "bycontent": "&Содержимое",
       "dry_run": "&Пробный запуск (только отчёт)",
@@ -261,7 +261,10 @@
       "act_skip": "Пропус&тить",
       "act_auto": "Сбросит&ь",
       "only_skipped": "Только пропу&щенные",
-      "hint_keys": "На строке: Вправо / Влево / Пробел / Del – копировать ->, копировать <-, пропустить, сбросить.",
+      "del_perm": "Удалять ли&шнее насовсем",
+      "preset_save": "Сохра&нить",
+      "preset_del": "&Удалить",
+      "hint_keys": "На строке: Вправо / Влево / Пробел / Del / X – копировать ->, <-, пропустить, сбросить, удалить (XX).",
       "hint_legend": "[+] новый  [>] новее  [<+] только справа  [<] новее справа  [!] конфликт  [!=] иное содержимое  * вручную",
       "ok": "Синхронизировать",
       "cancel": "Отмена"
@@ -363,6 +366,8 @@
         "First letter upper": "Первая буква заглавная",
         "Each Word Upper": "Каждое Слово С Заглавной"
       },
+      "undo": "&Откат",
+      "editor": "В ре&дакторе",
       "ok": "Переименовать",
       "cancel": "Отмена"
     },
@@ -703,7 +708,10 @@
       "lbl_encoding": "Кодировка:",
       "ok": "Найти",
       "cancel": "Отмена",
-      "background": "В &фоне"
+      "background": "В &фоне",
+      "preset_load": "&Загрузить",
+      "preset_save": "Сохра&нить",
+      "preset_del": "Уда&лить"
     },
     "DIALOG_PANELFILTER": {
       "$title": "Фильтр панели",
@@ -1380,6 +1388,7 @@
     "multiRename.nothingSelected": "Сначала выделите файлы или папки",
     "multiRename.status": "К переименованию: %d, без изменений: %d, с ошибкой: %d",
     "multiRename.blocked": "Сначала исправьте имена, отмеченные знаком !",
+    "multiRename.linesChanged": "Число строк должно остаться %d: одно новое имя на элемент",
     "multiRename.nothingToUndo": "Нечего откатывать",
     "multiRename.undone": "Возвращено: %d, оставлено как есть: %d",
     "multiRename.problemEmpty": "пустое имя",
@@ -1417,6 +1426,7 @@
     "search.goHint": "Enter=Перейти  Esc=Закрыть",
     "search.none": "Файлы не найдены",
     "search.encodingAuto": "Автоопределение",
+    "search.noPreset": "(без набора)",
     "search.engineAuto": "Авто",
     "search.engineBuiltIn": "Встроенный",
     "search.pipeline": "Конве&йер",
@@ -1603,6 +1613,13 @@
     "dirSync.nothingOpen": "Копировать нечего; без решения осталось: %d",
     "dirSync.status": "К копированию: %d (%d ->, %d <-), пропущено: %d",
     "dirSync.statusOpen": ", без решения: %d",
+    "dirSync.statusDelete": ", удалить: %d",
+    "dirSync.wouldDelete": "; было бы удалено файлов: %d",
+    "dirSync.noPreset": "(без набора)",
+    "dirSync.presetNeedName": "Сначала введите имя набора",
+    "dirSync.presetSaved": "Набор «%s» сохранён",
+    "dirSync.presetFailed": "Не удалось сохранить набор",
+    "dirSync.presetDeleted": "Набор «%s» удалён",
     "search.filterFormat": "Размер: 10K, 1.5M   Дата: %s",
     "externalTools.title": "Внешний просмотрщик / редактор",
     "externalTools.viewTitle": "Внешний просмотрщик",

@@ -233,6 +233,15 @@
     },
     {
       "type": "button",
+      "id": "editor",
+      "text": "In &editor",
+      "col": 58,
+      "row": 6,
+      "width": 16,
+      "height": 1
+    },
+    {
+      "type": "button",
       "id": "ok",
       "text": "Rename",
       "default": true,

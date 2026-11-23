@@ -8,6 +8,9 @@ This file describes what changes for the user from version to version: new featu
 
 ### New
 
+- The synchronization dialog has a Mirror mode: files that exist only on the target are marked `XX` (delete; the `X` key sets it by hand). The mode starts with the dry-run box on, so the first run only reports the count. The deletion follows a successful copy and asks for confirmation; the files go to the Recycle Bin unless "Delete extras for good" is ticked.
+- The synchronization and search dialogs keep named presets: the current mode and options are saved under a name, loaded from a list and deleted again.
+- The multi-rename dialog has "In editor": the new names open in the built-in editor, one per line; after saving and closing it the dialog returns with those names, checked for empty, invalid, duplicate and taken names like the rest. The number of lines must stay the same.
 - The multi-rename dialog has "Undo last": it takes the previous batch back, renaming each item whose new name still exists and whose old name is free to its old name and leaving the rest as they are. The last batch on local disks is remembered between runs; undoing it clears the record.
 - `F3` on the `..` row calculates the size of every folder of the panel. Calculated folder sizes stay in the Size column after the panel leaves the folder and returns, until the folder changes.
 - The "File already exists" prompt has three more answers: overwrite if the existing file is older, overwrite if the size differs, and automatic rename (`name (2).ext`, the first free number). With "Remember choice" the rule is applied to every following conflict of the job, file by file; a pair a rule cannot judge (a folder against a file) is still asked about. The copy dialog's "Already existing files" list offers the same three choices up front.

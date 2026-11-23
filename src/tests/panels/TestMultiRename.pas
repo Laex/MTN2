@@ -36,6 +36,9 @@ type
     [Test] procedure TestRegexRespectsMatchCase;
     [Test] procedure TestInvalidRegexKeepsNames;
     [Test] procedure TestPlanUsesItemInfo;
+    [Test] procedure TestHandMadeNamesGetTheSameChecks;
+    [Test] procedure TestEditedLinesNeedTheSameCount;
+    [Test] procedure TestLinesRoundTripThroughText;
   end;
 
 implementation
@@ -318,6 +321,44 @@ begin
     Rules('[Date]', '[E]'), [Info('x')]);
   Assert.AreEqual('2026-11-05.txt', Plan[0].NewName);
   Assert.AreEqual('.txt', Plan[1].NewName, 'an item without info has empty tokens');
+end;
+
+procedure TTestMultiRename.TestHandMadeNamesGetTheSameChecks;
+var
+  Plan: TRenamePlan;
+begin
+  Plan := PlanRenameTo(['a.txt', 'b.txt', 'c.txt', 'd.txt', 'e.txt'],
+    ['a.txt', 'x.txt', 'x.txt', 'b.txt', 'bad|name'], ['a.txt', 'b.txt', 'c.txt', 'd.txt', 'e.txt']);
+  Assert.AreEqual(Ord(rpUnchanged), Ord(Plan[0].Problem));
+  Assert.AreEqual(Ord(rpDuplicate), Ord(Plan[1].Problem), 'a name used twice');
+  Assert.AreEqual(Ord(rpDuplicate), Ord(Plan[2].Problem));
+  Assert.AreEqual(Ord(rpExists), Ord(Plan[3].Problem), 'the name of another item');
+  Assert.AreEqual(Ord(rpInvalid), Ord(Plan[4].Problem));
+  Assert.AreEqual('x.txt', Plan[1].NewName);
+  Plan := PlanRenameTo(['a.txt'], [''], ['a.txt']);
+  Assert.AreEqual(Ord(rpEmpty), Ord(Plan[0].Problem));
+end;
+
+procedure TTestMultiRename.TestEditedLinesNeedTheSameCount;
+var
+  Names: TArray<string>;
+begin
+  Assert.IsTrue(ParseRenameLines('a'#13#10'b'#13#10, 2, Names));
+  Assert.AreEqual('b', Names[1]);
+  Assert.IsTrue(ParseRenameLines('a'#10'b', 2, Names), 'no final line break is fine');
+  Assert.IsFalse(ParseRenameLines('a'#10, 2, Names), 'a line removed');
+  Assert.AreEqual(0, Integer(Length(Names)));
+  Assert.IsFalse(ParseRenameLines('a'#10'b'#10'c'#10, 2, Names), 'a line added');
+  Assert.IsTrue(ParseRenameLines('a'#10#10'c'#10, 3, Names), 'an empty line stays a line');
+  Assert.AreEqual('', Names[1]);
+end;
+
+procedure TTestMultiRename.TestLinesRoundTripThroughText;
+var
+  Names: TArray<string>;
+begin
+  Assert.IsTrue(ParseRenameLines(RenameLinesText(['one.txt', 'two words.txt']), 2, Names));
+  Assert.AreEqual('two words.txt', Names[1]);
 end;
 
 initialization

@@ -83,6 +83,17 @@ function PlanMultiRename(const ANames: TArray<string>; const AIsDir: TArray<Bool
   const AExisting: TArray<string>; const ARules: TMultiRenameRules;
   const AInfos: TArray<TRenameItemInfo>): TRenamePlan; overload;
 
+/// <summary>The plan for names chosen by hand: ANewNames[i] is the new name of
+/// ANames[i]; the same checks as for names made from rules.</summary>
+function PlanRenameTo(const ANames, ANewNames, AExisting: TArray<string>): TRenamePlan;
+
+/// <summary>The names, one per line, as the text handed to an editor.</summary>
+function RenameLinesText(const ANames: TArray<string>): string;
+/// <summary>Splits an edited text into exactly ACount lines (CR LF or LF, one
+/// final line break allowed). False when the line count differs.</summary>
+function ParseRenameLines(const AText: string; ACount: Integer;
+  out ANames: TArray<string>): Boolean;
+
 /// <summary>True when applying the plan would fail or overwrite something.</summary>
 function RenamePlanBlocked(const APlan: TRenamePlan): Boolean;
 /// <summary>Items that get a new name.</summary>
@@ -361,6 +372,23 @@ function PlanMultiRename(const ANames: TArray<string>; const AIsDir: TArray<Bool
 var
   I: Integer;
   Info: TRenameItemInfo;
+  NewNames: TArray<string>;
+begin
+  SetLength(NewNames, Length(ANames));
+  for I := 0 to High(ANames) do
+  begin
+    if I <= High(AInfos) then
+      Info := AInfos[I]
+    else
+      Info := EmptyRenameItemInfo;
+    NewNames[I] := MultiRenameName(ANames[I], AIsDir[I], I, ARules, Info);
+  end;
+  Result := PlanRenameTo(ANames, NewNames, AExisting);
+end;
+
+function PlanRenameTo(const ANames, ANewNames, AExisting: TArray<string>): TRenamePlan;
+var
+  I: Integer;
   Taken: TDictionary<string, Integer>;
   Count: Integer;
   Existing: string;
@@ -371,11 +399,7 @@ begin
     for I := 0 to High(ANames) do
     begin
       Result[I].OldName := ANames[I];
-      if I <= High(AInfos) then
-        Info := AInfos[I]
-      else
-        Info := EmptyRenameItemInfo;
-      Result[I].NewName := MultiRenameName(ANames[I], AIsDir[I], I, ARules, Info);
+      Result[I].NewName := ANewNames[I];
       Result[I].Problem := rpNone;
       if Result[I].NewName = ANames[I] then
         Result[I].Problem := rpUnchanged
@@ -410,6 +434,38 @@ begin
   finally
     Taken.Free;
   end;
+end;
+
+function RenameLinesText(const ANames: TArray<string>): string;
+var
+  Name: string;
+begin
+  Result := '';
+  for Name in ANames do
+    Result := Result + Name + #10;
+end;
+
+function ParseRenameLines(const AText: string; ACount: Integer;
+  out ANames: TArray<string>): Boolean;
+var
+  Text: string;
+  Start, I: Integer;
+begin
+  SetLength(ANames, 0);
+  Text := StringReplace(AText, #13#10, #10, [rfReplaceAll]);
+  if (Text <> '') and (Text[Length(Text)] = #10) then
+    Delete(Text, Length(Text), 1);
+  Start := 1;
+  for I := 1 to Length(Text) + 1 do
+    if (I > Length(Text)) or (Text[I] = #10) then
+    begin
+      SetLength(ANames, Length(ANames) + 1);
+      ANames[High(ANames)] := Copy(Text, Start, I - Start);
+      Start := I + 1;
+    end;
+  Result := Length(ANames) = ACount;
+  if not Result then
+    SetLength(ANames, 0);
 end;
 
 function RenamePlanBlocked(const APlan: TRenamePlan): Boolean;

@@ -25,6 +25,8 @@ type
     [Test] procedure TestManualActionRespectsMissingSide;
     [Test] procedure TestPlanLinesFilterAndMap;
     [Test] procedure TestFitSyncPathKeepsBothEnds;
+    [Test] procedure TestMirrorDeletesOnlyTargetExtras;
+    [Test] procedure TestMirrorPlanShowsDeletions;
   end;
 
 implementation
@@ -56,6 +58,95 @@ begin
   ForceDirectories(TPath.GetDirectoryName(APath));
   TFile.WriteAllText(APath, AText, TEncoding.UTF8);
   TFile.SetLastWriteTimeUtc(APath, AUtc);
+end;
+
+procedure TestMirrorDeletesOnlyTargetExtras;
+var
+  Root, Src, Dst, Extra: string;
+  Items: TArray<TSyncItem>;
+  Deletes, Sources, Dests: TArray<string>;
+  Empty: TArray<TSyncSnapshotEntry>;
+  I, Found: Integer;
+  T0: TDateTime;
+begin
+  Root := TPath.Combine(TPath.GetTempPath, 'mtn2-sync-mirror');
+  if TDirectory.Exists(Root) then
+    TDirectory.Delete(Root, True);
+  Src := TPath.Combine(Root, 'src');
+  Dst := TPath.Combine(Root, 'dst');
+  T0 := EncodeDateTime(2020, 1, 1, 12, 0, 0, 0);
+  SetLength(Empty, 0);
+  WriteFileUtc(TPath.Combine(Src, 'same.txt'), 'same', T0);
+  WriteFileUtc(TPath.Combine(Dst, 'same.txt'), 'same', T0);
+  WriteFileUtc(TPath.Combine(Src, 'new.txt'), 'new', T0);
+  Extra := TPath.Combine(Dst, 'extra.txt');
+  WriteFileUtc(Extra, 'extra', T0);
+
+  Items := CompareDirsTwoWay(Src, Dst, Empty);
+  Found := -1;
+  for I := 0 to High(Items) do
+    if SameText(Items[I].RelPath, 'extra.txt') then
+      Found := I;
+  Assert.IsTrue(Found >= 0, 'a file only on the target is listed');
+  Assert.IsTrue(EffectiveSyncAction(Items[Found], False, False) = saSkip,
+    'one-way leaves a target-only file alone');
+  Assert.IsTrue(EffectiveSyncAction(Items[Found], False, True) = saDelete,
+    'mirror deletes a target-only file');
+  Assert.IsTrue(EffectiveSyncAction(Items[Found], True, True) = saCopyLeft,
+    'two-way never deletes');
+  Assert.IsTrue(SyncActionAllowed(Items[Found], saDelete),
+    'a target-only file may be deleted');
+
+  Deletes := CollectDirSyncDeletePaths(Items, False, True);
+  Assert.AreEqual(1, Integer(Length(Deletes)), 'one extra file is collected');
+  Assert.IsTrue(SameText(ExpandFileName(FileUriToPath(Deletes[0])), ExpandFileName(Extra)),
+    'the target copy is the one removed');
+  Assert.AreEqual(0, Integer(Length(CollectDirSyncDeletePaths(Items, False, False))),
+    'nothing is deleted outside mirror mode');
+  Assert.AreEqual(0, Integer(Length(CollectDirSyncDeletePaths(Items, True, True))),
+    'nothing is deleted in two-way mode');
+
+  CollectDirSyncJobPairs(Items, Sources, Dests, False, True);
+  Assert.AreEqual(1, Integer(Length(Sources)), 'only new.txt is copied');
+  Assert.IsTrue(TFile.Exists(Extra), 'planning deletes nothing');
+
+  Items[Found].Action := saSkip;
+  Assert.AreEqual(0, Integer(Length(CollectDirSyncDeletePaths(Items, False, True))),
+    'a manual skip keeps the file');
+  Assert.IsTrue(ApplySyncAction(Items[Found], saDelete),
+    'delete can be chosen by hand');
+  Assert.AreEqual(1, Integer(Length(CollectDirSyncDeletePaths(Items, False, True))),
+    'a chosen delete is collected');
+end;
+
+procedure TestMirrorPlanShowsDeletions;
+var
+  Items: TArray<TSyncItem>;
+  Lines: TArray<string>;
+  View: TArray<Integer>;
+  I: Integer;
+begin
+  SetLength(Items, 2);
+  Items[0].RelPath := 'a.txt';
+  Items[0].SrcURI := 'C:/L/a.txt';
+  Items[0].DstURI := 'C:/R/a.txt';
+  Items[0].Reason := srMissing;
+  Items[1].RelPath := 'x.txt';
+  Items[1].SrcURI := 'C:/R/x.txt';
+  Items[1].DstURI := 'C:/L/x.txt';
+  Items[1].Reason := srMissingOnSrc;
+  Assert.IsFalse(SyncActionAllowed(Items[0], saDelete),
+    'a file present on the source is never deleted');
+  Lines := FormatSyncPlanLines(Items, False, False, View, True);
+  Assert.AreEqual(2, Integer(Length(Lines)), 'both rows are listed');
+  Assert.IsTrue(Pos('XX', Lines[1]) = 1, 'a deletion has its own glyph');
+  Assert.IsTrue(Pos('XX', Lines[0]) = 0, 'a copy keeps its arrow');
+  Assert.IsTrue(Pos('1 to delete', FormatDirSyncPlanStatus(Items, False, True)) > 0,
+    'the status counts deletions');
+  Assert.IsTrue(Pos('to delete', FormatDirSyncPlanStatus(Items, False, False)) = 0,
+    'no deletions are announced outside mirror mode');
+  for I := 0 to High(Lines) do
+    Assert.IsTrue(Lines[I] <> '', 'rows are not empty');
 end;
 
 procedure TestOneWayStillWorks;
@@ -507,6 +598,16 @@ end;
 procedure TTestDualPanelSync.TestPlanLinesFilterAndMap;
 begin
   TestDualPanelSync.TestPlanLinesFilterAndMap;
+end;
+
+procedure TTestDualPanelSync.TestMirrorDeletesOnlyTargetExtras;
+begin
+  TestDualPanelSync.TestMirrorDeletesOnlyTargetExtras;
+end;
+
+procedure TTestDualPanelSync.TestMirrorPlanShowsDeletions;
+begin
+  TestDualPanelSync.TestMirrorPlanShowsDeletions;
 end;
 
 procedure TTestDualPanelSync.TestFitSyncPathKeepsBothEnds;

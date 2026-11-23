@@ -55,7 +55,7 @@ A short overview of the features; details are in the help (F1), the other docume
 - **Folder merge** – copying or moving a folder onto an existing one merges the contents; the "File already exists" prompt offers overwrite, skip, rename, append, overwrite if newer, overwrite if the size differs and automatic rename (`name (2).ext`); the same rules can be picked in the copy dialog in advance.
 - **Verified copy** – the "Verify after copying" option compares every copied file with its source before it is kept; a difference is an error of that file with the usual retry / skip.
 - **Far-style delete** – `F8` / `Del` to the Recycle Bin, `Shift+Del` permanently, `Shift+F8` only the item under the cursor; if the Recycle Bin fails, permanent deletion is offered.
-- **Multi-rename** – `Ctrl+Alt+N`: `[N]`, `[E]`, `[C]` masks, date, parent, size and metadata tags, text replacement and regular expressions, case changes, preview with conflict checks; "Undo last" in the dialog takes the previous batch back.
+- **Multi-rename** – `Ctrl+Alt+N`: `[N]`, `[E]`, `[C]` masks, date, parent, size and metadata tags, text replacement and regular expressions, case changes, preview with conflict checks; "In editor" types the new names by hand, "Undo last" takes the previous batch back.
 - **Attributes** – `Ctrl+A`: three-state check boxes for a group of files, extended NTFS attributes, owner, dates; on Linux – permissions, owner and `chattr` flags.
 - **Link creation** – `Alt+F6`: a symbolic link, junction or hard link depending on rights and source.
 - **Link copying** – symbolic links and junctions are copied as links, their contents only on request.
@@ -85,7 +85,7 @@ A short overview of the features; details are in the help (F1), the other docume
 - **File compare and merge** – `Ctrl+Alt+C`: a full-screen window, lines aligned by similarity, jumps between differences, copying differences both ways, undo and save.
 - **Group comparison** – with several files marked, files with the same names are compared in pairs, and a summary list leads to the differences.
 - **Folder comparison** – `Ctrl+Shift+C` by time, size or contents; contents are compared in the background.
-- **Folder synchronization** – `Ctrl+Alt+S`: an action per file (`->`, `<-`, `--`), conflict resolution, counts of copies and skips.
+- **Folder synchronization** – `Ctrl+Alt+S`: an action per file (`->`, `<-`, `--`), conflict resolution, counts of copies and skips; the Mirror mode also deletes files that exist only on the target, after a dry run and a confirmation.
 
 ## Archives
 

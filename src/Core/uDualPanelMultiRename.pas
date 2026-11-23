@@ -17,6 +17,10 @@ type
   TMultiRenameStartProc = reference to procedure(const ASources, ADests: TArray<string>);
   /// <summary>Columns of the window the dialog opens in.</summary>
   TMultiRenameAreaFn = reference to function: Integer;
+  /// <summary>Opens AText in an editor; AOnDone gets the text when the editor
+  /// is closed.</summary>
+  TMultiRenameEditProc = reference to procedure(const AText: string;
+    const AOnDone: TProc<string>);
 
   TMultiRenameController = class
   private
@@ -39,12 +43,19 @@ type
     FOnNotify: TProc;
     FOnAreaCols: TMultiRenameAreaFn;
     FOnUndo: TProc;
+    FOnEditNames: TMultiRenameEditProc;
+    FManualNames: TArray<string>;
+    FManualSerial: Integer;
     function ItemInfo(const ARow: TPanelRow; const AName, AParent: string): TRenameItemInfo;
     function ReadRules: TMultiRenameRules;
     function RulesSignature(const ARules: TMultiRenameRules): string;
     function ProblemText(AProblem: TRenameProblem): string;
     function Cell(const AText: string; AWidth: Integer): string;
     procedure Refresh;
+    procedure ShowDialog;
+    function CurrentPlan(const ARules: TMultiRenameRules): TRenamePlan;
+    procedure EditNamesInEditor;
+    procedure NamesEdited(const AText: string);
   public
     constructor Create(ADialog: TDialogHost; const AOnCommand: TDialogCommandEvent;
       const AOnSetKind: TMultiRenameKindSetter; const AOnPrepare: TProc;
@@ -59,6 +70,8 @@ type
     /// <summary>Called, after the dialog closed, when the user asks to undo the
     /// last batch.</summary>
     property OnUndo: TProc read FOnUndo write FOnUndo;
+    /// <summary>Lets the user type the new names in an editor, one per line.</summary>
+    property OnEditNames: TMultiRenameEditProc read FOnEditNames write FOnEditNames;
   end;
 
 implementation
@@ -130,8 +143,8 @@ end;
 
 function TMultiRenameController.RulesSignature(const ARules: TMultiRenameRules): string;
 begin
-  Result := Format('%s|%s|%s|%s|%d|%d|%d|%d|%d|%d',
-    [ARules.NameMask, ARules.ExtMask, ARules.Search, ARules.Replace,
+  Result := Format('%d|%s|%s|%s|%s|%d|%d|%d|%d|%d|%d',
+    [FManualSerial, ARules.NameMask, ARules.ExtMask, ARules.Search, ARules.Replace,
      Ord(ARules.MatchCase), ARules.CounterStart, ARules.CounterStep,
      ARules.CounterDigits, Ord(ARules.CaseMode), Ord(ARules.UseRegex)]);
 end;
@@ -155,6 +168,14 @@ begin
     Result := Copy(AText, 1, Max(AWidth - 1, 0)) + '~'
   else
     Result := AText + StringOfChar(' ', AWidth - Length(AText));
+end;
+
+function TMultiRenameController.CurrentPlan(const ARules: TMultiRenameRules): TRenamePlan;
+begin
+  if Length(FManualNames) = Length(FNames) then
+    Result := PlanRenameTo(FNames, FManualNames, FExisting)
+  else
+    Result := PlanMultiRename(FNames, FIsDir, FExisting, ARules, FInfos);
 end;
 
 procedure TMultiRenameController.Refresh;
@@ -185,7 +206,7 @@ begin
     Exit;
   FSignature := RulesSignature(Rules);
   FRules := Rules;
-  Plan := PlanMultiRename(FNames, FIsDir, FExisting, Rules, FInfos);
+  Plan := CurrentPlan(Rules);
   SetLength(Lines, Length(Plan));
   SetLength(Accents, 0);
   Unchanged := 0;
@@ -244,7 +265,7 @@ end;
 procedure TMultiRenameController.Open(const ASources: TArray<string>;
   const ARows: TPanelRows);
 var
-  I, J, N, DialogCols: Integer;
+  I, J, N: Integer;
   Row: TPanelRow;
   Name, ParentName: string;
   Found: Boolean;
@@ -304,6 +325,14 @@ begin
       SetLength(FExisting, N + 1);
       FExisting[N] := Name;
     end;
+  SetLength(FManualNames, 0);
+  ShowDialog;
+end;
+
+procedure TMultiRenameController.ShowDialog;
+var
+  DialogCols: Integer;
+begin
   // The dialog spans the window minus a margin on each side. The list (the
   // dialog width less 4, one cell of it the scroll bar) is split into the
   // old name, the new name and a note about a problem.
@@ -327,6 +356,44 @@ begin
     FOnNotify();
 end;
 
+procedure TMultiRenameController.EditNamesInEditor;
+var
+  Plan: TRenamePlan;
+  Names: TArray<string>;
+  I: Integer;
+begin
+  Plan := CurrentPlan(ReadRules);
+  FRules := ReadRules;
+  SetLength(Names, Length(Plan));
+  for I := 0 to High(Plan) do
+    Names[I] := Plan[I].NewName;
+  FDialog.Close;
+  FOnEditNames(RenameLinesText(Names),
+    procedure(AText: string)
+    begin
+      NamesEdited(AText);
+    end);
+end;
+
+procedure TMultiRenameController.NamesEdited(const AText: string);
+var
+  Names: TArray<string>;
+  Warn: string;
+begin
+  Warn := '';
+  if ParseRenameLines(AText, Length(FNames), Names) then
+  begin
+    FManualNames := Names;
+    Inc(FManualSerial);
+  end
+  else
+    Warn := Format(T('ui.multiRename.linesChanged',
+      'The number of lines must stay %d: one new name per item'), [Length(FNames)]);
+  ShowDialog;
+  if Warn <> '' then
+    FDialog.SetLabelText('status', Warn);
+end;
+
 procedure TMultiRenameController.NotifyDialogChanged;
 begin
   Refresh;
@@ -344,6 +411,11 @@ begin
     FDialog.Close;
     Exit;
   end;
+  if SameText(AControlId, 'editor') and Assigned(FOnEditNames) then
+  begin
+    EditNamesInEditor;
+    Exit;
+  end;
   if SameText(AControlId, 'undo') then
   begin
     FDialog.Close;
@@ -353,7 +425,7 @@ begin
   end;
   if not DialogCmdIsAccept(AControlId) then
     Exit;
-  Plan := PlanMultiRename(FNames, FIsDir, FExisting, ReadRules, FInfos);
+  Plan := CurrentPlan(ReadRules);
   if RenamePlanBlocked(Plan) then
   begin
     FSignature := '';

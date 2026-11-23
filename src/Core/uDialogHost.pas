@@ -286,6 +286,11 @@ type
     /// control that gets disabled hands the focus to the next one.</summary>
     procedure SetControlDisabled(const AId: string; ADisabled: Boolean);
     function GetRadio(const AGroupId: string): string;
+    /// <summary>Selects the radio AId of group AGroupId on the open dialog.</summary>
+    procedure SetRadio(const AGroupId, ASelectedId: string);
+    /// <summary>Replaces the items of an open drop-down and selects one.</summary>
+    procedure SetDropDownItems(const AId: string; const AItems: TArray<string>;
+      ASelectedIndex: Integer);
     function GetListSelectedIndex(const AId: string): Integer;
     /// <summary>First visible row of the dialog's list. A reopened dialog starts at
     /// the top; SetListScrollTop restores the position (the next draw keeps the
@@ -1386,6 +1391,37 @@ begin
     if (FDecl.Controls[I].Kind = dckCheckbox) and SameText(FDecl.Controls[I].Id, AId) then
     begin
       FDecl.Controls[I].Checked := AChecked;
+      Exit;
+    end;
+end;
+
+procedure TDialogHost.SetRadio(const AGroupId, ASelectedId: string);
+var
+  I: Integer;
+begin
+  for I := 0 to High(FDecl.Controls) do
+    if (FDecl.Controls[I].Kind = dckRadio) and
+       SameText(FDecl.Controls[I].Group, AGroupId) then
+      FDecl.Controls[I].Checked := SameText(FDecl.Controls[I].Id, ASelectedId);
+  NotifyChanged;
+end;
+
+procedure TDialogHost.SetDropDownItems(const AId: string;
+  const AItems: TArray<string>; ASelectedIndex: Integer);
+var
+  I: Integer;
+begin
+  for I := 0 to High(FDecl.Controls) do
+    if (FDecl.Controls[I].Kind = dckDropDown) and
+       SameText(FDecl.Controls[I].Id, AId) then
+    begin
+      FDecl.Controls[I].Items := Copy(AItems);
+      FDecl.Controls[I].ItemIds := nil;
+      if Length(AItems) = 0 then
+        FDecl.Controls[I].SelectedIndex := 0
+      else
+        FDecl.Controls[I].SelectedIndex := EnsureRange(ASelectedIndex, 0, High(AItems));
+      NotifyChanged;
       Exit;
     end;
 end;

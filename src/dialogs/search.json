@@ -3,7 +3,7 @@
   "version": "2.0",
   "title": "Find file",
   "width": 66,
-  "height": 21,
+  "height": 22,
   "children": [
     {
       "type": "tabs",
@@ -340,9 +340,57 @@
       "tab": 1
     },
     {
+      "type": "dropdown",
+      "id": "preset",
+      "selected": 0,
+      "items": [
+        "(no preset)"
+      ],
+      "col": 1,
+      "row": 14,
+      "width": 30,
+      "height": 1
+    },
+    {
+      "type": "input",
+      "id": "preset_name",
+      "value": "",
+      "col": 33,
+      "row": 14,
+      "width": 30,
+      "height": 1
+    },
+    {
+      "type": "button",
+      "id": "preset_load",
+      "text": "&Load",
+      "col": 1,
+      "row": 15,
+      "width": 18,
+      "height": 1
+    },
+    {
+      "type": "button",
+      "id": "preset_save",
+      "text": "Sa&ve",
+      "col": 21,
+      "row": 15,
+      "width": 18,
+      "height": 1
+    },
+    {
+      "type": "button",
+      "id": "preset_del",
+      "text": "D&elete",
+      "col": 41,
+      "row": 15,
+      "width": 18,
+      "height": 1
+    },
+    {
       "type": "separator",
       "col": 0,
-      "row": 15,
+      "row": 16,
       "width": 64,
       "height": 1
     },
@@ -352,7 +400,7 @@
       "text": "Find",
       "default": true,
       "col": 8,
-      "row": 17,
+      "row": 18,
       "width": 12,
       "height": 1
     },
@@ -361,7 +409,7 @@
       "id": "background",
       "text": "&Background",
       "col": 22,
-      "row": 17,
+      "row": 18,
       "width": 16,
       "height": 1
     },
@@ -371,7 +419,7 @@
       "text": "Cancel",
       "cancel": true,
       "col": 40,
-      "row": 17,
+      "row": 18,
       "width": 12,
       "height": 1
     }

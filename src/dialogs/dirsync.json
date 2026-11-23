@@ -91,7 +91,46 @@
       "text": "0 to copy",
       "col": 1,
       "row": 4,
-      "width": 106,
+      "width": 78,
+      "height": 1
+    },
+    {
+      "type": "button",
+      "id": "preset_del",
+      "text": "Delete &preset",
+      "col": 82,
+      "row": 4,
+      "width": 25,
+      "height": 1
+    },
+    {
+      "type": "dropdown",
+      "id": "preset",
+      "selected": 0,
+      "items": [
+        "(no preset)"
+      ],
+      "col": 1,
+      "row": 5,
+      "width": 40,
+      "height": 1
+    },
+    {
+      "type": "input",
+      "id": "preset_name",
+      "value": "",
+      "col": 44,
+      "row": 5,
+      "width": 36,
+      "height": 1
+    },
+    {
+      "type": "button",
+      "id": "preset_save",
+      "text": "Sa&ve preset",
+      "col": 82,
+      "row": 5,
+      "width": 25,
       "height": 1
     },
     {
@@ -159,6 +198,26 @@
       "checked": false,
       "col": 44,
       "row": 19,
+      "width": 40,
+      "height": 1
+    },
+    {
+      "type": "checkbox",
+      "id": "mirror",
+      "text": "&Mirror: delete extras (X)",
+      "checked": false,
+      "col": 1,
+      "row": 18,
+      "width": 40,
+      "height": 1
+    },
+    {
+      "type": "checkbox",
+      "id": "del_perm",
+      "text": "Delete e&xtras for good",
+      "checked": false,
+      "col": 44,
+      "row": 18,
       "width": 40,
       "height": 1
     },

@@ -24,6 +24,7 @@ uses
   TestHelpContext in 'TestHelpContext.pas',
   TestFolderHotlist in 'TestFolderHotlist.pas',
   TestFolderFrecent in 'TestFolderFrecent.pas',
+  TestDialogPresets in 'TestDialogPresets.pas',
   TestRenameJournal in 'TestRenameJournal.pas',
   TestRowDecorations in 'TestRowDecorations.pas',
   TestFunctionBarHints in 'TestFunctionBarHints.pas',

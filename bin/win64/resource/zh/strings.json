@@ -1,7 +1,6 @@
 {
   "dialogs": {
     "DIALOG_ABOUT": {
-      "undo": "撤销(&U)",
       "$title": "关于 MTN2",
       "lbl_sub": "高性能双面板文件管理器",
       "lbl_pty": "平台: Win64 | ConPty 持久 Shell",
@@ -254,6 +253,7 @@
       "dst_label": "目标:",
       "oneway": "单向(→)(&O)",
       "twoway": "双向(⇄)(&T)",
+      "mirror": "镜像(&M): 删除多余文件 (X)",
       "bydate": "日期/大小(&D)",
       "bycontent": "内容(&C)",
       "dry_run": "仅预演(只报告)(&R)",
@@ -262,7 +262,10 @@
       "act_skip": "跳过(&K)",
       "act_auto": "重置(&S)",
       "only_skipped": "仅显示已跳过(&L)",
-      "hint_keys": "在行上: 右 / 左 / 空格 / Del = 复制到右侧、复制到左侧、跳过、重置为自动。",
+      "del_perm": "永久删除多余文件(&X)",
+      "preset_save": "保存预设(&V)",
+      "preset_del": "删除预设(&P)",
+      "hint_keys": "在某一行:右 / 左 / 空格 / Del / X = 复制 ->、复制 <-、跳过、恢复自动、删除 (XX)。",
       "hint_legend": "[+] 新增  [>] 较新  [<+] 仅在目标  [<] 目标较新  [!] 冲突  [!=] 内容不同  * 手动",
       "ok": "同步",
       "cancel": "取消"
@@ -364,6 +367,8 @@
         "First letter upper": "首字母大写",
         "Each Word Upper": "每个单词首字母大写"
       },
+      "undo": "撤销(&U)",
+      "editor": "在编辑器中(&E)",
       "ok": "重命名",
       "cancel": "取消"
     },
@@ -704,7 +709,10 @@
       "lbl_encoding": "代码页:",
       "ok": "查找",
       "cancel": "取消",
-      "background": "后台(&B)"
+      "background": "后台(&B)",
+      "preset_load": "加载(&L)",
+      "preset_save": "保存(&V)",
+      "preset_del": "删除(&E)"
     },
     "DIALOG_PANELFILTER": {
       "$title": "面板过滤",
@@ -1376,6 +1384,7 @@
     "multiRename.nothingSelected": "请先选择文件或文件夹",
     "multiRename.status": "待重命名 %d,不变 %d,有问题 %d",
     "multiRename.blocked": "请先修正标有 ! 的名称",
+    "multiRename.linesChanged": "行数必须保持为 %d: 每个项目一个新名称",
     "multiRename.nothingToUndo": "没有可撤销的重命名",
     "multiRename.undone": "已撤销: %d, 保持原样: %d",
     "multiRename.problemEmpty": "名称为空",
@@ -1409,6 +1418,7 @@
     "search.goHint": "Enter=转到  Esc=关闭",
     "search.none": "未找到文件",
     "search.encodingAuto": "自动检测",
+    "search.noPreset": "(无预设)",
     "search.engineAuto": "自动",
     "search.engineBuiltIn": "内置",
     "search.pipeline": "管道(&N)",
@@ -1595,6 +1605,13 @@
     "dirSync.nothingOpen": "没有需要复制的文件; %d 项需要手动选择",
     "dirSync.status": "待复制 %d 个(%d ->, %d <-),已跳过 %d 个",
     "dirSync.statusOpen": ", %d 项未决定",
+    "dirSync.statusDelete": ",%d 项待删除",
+    "dirSync.wouldDelete": ";将删除 %d 个文件",
+    "dirSync.noPreset": "(无预设)",
+    "dirSync.presetNeedName": "请先输入预设名称",
+    "dirSync.presetSaved": "预设“%s”已保存",
+    "dirSync.presetFailed": "无法保存预设",
+    "dirSync.presetDeleted": "预设“%s”已删除",
     "search.filterFormat": "大小: 10K, 1.5M   日期: %s",
     "externalTools.title": "外部查看器/编辑器",
     "externalTools.viewTitle": "外部查看器",
