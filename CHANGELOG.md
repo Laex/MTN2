@@ -6,38 +6,11 @@ This file describes what changes for the user from version to version: new featu
 
 ## Unreleased
 
-## Dev v0.5.11.15 – 2026-11-23
-
-### Fixed
-
-- On Linux, replacing an existing folder on copy works again instead of failing with "file not found".
-
-## Dev v0.5.11.14 – 2026-11-23
-
-### Fixed
-
-- Updating a 7z archive (adding, deleting or editing files inside) replaces it in one step on Windows, so a failure no longer leaves the archive missing.
-- Saving a text file restores its previous content when the write fails half way, for example on a full disk.
-- Exporting settings to an existing file keeps that file if the export fails.
-- Installing, replacing and removing a plugin folder no longer follow a link into the folder it points at.
-- Deleting the root of a drive, a network share, the file system or an FTP/SFTP server is refused, including delete with administrator rights.
-- Replacing a folder on copy, cleaning up a failed copy and moving a folder from an SFTP session no longer follow links into the folders they point at.
-- Permanent delete of a junction or a folder symbolic link on Windows no longer wipes the files in the folder it points at: only the link is removed. The same applies to links inside a deleted folder and to the source folder of a move between drives.
-
-## Dev v0.5.11.10 – 2026-11-23
+## v0.5.12 – 2026-11-23
 
 ### New
 
 - In the connection list of the network plugin, F5 and Shift+F5 copy a saved connection under a new name, and F6 renames it.
-
-### Fixed
-
-- Backslashes in dialog fields (for example a Windows path in the key file field of a connection) are kept as typed; before, a sequence such as backslash-n or backslash-t in a path turned into a control character and the value was saved broken.
-
-## Dev v0.5.11.8 – 2026-11-23
-
-### New
-
 - The synchronization dialog has a Mirror mode: files that exist only on the target are marked `XX` (delete; the `X` key sets it by hand). The mode starts with the dry-run box on, so the first run only reports the count. The deletion follows a successful copy and asks for confirmation; the files go to the Recycle Bin unless "Delete extras for good" is ticked. The Extras to panel button lists the target-only files in the Temporary panel for review.
 - The synchronization and search dialogs keep named presets: the current mode and options are saved under a name, loaded from a list and deleted again.
 - The synchronization dialog shows the progress of the folder comparison (files and folders scanned, then files compared). Esc sends the comparison to the background, where it keeps a chip and a job list entry until it finishes; opening the chip shows the plan.
@@ -48,18 +21,6 @@ This file describes what changes for the user from version to version: new featu
 - The "File already exists" prompt has three more answers: overwrite if the existing file is older, overwrite if the size differs, and automatic rename (`name (2).ext`, the first free number). With "Remember choice" the rule is applied to every following conflict of the job, file by file; a pair a rule cannot judge (a folder against a file) is still asked about. The copy dialog's "Already existing files" list offers the same three choices up front.
 - The copy and move dialog has "Verify after copying": each file written is compared byte by byte with its source before it replaces the destination. A difference is reported as an error of that file, with the usual retry / skip / cancel.
 - The job list has "When the queue ends": do nothing (default), sleep, shut down or close the program. The action is armed for one run, fires after the last job finishes without errors or cancels, asks first and goes ahead by itself after 30 seconds.
-
-## Dev v0.5.11.3 – 2026-11-22
-
-### Fixed
-
-- SFTP / SCP with a key file: an encrypted key now asks for its passphrase before the first connection, a wrong passphrase is asked again, and a key the server rejects shows the reason instead of failing silently. A missing key file and a PuTTY (.ppk) key, which the plugin cannot read, are reported with an explanation (export the key in OpenSSH format with PuTTYgen).
-- Cancelling the login question of a network connection returns the panel from "Waiting for the server..." to a "Cancelled" row with a way back to the list of connections. Errors of network connections show the server's own message instead of "Access denied".
-
-## Dev v0.5.11.2 – 2026-11-22
-
-### New
-
 - The top menu (≡ menu, Help) has "What MTN2 can do": a help page that lists the program's features by task (find a command, move around, select and rename files, search and compare, view and edit, console and terminals, tabs and workspaces, settings) with the keys and links to the details. The page is in the help contents too, in English, Russian, German and Chinese.
 - The help has a "Recipes" page with short answers to common tasks (copy, find, rename many files, compare folders, unpack an archive, return to a folder, terminals, remote servers, moving the settings), in English, Russian, German and Chinese.
 - From the third run on, the program shows one short tip per run about a feature you have not used yet (the command search, multi-rename, the folder hotlist, paired folders, comparison, Quick View, terminals, the folder tree, grouping, checksums, workspaces) with its current keys. A feature you already use is skipped and each tip appears once. The "Reset hints" button brings the tips back; the key hints switch turns them off.
@@ -71,6 +32,20 @@ This file describes what changes for the user from version to version: new featu
 - The file search dialog has two tabs ("Search" and "Filters") and the attributes dialog has three ("Attributes", "Dates", "Owner"), so both fit an 80x24 terminal. In dialogs with tabs, the rule under the tab strip opens under the shown tab.
 - The plugin permissions dialog is compact when a plugin asks for no permissions. The attributes dialog highlights the file name and, for several items, shows how many files and folders are selected.
 - The network connections dialog of the network plugin has a cleaner layout, and its host-key and certificate prompts have tidy buttons. The "Set mode" dialog is translated, and a few menu hotkeys that clashed in German and Chinese are fixed.
+
+### Fixed
+
+- On Linux, replacing an existing folder on copy works again instead of failing with "file not found".
+- Updating a 7z archive (adding, deleting or editing files inside) replaces it in one step on Windows, so a failure no longer leaves the archive missing.
+- Saving a text file restores its previous content when the write fails half way, for example on a full disk.
+- Exporting settings to an existing file keeps that file if the export fails.
+- Installing, replacing and removing a plugin folder no longer follow a link into the folder it points at.
+- Deleting the root of a drive, a network share, the file system or an FTP/SFTP server is refused, including delete with administrator rights.
+- Replacing a folder on copy, cleaning up a failed copy and moving a folder from an SFTP session no longer follow links into the folders they point at.
+- Permanent delete of a junction or a folder symbolic link on Windows no longer wipes the files in the folder it points at: only the link is removed. The same applies to links inside a deleted folder and to the source folder of a move between drives.
+- Backslashes in dialog fields (for example a Windows path in the key file field of a connection) are kept as typed; before, a sequence such as backslash-n or backslash-t in a path turned into a control character and the value was saved broken.
+- SFTP / SCP with a key file: an encrypted key now asks for its passphrase before the first connection, a wrong passphrase is asked again, and a key the server rejects shows the reason instead of failing silently. A missing key file and a PuTTY (.ppk) key, which the plugin cannot read, are reported with an explanation (export the key in OpenSSH format with PuTTYgen).
+- Cancelling the login question of a network connection returns the panel from "Waiting for the server..." to a "Cancelled" row with a way back to the list of connections. Errors of network connections show the server's own message instead of "Access denied".
 
 ## v0.5.11 – 2026-11-22
 
