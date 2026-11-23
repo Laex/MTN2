@@ -157,7 +157,7 @@ procedure CleanupFailedCopy(const ADst: string);
 begin
   try
     if LocalPathIsDirectory(ADst) then
-      TDirectory.Delete(WinApiPath(ADst), True)
+      DeletePathTree(ADst)
     else if LocalPathIsFile(ADst) or TFile.Exists(WinApiPath(ADst)) then
       TFile.Delete(WinApiPath(ADst));
   except
@@ -1330,6 +1330,8 @@ begin
           Path := FileUriToPath(URI);
           if Path = '' then
             Err := TVfsError.Make(vecInvalidURI, 'Invalid file URI', URI)
+          else if IsVolumeRootPath(Path) then
+            Err := TVfsError.Make(vecNotSupported, 'A volume root cannot be deleted', URI)
           else if Mode = vdmRecycleBin then
             DeleteToRecycleBin(Path, Err, OnProgress, Cancel)
           else

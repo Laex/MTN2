@@ -77,6 +77,7 @@ type
     [Test] procedure TestMoveBetweenSessionsGoesThroughALocalCopy;
     [Test] procedure TestCopyAndMoveOfASessionRowDuplicateAndRename;
     [Test] procedure TestDeleteRemovesTreesAndSessions;
+    [Test] procedure TestDeleteRefusesTheRootOfAServer;
     [Test] procedure TestCreateDirectoryMakesParents;
     [Test] procedure TestExistsOfSessionRootNeedsNoConnection;
     [Test] procedure TestUnknownSessionIsNotFound;
@@ -698,6 +699,16 @@ begin
   Assert.IsTrue(Err.Code = vecOk, 'deleting a session row removes the session: ' + Err.Message);
   Assert.IsTrue(FManager.SessionCount = 1);
   Assert.IsTrue(FStoreWrites > 0, 'the change is stored');
+end;
+
+procedure TTestNetVfs.TestDeleteRefusesTheRootOfAServer;
+var
+  Err: TVfsError;
+begin
+  if FSkipReason <> '' then
+    Assert.Pass('SKIP: ' + FSkipReason);
+  Err := Delete_('sftp://server.invalid/');
+  Assert.IsTrue(Err.Code = vecNotSupported, 'the server root is refused: ' + Err.Message);
 end;
 
 procedure TTestNetVfs.TestCreateDirectoryMakesParents;

@@ -1074,7 +1074,10 @@ begin
   end;
   try
     if LocalPathIsDirectory(FileUriToPath(AFromURI)) then
-      TDirectory.Delete(FileUriToPath(AFromURI), True)
+    begin
+      if not DeletePathTree(FileUriToPath(AFromURI)) then
+        raise EInOutError.Create('Cannot remove the folder');
+    end
     else
       TFile.Delete(FileUriToPath(AFromURI));
     AError := TVfsError.Ok;

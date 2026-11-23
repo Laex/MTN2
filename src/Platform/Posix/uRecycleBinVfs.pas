@@ -53,7 +53,7 @@ implementation
 
 uses
   System.SysUtils, System.Classes, System.IOUtils, Posix.Base, Posix.Errno,
-  uFileRecycleBin;
+  uFileRecycleBin, uVfsUtils;
 
 function c_rename(AOld, ANew: MarshaledAString): Integer; cdecl;
   external libc name 'rename';
@@ -274,7 +274,10 @@ begin
   Src := TPath.Combine(FilesDir, Item);
   try
     if TDirectory.Exists(Src) then
-      TDirectory.Delete(Src, True)
+    begin
+      if not DeletePathTree(Src) then
+        raise EInOutError.Create('Cannot remove the folder');
+    end
     else if TFile.Exists(Src) then
       TFile.Delete(Src);
     if TFile.Exists(InfoPathFor(Item)) then

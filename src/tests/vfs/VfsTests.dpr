@@ -21,6 +21,7 @@ uses
   TestDeleteErrorResolver in 'TestDeleteErrorResolver.pas',
   TestDeleteLinks in 'TestDeleteLinks.pas',
   TestDeleteProgress in 'TestDeleteProgress.pas',
+  TestVolumeRootGuard in 'TestVolumeRootGuard.pas',
   TestDirWatchSlowDrive in 'TestDirWatchSlowDrive.pas',
   TestDriveInfo in 'TestDriveInfo.pas',
   TestDriveUnc in 'TestDriveUnc.pas',

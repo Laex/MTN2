@@ -488,6 +488,9 @@ begin
         Exit(Finish(ACtx, Op, nrOk));
       Exit(Finish(ACtx, Op, nrNotFound));
     end;
+    // The root of a server is never removed, whatever the session asks.
+    if T.IsDirect and ((T.Path = '') or (T.Path = '/')) then
+      Exit(Finish(ACtx, Op, nrNotSupported));
     R := GManager.Execute(Uri, Op,
       function(AClient: TNetClient; const APath: string): TNetResult
       var

@@ -28,6 +28,14 @@ type
 /// when that name is taken). '' when no free name was found.</summary>
 function UnusedSiblingPath(const ADest, ASuffix: string): string;
 
+/// <summary>True for the root of a volume: a drive root, a share root or the
+/// POSIX root. A delete never runs on such a path.</summary>
+function IsVolumeRootPath(const APath: string): Boolean;
+
+/// <summary>Removes a file or a folder with its content; a link inside is
+/// removed as a node, never followed. A missing path counts as removed.</summary>
+function DeletePathTree(const APath: string): Boolean;
+
 /// <summary>Makes AStaged become ADest. An existing ADest is moved aside
 /// first and put back if AStaged cannot take its place, so a failed replace
 /// does not leave ADest missing. AStaged is consumed on success.</summary>
@@ -36,7 +44,7 @@ function ReplacePathWith(const AStaged, ADest: string; out AError: string): Bool
 implementation
 
 uses
-  uPlatformInfo, uPlatformUpdate;
+  uPlatformInfo, uPlatformUpdate, uPlatformFileOps, uVfsTypes;
 
 // One non-digit run of each name. Whole runs, never single chars mixed with
 // an ASCII fast path: per-char "ASCII ordinal, else locale" is not
@@ -206,16 +214,50 @@ begin
   end;
 end;
 
+function IsVolumeRootPath(const APath: string): Boolean;
+var
+  P: string;
+begin
+  P := ExcludeTrailingPathDelimiter(APath);
+  Result := (P = '') or SameText(ExtractFileDrive(P), P);
+end;
+
+// Removes APath and everything under it. A link is removed as a single node:
+// the folder it points at is never entered.
+function RemoveTreeNode(const APath: string): Boolean;
+var
+  SR: TSearchRec;
+  Code: Integer;
+  Err: TVfsError;
+begin
+  if PlatformIsLinkNode(APath) then
+    Exit(PlatformDeleteNode(APath, False, Err));
+  if not LocalPathIsDirectory(APath) then
+    Exit(PlatformDeleteNode(APath, False, Err));
+  Result := True;
+  Code := FindFirst(WinApiPath(SafeCombinePath(APath, '*')), faAnyFile, SR);
+  try
+    while Code = 0 do
+    begin
+      if (SR.Name <> '.') and (SR.Name <> '..') and
+         not RemoveTreeNode(SafeCombinePath(APath, SR.Name)) then
+        Result := False;
+      Code := FindNext(SR);
+    end;
+  finally
+    System.SysUtils.FindClose(SR);
+  end;
+  if Result then
+    Result := PlatformDeleteNode(APath, True, Err);
+end;
+
 function DeletePathTree(const APath: string): Boolean;
 begin
   Result := True;
-  if not PathIsPresent(APath) then
+  if (APath = '') or not (PathIsPresent(APath) or PlatformIsLinkNode(APath)) then
     Exit;
   try
-    if TDirectory.Exists(APath) then
-      TDirectory.Delete(APath, True)
-    else
-      TFile.Delete(APath);
+    Result := RemoveTreeNode(APath);
   except
     Result := False;
   end;

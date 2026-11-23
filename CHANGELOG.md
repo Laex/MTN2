@@ -8,6 +8,8 @@ This file describes what changes for the user from version to version: new featu
 
 ### Fixed
 
+- Deleting the root of a drive, a network share, the file system or an FTP/SFTP server is refused, including delete with administrator rights.
+- Replacing a folder on copy, cleaning up a failed copy and moving a folder from an SFTP session no longer follow links into the folders they point at.
 - Permanent delete of a junction or a folder symbolic link on Windows no longer wipes the files in the folder it points at: only the link is removed. The same applies to links inside a deleted folder and to the source folder of a move between drives.
 
 ## Dev v0.5.11.10 – 2026-11-23

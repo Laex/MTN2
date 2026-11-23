@@ -77,7 +77,7 @@ function ElevatedAuthenticate(const APassword: string; out AError: string): Bool
 implementation
 
 uses
-  System.IOUtils, uPlatformProcess;
+  System.IOUtils, uPlatformProcess, uVfsUtils;
 
 const
   cAuthWaitMs = 30000;
@@ -252,8 +252,19 @@ end;
 procedure TElevatedFileVfs.DeleteAsync(const AURI: string; AMode: TVfsDeleteMode;
   ACancel: IJobCancelToken; AOnProgress: TVfsProgressCallback;
   AOnDone: TVfsBoolCallback);
+var
+  Path: string;
 begin
-  Submit(['rm', '-rf', '--', FileUriToPath(AURI)], AURI, '', ACancel, AOnProgress, AOnDone);
+  Path := FileUriToPath(AURI);
+  // The command runs with administrator rights: the root of the file system
+  // is refused before sudo is even asked for.
+  if IsVolumeRootPath(Path) then
+  begin
+    if Assigned(AOnDone) then
+      AOnDone(False, TVfsError.Make(vecNotSupported, 'A volume root cannot be deleted', AURI));
+    Exit;
+  end;
+  Submit(['rm', '-rf', '--', Path], AURI, '', ACancel, AOnProgress, AOnDone);
 end;
 
 procedure TElevatedFileVfs.CreateDirectoryAsync(const AURI: string;

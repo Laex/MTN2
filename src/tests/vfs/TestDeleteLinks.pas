@@ -18,6 +18,7 @@ type
     [TearDownFixture] procedure TearDownFixture;
     [Test] procedure TestDeleteLinkKeepsTargetContents;
     [Test] procedure TestDeleteTreeWithLinkKeepsTargetContents;
+    [Test] procedure TestReplacedFolderWithLinkKeepsTargetContents;
   end;
 
 implementation
@@ -29,6 +30,7 @@ uses
   System.SyncObjs,
   System.Diagnostics,
   uVfsTypes,
+  uVfsUtils,
   uFileVfs,
   uPlatformPaths,
   uLinkUtils;
@@ -132,6 +134,23 @@ begin
   Assert.IsTrue(RunPermanentDelete(Tree, Err), 'delete of the tree succeeds');
   Assert.IsFalse(TDirectory.Exists(Tree), 'the tree is gone');
   Assert.IsTrue(TFile.Exists(Inside), 'the folder the inner link pointed at keeps its file');
+end;
+
+procedure TTestDeleteLinks.TestReplacedFolderWithLinkKeepsTargetContents;
+var
+  Target, Inside, Dest, Staged, Msg: string;
+  Err: TVfsError;
+begin
+  MakeTarget('target_c', Target, Inside);
+  Dest := TPath.Combine(GRoot, 'dest_c');
+  TDirectory.CreateDirectory(Dest);
+  Assert.IsTrue(CreateFileLink(TPath.Combine(Dest, 'link_c'), Target, LinkKind, Err),
+    'link is created');
+  Staged := TPath.Combine(GRoot, 'staged_c');
+  TDirectory.CreateDirectory(Staged);
+
+  Assert.IsTrue(ReplacePathWith(Staged, Dest, Msg), 'replace succeeds: ' + Msg);
+  Assert.IsTrue(TFile.Exists(Inside), 'the folder the replaced link pointed at keeps its file');
 end;
 
 initialization
