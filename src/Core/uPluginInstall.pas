@@ -43,7 +43,8 @@ function RemovePluginFolder(const AId, APluginsDir: string; out ADetail: string)
 implementation
 
 uses
-  System.SysUtils, System.Classes, System.IOUtils, System.Zip, uPluginManifest;
+  System.SysUtils, System.Classes, System.IOUtils, System.Zip, uPluginManifest,
+  uVfsUtils;
 
 const
   cMaxArchiveBytes = Int64(512) * 1024 * 1024;
@@ -200,8 +201,7 @@ begin
           Exit;
         end;
         Backup := Target + '.old';
-        if TDirectory.Exists(Backup) then
-          TDirectory.Delete(Backup, True);
+        DeletePathTree(Backup);
         TDirectory.Move(Target, Backup);
         Result.Replaced := True;
       end;
@@ -210,14 +210,13 @@ begin
         TDirectory.Copy(Root, Target);
       except
         // A failed copy leaves the plugin that was there as it was.
-        if TDirectory.Exists(Target) then
-          try TDirectory.Delete(Target, True); except end;
+        DeletePathTree(Target);
         if (Backup <> '') and TDirectory.Exists(Backup) then
           try TDirectory.Move(Backup, Target); except end;
         raise;
       end;
       if Backup <> '' then
-        try TDirectory.Delete(Backup, True); except end;
+        DeletePathTree(Backup);
       Result.Status := pisOk;
     except
       on E: Exception do
@@ -243,12 +242,8 @@ begin
   Dir := TPath.Combine(ExcludeTrailingPathDelimiter(APluginsDir), AId);
   if not TDirectory.Exists(Dir) then
     Exit;
-  try
-    TDirectory.Delete(Dir, True);
-  except
-    on E: Exception do
-      ADetail := E.Message;
-  end;
+  if not DeletePathTree(Dir) then
+    ADetail := 'Cannot remove the folder';
   Result := not TDirectory.Exists(Dir);
 end;
 
