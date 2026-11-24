@@ -1283,9 +1283,9 @@ var
 begin
   if AURI = '' then
     Exit;
-  // Membership is the sorted key. Holding Insert down a large folder used to
-  // compare the new URI with every selected one, and the next repaint built
-  // the keys again from scratch.
+  // Membership is the sorted key: comparing the new URI with every selected
+  // one, or rebuilding the keys on each repaint, stalls Insert held down a
+  // large folder.
   K := VfsUriKey(AURI);
   Keys := TabSelectionKeys(ATab);
   if SortedKeysHas(Keys, K) then

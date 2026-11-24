@@ -265,16 +265,19 @@ begin
             var
               Fresh: TArray<TFindHit>;
               H: TFindHit;
+              N: Integer;
             begin
-              SetLength(Fresh, 0);
+              SetLength(Fresh, Length(ANew));
+              N := 0;
               for H in ANew do
                 if not Seen.ContainsKey(LowerCase(H.Path)) then
                 begin
                   Seen.Add(LowerCase(H.Path), True);
                   Hits.Add(H);
-                  SetLength(Fresh, Length(Fresh) + 1);
-                  Fresh[High(Fresh)] := H;
+                  Fresh[N] := H;
+                  Inc(N);
                 end;
+              SetLength(Fresh, N);
               if (Length(Fresh) > 0) and Assigned(AOnHits) then
                 AOnHits(Fresh);
             end);

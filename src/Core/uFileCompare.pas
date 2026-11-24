@@ -168,7 +168,7 @@ var
   V: TArray<Integer>;
   Trace: TArray<TArray<Integer>>;
   Spans: TArray<TDiffSpan>;
-  Count: Integer;
+  Count, TraceN: Integer;
 begin
   N := Length(ALeft);
   M := Length(ARight);
@@ -183,12 +183,22 @@ begin
   Off := MaxD;
   SetLength(V, 2 * MaxD + 1);
   SetLength(Trace, 0);
+  TraceN := 0;
   V[Off + 1] := 0;
   EndX := -1;
   for D := 0 to MaxD do
   begin
-    SetLength(Trace, Length(Trace) + 1);
-    Trace[High(Trace)] := Copy(V);
+    // The list of snapshots doubles. Growing it per step stalls a comparison
+    // of two long files. Each snapshot is still its own copy of V.
+    if TraceN = Length(Trace) then
+    begin
+      if TraceN < 64 then
+        SetLength(Trace, 64)
+      else
+        SetLength(Trace, TraceN * 2);
+    end;
+    Trace[TraceN] := Copy(V);
+    Inc(TraceN);
     K := -D;
     while K <= D do
     begin
@@ -216,6 +226,8 @@ begin
   end;
   if EndX < 0 then
     Exit(LinearDiff(ALeft, ARight));
+
+  SetLength(Trace, TraceN);
 
   Count := 0;
   X := N;

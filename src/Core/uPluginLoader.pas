@@ -1350,7 +1350,7 @@ begin
         U: UTF8String;
         Buf: array[0..cMaxSpans * 3 - 1] of Integer;
         Map: TArray<Integer>;
-        N, I, B, Units, Start, Stop: Integer;
+        N, I, B, Units, Start, Stop, Filled: Integer;
       begin
         ASpans := nil;
         U := UTF8String(ALine);
@@ -1376,7 +1376,10 @@ begin
           end;
         end;
         Map[Length(U)] := Units;
-        SetLength(ASpans, 0);
+        // One allocation for the spans of the line. Growing per span stalls
+        // coloring a long line.
+        SetLength(ASpans, N);
+        Filled := 0;
         for I := 0 to N - 1 do
         begin
           B := Buf[I * 3];
@@ -1386,12 +1389,13 @@ begin
           Stop := Map[Min(B + Buf[I * 3 + 1], Length(U))];
           if Stop <= Start then
             Continue;
-          SetLength(ASpans, Length(ASpans) + 1);
-          ASpans[High(ASpans)].Start := Start;
-          ASpans[High(ASpans)].Len := Stop - Start;
-          ASpans[High(ASpans)].Kind := Buf[I * 3 + 2];
+          ASpans[Filled].Start := Start;
+          ASpans[Filled].Len := Stop - Start;
+          ASpans[Filled].Kind := Buf[I * 3 + 2];
+          Inc(Filled);
         end;
-        Result := Length(ASpans) > 0;
+        SetLength(ASpans, Filled);
+        Result := Filled > 0;
       end);
     Result := 0;
   except

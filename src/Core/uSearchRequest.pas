@@ -69,7 +69,8 @@ function ParseSearchRequest(const ARequestJson: string; out ARequest: TSearchReq
 var
   Root, Params, List: TJSONValue;
   P: TJSONObject;
-  I: Integer;
+  I, N: Integer;
+  Files: TJSONArray;
 begin
   ARequest := Default(TSearchRequest);
   ARequest.MinSize := -1;
@@ -102,13 +103,18 @@ begin
     ARequest.MaxResults := Integer(JsonInt(P, 'maxResults', 0));
     List := P.GetValue('files');
     if List is TJSONArray then
-      for I := 0 to TJSONArray(List).Count - 1 do
-        if TJSONArray(List).Items[I] is TJSONString then
-          if TJSONArray(List).Items[I].Value <> '' then
-          begin
-            SetLength(ARequest.Files, Length(ARequest.Files) + 1);
-            ARequest.Files[High(ARequest.Files)] := TJSONArray(List).Items[I].Value;
-          end;
+    begin
+      Files := TJSONArray(List);
+      SetLength(ARequest.Files, Files.Count);
+      N := 0;
+      for I := 0 to Files.Count - 1 do
+        if (Files.Items[I] is TJSONString) and (Files.Items[I].Value <> '') then
+        begin
+          ARequest.Files[N] := Files.Items[I].Value;
+          Inc(N);
+        end;
+      SetLength(ARequest.Files, N);
+    end;
     Result := True;
   finally
     Root.Free;

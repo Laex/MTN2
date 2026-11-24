@@ -6169,19 +6169,27 @@ function TDualPanelWindow.ReleaseShellDirs(const ASources: TArray<string>): Bool
 var
   Paths: TArray<string>;
   Path, URI: string;
+  N: Integer;
 begin
   Result := False;
   if not Assigned(FOnShellReleaseDirs) then
     Exit;
-  Paths := nil;
+  // One allocation for the selection. Growing the list per path stalls
+  // deleting or moving many folders.
+  SetLength(Paths, Length(ASources));
+  N := 0;
   for URI in ASources do
   begin
     if HasArchiveChain(URI) or IsFindUri(URI) then
       Continue;
     Path := FileUriToPath(URI);
     if Path <> '' then
-      Paths := Paths + [Path];
+    begin
+      Paths[N] := Path;
+      Inc(N);
+    end;
   end;
+  SetLength(Paths, N);
   if Length(Paths) > 0 then
     Result := FOnShellReleaseDirs(Paths);
 end;

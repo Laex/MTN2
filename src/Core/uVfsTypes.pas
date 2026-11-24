@@ -890,21 +890,29 @@ var
   C: Char;
   Bytes: TBytes;
   B: Byte;
+  Text: TStringBuilder;
 begin
-  Result := '';
-  I := 1;
-  while I <= Length(ASlashPath) do
-  begin
-    C := ASlashPath[I];
-    if not NeedsFileUriEscape(C) then
-      Result := Result + C
-    else
+  // One buffer for the path. Appending each character stalls listing a
+  // folder of many names.
+  Text := TStringBuilder.Create(Length(ASlashPath) * 9);
+  try
+    I := 1;
+    while I <= Length(ASlashPath) do
     begin
-      Bytes := TEncoding.UTF8.GetBytes(string(C));
-      for B in Bytes do
-        Result := Result + PercentEncodeByte(B);
+      C := ASlashPath[I];
+      if not NeedsFileUriEscape(C) then
+        Text.Append(C)
+      else
+      begin
+        Bytes := TEncoding.UTF8.GetBytes(string(C));
+        for B in Bytes do
+          Text.Append(PercentEncodeByte(B));
+      end;
+      Inc(I);
     end;
-    Inc(I);
+    Result := Text.ToString;
+  finally
+    Text.Free;
   end;
 end;
 
@@ -913,44 +921,52 @@ var
   I, L, Code: Integer;
   Bytes: TList<Byte>;
   Chunk: TBytes;
+  Text: TStringBuilder;
 begin
   // Percent-decode only. Do NOT treat '+' as space (form-urlencoded) -
   // folder names like "Update 1 + Keygen" must stay intact.
-  Result := '';
-  Bytes := TList<Byte>.Create;
+  // One buffer for the path. Appending each character stalls opening a
+  // folder of many encoded names.
+  L := Length(APathPart);
+  Text := TStringBuilder.Create(L);
   try
-    I := 1;
-    L := Length(APathPart);
-    while I <= L do
-    begin
-      if (APathPart[I] = '%') and (I + 2 <= L) and
-         CharInSet(APathPart[I + 1], ['0'..'9', 'A'..'F', 'a'..'f']) and
-         CharInSet(APathPart[I + 2], ['0'..'9', 'A'..'F', 'a'..'f']) then
+    Bytes := TList<Byte>.Create;
+    try
+      I := 1;
+      while I <= L do
       begin
-        Code := StrToInt('$' + Copy(APathPart, I + 1, 2));
-        Bytes.Add(Byte(Code));
-        Inc(I, 3);
-      end
-      else
-      begin
-        // Flush pending UTF-8 bytes before appending a raw char.
-        if Bytes.Count > 0 then
+        if (APathPart[I] = '%') and (I + 2 <= L) and
+           CharInSet(APathPart[I + 1], ['0'..'9', 'A'..'F', 'a'..'f']) and
+           CharInSet(APathPart[I + 2], ['0'..'9', 'A'..'F', 'a'..'f']) then
         begin
-          Chunk := Bytes.ToArray;
-          Result := Result + TEncoding.UTF8.GetString(Chunk);
-          Bytes.Clear;
+          Code := StrToInt('$' + Copy(APathPart, I + 1, 2));
+          Bytes.Add(Byte(Code));
+          Inc(I, 3);
+        end
+        else
+        begin
+          // Flush pending UTF-8 bytes before appending a raw char.
+          if Bytes.Count > 0 then
+          begin
+            Chunk := Bytes.ToArray;
+            Text.Append(TEncoding.UTF8.GetString(Chunk));
+            Bytes.Clear;
+          end;
+          Text.Append(APathPart[I]);
+          Inc(I);
         end;
-        Result := Result + APathPart[I];
-        Inc(I);
       end;
+      if Bytes.Count > 0 then
+      begin
+        Chunk := Bytes.ToArray;
+        Text.Append(TEncoding.UTF8.GetString(Chunk));
+      end;
+    finally
+      Bytes.Free;
     end;
-    if Bytes.Count > 0 then
-    begin
-      Chunk := Bytes.ToArray;
-      Result := Result + TEncoding.UTF8.GetString(Chunk);
-    end;
+    Result := Text.ToString;
   finally
-    Bytes.Free;
+    Text.Free;
   end;
 end;
 

@@ -386,16 +386,24 @@ const
 var
   Bytes: TBytes;
   B: Byte;
+  Text: TStringBuilder;
 begin
-  Result := '';
   Bytes := TEncoding.UTF8.GetBytes(AText);
-  for B in Bytes do
-    if ((B >= Ord('A')) and (B <= Ord('Z'))) or ((B >= Ord('a')) and (B <= Ord('z'))) or
-       ((B >= Ord('0')) and (B <= Ord('9'))) or (B = Ord('-')) or (B = Ord('.')) or
-       (B = Ord('_')) or (B = Ord('~')) or (AKeepSlash and (B = Ord('/'))) then
-      Result := Result + Char(B)
-    else
-      Result := Result + '%' + cHex[(B shr 4) + 1] + cHex[(B and 15) + 1];
+  // One buffer for the path. Appending each byte stalls listing a large
+  // remote folder.
+  Text := TStringBuilder.Create(Length(Bytes) * 3);
+  try
+    for B in Bytes do
+      if ((B >= Ord('A')) and (B <= Ord('Z'))) or ((B >= Ord('a')) and (B <= Ord('z'))) or
+         ((B >= Ord('0')) and (B <= Ord('9'))) or (B = Ord('-')) or (B = Ord('.')) or
+         (B = Ord('_')) or (B = Ord('~')) or (AKeepSlash and (B = Ord('/'))) then
+        Text.Append(Char(B))
+      else
+        Text.Append('%' + cHex[(B shr 4) + 1] + cHex[(B and 15) + 1]);
+    Result := Text.ToString;
+  finally
+    Text.Free;
+  end;
 end;
 
 function UrlEncodePath(const APath: string): string;

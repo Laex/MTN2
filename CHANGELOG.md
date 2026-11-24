@@ -28,6 +28,9 @@ This file describes what changes for the user from version to version: new featu
 
 ### Fixed
 
+- Coloring a long line allocates its spans once, and the comparison of two long files grows its step list by doubling.
+- File addresses of a large folder and network paths are encoded in one buffer, and releasing many folders before a delete or move allocates the path list once.
+- A long Markdown line and a long UTF-7 text are built in one buffer. A batch of search hits, the file list of a search and the extra hits of a search provider are allocated once.
 - Comparing two long files no longer copies the line list once per line, and a mask used to search, filter or select a folder is compiled once for the whole folder. A ripgrep search and a batch of hits from a search provider allocate their lists once.
 - Saving a long document and writing a long comparison back no longer copy the text once per line. Opening a comparison allocates its lines once. Copying a large selection, an Everything search of many names and reopening a large folder-sync snapshot collect their lists in one allocation.
 - A text search with a regular expression compiles the expression once per file. Comparing two large folders, copying many names to the clipboard and handing a long rename list to the editor no longer copy their lists once per item.

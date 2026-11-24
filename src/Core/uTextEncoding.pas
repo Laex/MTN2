@@ -190,56 +190,67 @@ var
   I, N, Acc, Bits, V: Integer;
   InB64: Boolean;
   B: Byte;
+  Text: TStringBuilder;
 begin
-  Result := '';
   N := Length(ABytes);
-  I := AIndex;
-  InB64 := False;
-  Acc := 0;
-  Bits := 0;
-  while I < N do
-  begin
-    B := ABytes[I];
-    if not InB64 then
+  // One buffer for the file. Appending each character stalls opening a long
+  // UTF-7 text.
+  if N > AIndex then
+    Text := TStringBuilder.Create(N - AIndex)
+  else
+    Text := TStringBuilder.Create;
+  try
+    I := AIndex;
+    InB64 := False;
+    Acc := 0;
+    Bits := 0;
+    while I < N do
     begin
-      if B <> Ord('+') then
+      B := ABytes[I];
+      if not InB64 then
       begin
-        Result := Result + Char(B);
+        if B <> Ord('+') then
+        begin
+          Text.Append(Char(B));
+          Inc(I);
+        end
+        else if (I + 1 < N) and (ABytes[I + 1] = Ord('-')) then
+        begin
+          Text.Append('+');
+          Inc(I, 2);
+        end
+        else
+        begin
+          InB64 := True;
+          Acc := 0;
+          Bits := 0;
+          Inc(I);
+        end;
+        Continue;
+      end;
+      V := Base64Value(B);
+      if V >= 0 then
+      begin
+        Acc := (Acc shl 6) or V;
+        Inc(Bits, 6);
+        if Bits >= 16 then
+        begin
+          Dec(Bits, 16);
+          Text.Append(Char((Acc shr Bits) and $FFFF));
+          Acc := Acc and ((1 shl Bits) - 1);
+        end;
         Inc(I);
-      end
-      else if (I + 1 < N) and (ABytes[I + 1] = Ord('-')) then
-      begin
-        Result := Result + '+';
-        Inc(I, 2);
       end
       else
       begin
-        InB64 := True;
-        Acc := 0;
-        Bits := 0;
-        Inc(I);
+        InB64 := False;
+        if B = Ord('-') then
+          Inc(I);
       end;
-      Continue;
     end;
-    V := Base64Value(B);
-    if V >= 0 then
-    begin
-      Acc := (Acc shl 6) or V;
-      Inc(Bits, 6);
-      if Bits >= 16 then
-      begin
-        Dec(Bits, 16);
-        Result := Result + Char((Acc shr Bits) and $FFFF);
-        Acc := Acc and ((1 shl Bits) - 1);
-      end;
-      Inc(I);
-    end
-    else
-    begin
-      InB64 := False;
-      if B = Ord('-') then
-        Inc(I);
-    end;
+    Result := Text.ToString;
+  finally
+    Text.Free;
   end;
 end;
 
@@ -251,60 +262,71 @@ end;
 
 function EncodeUtf7(const AText: string): TBytes;
 var
-  Sb: string;
+  OutText, Run: TStringBuilder;
   I, J, Acc, Bits: Integer;
-  Run: string;
+  Encoded: string;
 
   procedure FlushRun;
   var
     K: Integer;
   begin
-    if Run = '' then
+    if Run.Length = 0 then
       Exit;
-    Sb := Sb + '+';
+    OutText.Append('+');
     Acc := 0;
     Bits := 0;
-    for K := 1 to Length(Run) do
+    for K := 0 to Run.Length - 1 do
     begin
-      Acc := (Acc shl 16) or Ord(Run[K]);
+      Acc := (Acc shl 16) or Ord(Run.Chars[K]);
       Inc(Bits, 16);
       while Bits >= 6 do
       begin
         Dec(Bits, 6);
-        Sb := Sb + cB64Alphabet[((Acc shr Bits) and $3F) + 1];
+        OutText.Append(cB64Alphabet[((Acc shr Bits) and $3F) + 1]);
       end;
       Acc := Acc and ((1 shl Bits) - 1);
     end;
     if Bits > 0 then
-      Sb := Sb + cB64Alphabet[((Acc shl (6 - Bits)) and $3F) + 1];
-    Sb := Sb + '-';
-    Run := '';
+      OutText.Append(cB64Alphabet[((Acc shl (6 - Bits)) and $3F) + 1]);
+    OutText.Append('-');
+    Run.Clear;
   end;
 
 begin
-  Sb := '';
-  Run := '';
-  I := 1;
-  while I <= Length(AText) do
-  begin
-    if IsUtf7Direct(AText[I]) then
-    begin
+  // One buffer for the file. Appending each character stalls saving a long
+  // UTF-7 text.
+  OutText := TStringBuilder.Create(Length(AText) * 4 + 2);
+  try
+    Run := TStringBuilder.Create;
+    try
+      I := 1;
+      while I <= Length(AText) do
+      begin
+        if IsUtf7Direct(AText[I]) then
+        begin
+          FlushRun;
+          OutText.Append(AText[I]);
+        end
+        else if AText[I] = '+' then
+        begin
+          FlushRun;
+          OutText.Append('+-');
+        end
+        else
+          Run.Append(AText[I]);
+        Inc(I);
+      end;
       FlushRun;
-      Sb := Sb + AText[I];
-    end
-    else if AText[I] = '+' then
-    begin
-      FlushRun;
-      Sb := Sb + '+-';
-    end
-    else
-      Run := Run + AText[I];
-    Inc(I);
+      Encoded := OutText.ToString;
+    finally
+      Run.Free;
+    end;
+  finally
+    OutText.Free;
   end;
-  FlushRun;
-  SetLength(Result, Length(Sb));
-  for J := 1 to Length(Sb) do
-    Result[J - 1] := Byte(Ord(Sb[J]));
+  SetLength(Result, Length(Encoded));
+  for J := 1 to Length(Encoded) do
+    Result[J - 1] := Byte(Ord(Encoded[J]));
 end;
 
 function TextEncodingName(AEncoding: TTextFileEncoding): string;

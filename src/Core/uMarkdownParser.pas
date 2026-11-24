@@ -573,7 +573,7 @@ end;
 function ParseInline(const S: string): TMdInlineResult;
 var
   Spans: TList<TMdSpan>;
-  Text: string;
+  Text: TStringBuilder;
   I, N: Integer;
 
   function TryMarker(const AOpen, AClose: string; AKind: TMdSpanKind;
@@ -604,7 +604,7 @@ var
     AfterClose := CloseIdx + Length(AClose);
     if ARequireWordBoundary and (AfterClose <= N) and IsWordChar(S[AfterClose]) then
       Exit;
-    SpanStart := Length(Text) + 1;
+    SpanStart := Text.Length + 1;
     if AStrip then
     begin
       CopyFrom := I + OpenLen;
@@ -615,8 +615,8 @@ var
       CopyFrom := I;
       CopyLen := CloseIdx + Length(AClose) - I;
     end;
-    Text := Text + Copy(S, CopyFrom, CopyLen);
-    Spans.Add(MakeSpan(SpanStart, Length(Text) - SpanStart + 1, AKind));
+    Text.Append(Copy(S, CopyFrom, CopyLen));
+    Spans.Add(MakeSpan(SpanStart, Text.Length - SpanStart + 1, AKind));
     I := CloseIdx + Length(AClose);
     Result := True;
   end;
@@ -642,8 +642,8 @@ var
     LinkTarget := Trim(Copy(S, CloseBracket + 2, CloseParen - CloseBracket - 2));
     if LinkText = '' then
       LinkText := LinkTarget;
-    SpanStart := Length(Text) + 1;
-    Text := Text + LinkText;
+    SpanStart := Text.Length + 1;
+    Text.Append(LinkText);
     Span := MakeSpan(SpanStart, Length(LinkText), mskLink);
     Span.Target := LinkTarget;
     Spans.Add(Span);
@@ -653,10 +653,12 @@ var
 
 begin
   Spans := TList<TMdSpan>.Create;
+  Text := nil;
   try
     N := Length(S);
+    // One buffer for the line. Appending each character stalls a long paragraph.
+    Text := TStringBuilder.Create(N);
     I := 1;
-    Text := '';
     while I <= N do
     begin
       if TryMarker('`', '`', mskInlineCode, True) then Continue;
@@ -667,12 +669,13 @@ begin
       if TryLink then Continue;
       if TryMarker('*', '*', mskItalic, True) then Continue;
       if TryMarker('_', '_', mskItalic, True, True) then Continue;
-      Text := Text + S[I];
+      Text.Append(S[I]);
       Inc(I);
     end;
-    Result.Text := Text;
+    Result.Text := Text.ToString;
     Result.Spans := Spans.ToArray;
   finally
+    Text.Free;
     Spans.Free;
   end;
 end;

@@ -1876,7 +1876,7 @@ begin
     function(const ALine: string; out ASpans: THighlightSpans): Boolean
     var
       Bytes: TBytes;
-      Count, I, B, Units: Integer;
+      Count, I, B, Units, Filled: Integer;
       U: UTF8String;
       Map: TArray<Integer>;
       Start, Stop, Len, Kind: Integer;
@@ -1903,6 +1903,8 @@ begin
         end;
       end;
       Map[Length(U)] := Units;
+      SetLength(ASpans, Count);
+      Filled := 0;
       for I := 0 to Count - 1 do
       begin
         B := PInteger(@Bytes[I * 12])^;
@@ -1914,12 +1916,13 @@ begin
         Stop := Map[Min(B + Len, Length(U))];
         if Stop <= Start then
           Continue;
-        SetLength(ASpans, Length(ASpans) + 1);
-        ASpans[High(ASpans)].Start := Start;
-        ASpans[High(ASpans)].Len := Stop - Start;
-        ASpans[High(ASpans)].Kind := Kind;
+        ASpans[Filled].Start := Start;
+        ASpans[Filled].Len := Stop - Start;
+        ASpans[Filled].Kind := Kind;
+        Inc(Filled);
       end;
-      Result := Length(ASpans) > 0;
+      SetLength(ASpans, Filled);
+      Result := Filled > 0;
     end);
   SetI32Result(Results, NResults, 0);
 end;
@@ -1950,7 +1953,7 @@ begin
       out AStateOut: Integer): Boolean
     var
       Bytes: TBytes;
-      Count, I, B, Units: Integer;
+      Count, I, B, Units, Filled: Integer;
       U: UTF8String;
       Map: TArray<Integer>;
       Start, Stop, Len, Kind: Integer;
@@ -1987,6 +1990,8 @@ begin
         end;
       end;
       Map[Length(U)] := Units;
+      SetLength(ASpans, Count);
+      Filled := 0;
       for I := 0 to Count - 1 do
       begin
         B := PInteger(@Bytes[4 + I * 12])^;
@@ -1998,12 +2003,13 @@ begin
         Stop := Map[Min(B + Len, Length(U))];
         if Stop <= Start then
           Continue;
-        SetLength(ASpans, Length(ASpans) + 1);
-        ASpans[High(ASpans)].Start := Start;
-        ASpans[High(ASpans)].Len := Stop - Start;
-        ASpans[High(ASpans)].Kind := Kind;
+        ASpans[Filled].Start := Start;
+        ASpans[Filled].Len := Stop - Start;
+        ASpans[Filled].Kind := Kind;
+        Inc(Filled);
       end;
-      Result := Length(ASpans) > 0;
+      SetLength(ASpans, Filled);
+      Result := Filled > 0;
     end);
   SetI32Result(Results, NResults, 0);
 end;

@@ -266,6 +266,7 @@ var
   Path, Text: string;
   Num: Int64;
   Moment: TDateTime;
+  N: Integer;
 begin
   SetLength(AHits, 0);
   Result := False;
@@ -279,6 +280,8 @@ begin
       Exit;
     Hits := TJSONArray(TJSONObject(Params).GetValue('hits'));
     Result := True;
+    SetLength(AHits, Hits.Count);
+    N := 0;
     for I := 0 to Hits.Count - 1 do
     begin
       Item := Hits.Items[I];
@@ -318,9 +321,10 @@ begin
         Hit.Entry.IsLink := (Num and $400) <> 0;
       end;
       Hit.HasEntry := True;
-      SetLength(AHits, Length(AHits) + 1);
-      AHits[High(AHits)] := Hit;
+      AHits[N] := Hit;
+      Inc(N);
     end;
+    SetLength(AHits, N);
   finally
     Params.Free;
   end;
