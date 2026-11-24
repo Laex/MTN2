@@ -24,6 +24,10 @@ type
     FRefs: Integer;
   public
     Files: TArray<string>;
+    Times: TArray<TDateTime>;
+    Sizes: TArray<Int64>;
+    /// <summary>0 name, 1 date (newest first), 2 size (largest first), 3 extension.</summary>
+    SortMode: Integer;
     Model: TThumbsModel;
     Lock: TCriticalSection;
     /// <summary>Pictures shrunk to cell size; guarded by Lock.</summary>
@@ -44,6 +48,8 @@ var
   GDecoderReady: Boolean;
 
 constructor TThumbsContext.Create(const AFiles: TArray<string>);
+var
+  I: Integer;
 begin
   inherited Create;
   FRefs := 1;
@@ -51,6 +57,18 @@ begin
   Model := TThumbsModel.Create(Length(AFiles));
   Lock := TCriticalSection.Create;
   SetLength(Images, Length(AFiles));
+  SetLength(Times, Length(AFiles));
+  SetLength(Sizes, Length(AFiles));
+  for I := 0 to High(AFiles) do
+  begin
+    try
+      Times[I] := TFile.GetLastWriteTime(AFiles[I]);
+      Sizes[I] := TFile.GetSize(AFiles[I]);
+    except
+      Times[I] := 0;
+      Sizes[I] := 0;
+    end;
+  end;
 end;
 
 destructor TThumbsContext.Destroy;
@@ -174,6 +192,78 @@ begin
   end;
 end;
 
+function SortModeName(AMode: Integer): string;
+begin
+  case AMode of
+    1: Result := Tr('msg.sortDate', 'by date');
+    2: Result := Tr('msg.sortSize', 'by size');
+    3: Result := Tr('msg.sortExt', 'by extension');
+  else
+    Result := Tr('msg.sortName', 'by name');
+  end;
+end;
+
+/// <summary>Reorders the pictures by the next sort mode, keeping the decoded
+/// ones with their files and the selection on the same picture.</summary>
+procedure CycleSort(ACtx: TThumbsContext);
+var
+  Order: TArray<Integer>;
+  I: Integer;
+  Cur: string;
+  F: TArray<string>;
+  T: TArray<TDateTime>;
+  Z: TArray<Int64>;
+  Im: TArray<TThumbImage>;
+  Mode: Integer;
+begin
+  Mode := (ACtx.SortMode + 1) mod 4;
+  SetLength(Order, Length(ACtx.Files));
+  for I := 0 to High(Order) do
+    Order[I] := I;
+  TArray.Sort<Integer>(Order, TComparer<Integer>.Construct(
+    function(const A, B: Integer): Integer
+    begin
+      case Mode of
+        1: Result := CompareValue(ACtx.Times[B], ACtx.Times[A]);
+        2: Result := CompareValue(ACtx.Sizes[B], ACtx.Sizes[A]);
+        3: Result := CompareText(ExtractFileExt(ACtx.Files[A]), ExtractFileExt(ACtx.Files[B]));
+      else
+        Result := 0;
+      end;
+      if Result = 0 then
+        Result := CompareText(ExtractFileName(ACtx.Files[A]), ExtractFileName(ACtx.Files[B]));
+    end));
+  Cur := ACtx.Files[ACtx.Model.Selected];
+  SetLength(F, Length(Order));
+  SetLength(T, Length(Order));
+  SetLength(Z, Length(Order));
+  SetLength(Im, Length(Order));
+  ACtx.Lock.Enter;
+  try
+    for I := 0 to High(Order) do
+    begin
+      F[I] := ACtx.Files[Order[I]];
+      T[I] := ACtx.Times[Order[I]];
+      Z[I] := ACtx.Sizes[Order[I]];
+      Im[I] := ACtx.Images[Order[I]];
+    end;
+    ACtx.Files := F;
+    ACtx.Times := T;
+    ACtx.Sizes := Z;
+    ACtx.Images := Im;
+    TInterlocked.Increment(ACtx.Generation);
+  finally
+    ACtx.Lock.Leave;
+  end;
+  ACtx.SortMode := Mode;
+  for I := 0 to High(F) do
+    if F[I] = Cur then
+    begin
+      ACtx.Model.Select(I);
+      Break;
+    end;
+end;
+
 procedure PaintContext(ACtx: TThumbsContext);
 var
   Frame: TBytes;
@@ -196,7 +286,8 @@ begin
     Title := UTF8String(Tr('msg.title', 'Thumbnails'));
     if ACtx.Model.Count > 0 then
       Status := UTF8String(ExtractFileName(ACtx.Files[ACtx.Model.Selected]) + '  (' +
-        IntToStr(ACtx.Model.Selected + 1) + '/' + IntToStr(ACtx.Model.Count) + ')');
+        IntToStr(ACtx.Model.Selected + 1) + '/' + IntToStr(ACtx.Model.Count) + ', ' +
+        SortModeName(ACtx.SortMode) + ')');
     GHostApi.SurfaceSetInfo(ACtx.Handle, PAnsiChar(Title), PAnsiChar(Status));
   end;
 end;
@@ -238,6 +329,7 @@ var
   Pixels: TBytes;
   Img: TThumbImage;
   Todo: Boolean;
+  Path: string;
 begin
   for I := AFirst to ALast do
   begin
@@ -247,6 +339,7 @@ begin
     ACtx.Lock.Enter;
     try
       Todo := (ACtx.Images[I].Width = 0) and not ACtx.Images[I].Failed;
+      Path := ACtx.Files[I];
     finally
       ACtx.Lock.Leave;
     end;
@@ -254,7 +347,7 @@ begin
       Continue;
     Img := Default(TThumbImage);
     try
-      if ThumbsDecodeFile(ACtx.Files[I], W, H, Pixels) then
+      if ThumbsDecodeFile(Path, W, H, Pixels) then
       begin
         FitInBox(W, H, cCellW - 2 * cCellPad, cCellH - 2 * cCellPad, SW, SH);
         if (SW = W) and (SH = H) then
@@ -272,7 +365,8 @@ begin
     end;
     ACtx.Lock.Enter;
     try
-      ACtx.Images[I] := Img;
+      if TInterlocked.CompareExchange(ACtx.Generation, 0, 0) = AGeneration then
+        ACtx.Images[I] := Img;
     finally
       ACtx.Lock.Leave;
     end;
@@ -303,14 +397,14 @@ begin
     end).Start;
 end;
 
-procedure OpenSelected(ACtx: TThumbsContext);
+procedure OpenSelected(ACtx: TThumbsContext; AEdit: Boolean = False);
 var
   Uri: UTF8String;
 begin
   if (ACtx.Model.Count = 0) or not Assigned(GHostApi.OpenDocument) then
     Exit;
   Uri := UTF8String(PathToFileUri(ACtx.Files[ACtx.Model.Selected]));
-  GHostApi.OpenDocument(PAnsiChar(Uri), 0);
+  GHostApi.OpenDocument(PAnsiChar(Uri), Ord(AEdit));
 end;
 
 procedure Redraw(ACtx: TThumbsContext; ARestartDecode: Boolean);
@@ -319,6 +413,8 @@ begin
   if ARestartDecode then
     StartDecode(ACtx);
 end;
+
+procedure CloseCurrent; forward;
 
 function SurfaceKey(AUserData: Pointer; AKey: PAnsiChar): Int64; cdecl;
 var
@@ -329,9 +425,25 @@ begin
   Result := 0;
   Ctx := TThumbsContext(AUserData);
   Key := UTF8ToString(AKey);
-  if SameText(Key, 'Enter') or SameText(Key, 'Return') then
+  if SameText(Key, 'Enter') or SameText(Key, 'F3') then
   begin
     OpenSelected(Ctx);
+    Exit(1);
+  end;
+  if SameText(Key, 'F4') then
+  begin
+    OpenSelected(Ctx, True);
+    Exit(1);
+  end;
+  if SameText(Key, 'S') or SameText(Key, 'F9') then
+  begin
+    CycleSort(Ctx);
+    Redraw(Ctx, True);
+    Exit(1);
+  end;
+  if SameText(Key, 'Escape') then
+  begin
+    CloseCurrent;
     Exit(1);
   end;
   OldFirst := Ctx.Model.First;
