@@ -414,8 +414,6 @@ begin
     StartDecode(ACtx);
 end;
 
-procedure CloseCurrent; forward;
-
 function SurfaceKey(AUserData: Pointer; AKey: PAnsiChar): Int64; cdecl;
 var
   Ctx: TThumbsContext;
@@ -439,11 +437,6 @@ begin
   begin
     CycleSort(Ctx);
     Redraw(Ctx, True);
-    Exit(1);
-  end;
-  if SameText(Key, 'Escape') then
-  begin
-    CloseCurrent;
     Exit(1);
   end;
   OldFirst := Ctx.Model.First;

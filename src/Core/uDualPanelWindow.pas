@@ -13696,7 +13696,9 @@ end;
 
 function TDualPanelWindow.PluginOpenDocument(const AURI: string; AEdit: Boolean): Boolean;
 begin
-  Result := (ActiveWorkspace.Kind = wkPanels) and not (Assigned(FDialog) and FDialog.Visible);
+  // A plugin surface lives in a document tab, so its keys open files from there too.
+  Result := (ActiveWorkspace.Kind in [wkPanels, wkDocument]) and
+    not (Assigned(FDialog) and FDialog.Visible);
   if not Result then
     Exit;
   if AEdit then
