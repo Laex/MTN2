@@ -39,6 +39,11 @@ function PlatformIsReadOnlyFile(const APath: string): Boolean;
 /// node whose content lives elsewhere.</summary>
 function PlatformIsReparsePoint(const APath: string): Boolean;
 
+/// <summary>True for a file whose content is not on this computer and is
+/// fetched from a cloud service when it is read (OneDrive, Dropbox and other
+/// placeholders); always False on POSIX.</summary>
+function PlatformIsCloudOnlyFile(const APath: string): Boolean;
+
 /// <summary>Text of the system's "access denied" error.</summary>
 function PlatformAccessDeniedText: string;
 
@@ -206,6 +211,19 @@ begin
   Attr := GetFileAttributes(PChar(WinApiPath(APath)));
   Result := (Attr <> INVALID_FILE_ATTRIBUTES) and
     ((Attr and FILE_ATTRIBUTE_REPARSE_POINT) <> 0);
+end;
+
+function PlatformIsCloudOnlyFile(const APath: string): Boolean;
+const
+  cRecallOnOpen = $00040000;
+  cRecallOnDataAccess = $00400000;
+var
+  Attr: DWORD;
+begin
+  Attr := GetFileAttributes(PChar(WinApiPath(APath)));
+  Result := (Attr <> INVALID_FILE_ATTRIBUTES) and
+    ((Attr and FILE_ATTRIBUTE_DIRECTORY) = 0) and
+    ((Attr and (FILE_ATTRIBUTE_OFFLINE or cRecallOnOpen or cRecallOnDataAccess)) <> 0);
 end;
 
 function PlatformIsLinkNode(const APath: string): Boolean;

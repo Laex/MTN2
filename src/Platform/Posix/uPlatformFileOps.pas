@@ -38,6 +38,11 @@ function PlatformIsReadOnlyFile(const APath: string): Boolean;
 /// node whose content lives elsewhere.</summary>
 function PlatformIsReparsePoint(const APath: string): Boolean;
 
+/// <summary>True for a file whose content is not on this computer and is
+/// fetched from a cloud service when it is read (OneDrive, Dropbox and other
+/// placeholders); always False on POSIX.</summary>
+function PlatformIsCloudOnlyFile(const APath: string): Boolean;
+
 /// <summary>Text of the system's "access denied" error.</summary>
 function PlatformAccessDeniedText: string;
 
@@ -175,6 +180,11 @@ end;
 function PlatformIsReparsePoint(const APath: string): Boolean;
 begin
   Result := PlatformIsLinkNode(APath);
+end;
+
+function PlatformIsCloudOnlyFile(const APath: string): Boolean;
+begin
+  Result := False;
 end;
 
 function PlatformIsLinkNode(const APath: string): Boolean;

@@ -509,6 +509,7 @@ type
     /// dialog apply to 7z only (and not to an archive that is already open as a
     /// folder): they are greyed out otherwise.</summary>
     procedure UpdatePackDialogFields;
+    procedure WarnCloudOnlySources;
     procedure HostDialogValueChanged(const AControlId: string);
     procedure HostRejectJob(const ATitle, AMessage: string);
     procedure HostWarnJob(const AMessage: string);
@@ -1707,7 +1708,7 @@ implementation
 uses
   uFindRouter,
   uPlatformInfo, uPlatformProcess, uPlatformFolders, uPlatformPaths, uImageInfo, uFileClip, uWinFileDragDrop, uStrings, uFileHistory, uChromeRows,
-  uExternalTools, uEnvProfiles, uDialogHistory, uChecksums, uFileSplit, uArchiveTest, uPackEach, uKeyChord, uConsoleSettings, uZipVfs,
+  uExternalTools, uEnvProfiles, uDialogHistory, uChecksums, uFileSplit, uArchiveTest, uPackEach, uCloudFiles, uKeyChord, uConsoleSettings, uZipVfs,
   uCharWidth, uConfigMode, uPluginChrome, uColorPickerControl, uRenameJournal, uConfigLocation;
 
 const
@@ -3069,6 +3070,18 @@ begin
   FPalette.Resume;
 end;
 
+procedure TDualPanelWindow.WarnCloudOnlySources;
+var
+  Count: Integer;
+begin
+  if not Assigned(FJobs) then
+    Exit;
+  Count := CountCloudOnlyFiles(FileUrisToLocalPaths(FJobs.State.Sources));
+  if Count > 0 then
+    HostWarnJob(T('ui.job.cloudOnly',
+      '%d cloud-only file(s): they are downloaded first', [Count]));
+end;
+
 procedure TDualPanelWindow.HostOpenJobConfirm(const ATitle, AMessage: string);
 var
   DestPath, OkText, Prefix, ItemName, Suffix: string;
@@ -3086,6 +3099,7 @@ begin
     FDialog.Open(BuildPackDialog(ATitle, AMessage, DestPath,
       FJobDialogs.PackInitialType), DialogCommand);
     UpdatePackDialogFields;
+    WarnCloudOnlySources;
   end
   else if Assigned(FJobs) and (FJobs.Kind in [pjkCopy, pjkMove, pjkUnpack]) then
   begin
@@ -3095,7 +3109,9 @@ begin
     // is confirmed.
     if (FJobs.Kind in [pjkCopy, pjkMove]) and
        PanelFoldersAreSame(FJobs.State.DestDirURI, FJobs.State.OriginSrcDirURI) then
-      HostWarnJob(JobSameFolderWarning);
+      HostWarnJob(JobSameFolderWarning)
+    else if FJobs.Kind in [pjkCopy, pjkMove] then
+      WarnCloudOnlySources;
   end
   else if Assigned(FJobs) and (FJobs.Kind = pjkDelete) then
   begin

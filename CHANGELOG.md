@@ -13,6 +13,7 @@ This file describes what changes for the user from version to version: new featu
 - "Test archive" in the File menu checks every file of the ZIP archive under the cursor against its stored checksum without unpacking it, and lists the damaged ones.
 - "Pack each item" in the File menu packs every selected file or folder into its own ZIP archive in the other panel's folder, without replacing existing archives.
 - A download from FTP, SFTP, WebDAV or S3 that was cut off by a lost connection continues from the partial file on the next attempt, as long as the file on the server has not changed.
+- Copying, moving or packing files that exist only in the cloud (OneDrive, Dropbox and similar placeholders) warns how many of them will be downloaded first.
 
 ## Dev v0.5.12.4 – 2026-11-24
 

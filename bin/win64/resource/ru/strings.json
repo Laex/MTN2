@@ -1367,6 +1367,7 @@
     "job.confirmCopyMoveMany": "%s объектов (%d) в:",
     "job.renameTitle": "Переименование",
     "job.sameFolder": "Папка назначения совпадает с исходной: укажите другую",
+    "job.cloudOnly": "Файлов только в облаке: %d, сначала они будут скачаны",
     "job.renameNewName": "Новое имя:",
 
     "hotlist.addTitle": "Добавить в избранное",

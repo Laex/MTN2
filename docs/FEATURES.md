@@ -49,6 +49,7 @@ A short overview of the features; details are in the help (F1), the other docume
 - **Job list** – `Ctrl+Shift+J`: columns, pause, queue order, copy speed limit; operations on the same disk run one after another; "When the queue ends" puts the computer to sleep, shuts it down or closes the program after the last job (30 seconds to cancel).
 - **Windows taskbar progress** – a bar on the program button colored by state; a notification when a job finishes.
 - **Safe copying** – data is written to a temporary `name.mtnpart` and renamed after a complete write; copying in 256 KB blocks.
+- **Cloud placeholders** – the copy, move and pack confirmation warns when the items include files that exist only in the cloud (OneDrive, Dropbox and similar) and would be downloaded first.
 - **Error resilience** – automatic read retries, per-file "Skip" and "Skip all", confirmation before aborting an operation.
 - **Administrator helper** – on "Access denied" the "Admin" button repeats the copy, move, delete, folder creation or extraction with a single UAC prompt.
 - **Folder sizes** – `F3` on a folder (or the selected folders) calculates the size into the Size column, `F3` on the `..` row does it for all folders of the panel; the sizes are kept while a folder is unchanged.

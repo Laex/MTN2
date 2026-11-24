@@ -1368,6 +1368,7 @@
     "job.confirmCopyMoveMany": "%s %d Element(e) nach:",
     "job.renameTitle": "Umbenennen",
     "job.sameFolder": "Der Zielordner ist der Ordner der Elemente: bitte einen anderen wählen",
+    "job.cloudOnly": "%d Datei(en) nur in der Cloud: sie werden zuerst heruntergeladen",
     "job.renameNewName": "Neuer Name:",
     "hotlist.addTitle": "Zur Hotlist hinzufügen",
     "hotlist.namePrompt": "Name:",

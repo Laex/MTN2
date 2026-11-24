@@ -56,6 +56,7 @@ uses
   uFileSplit in 'Core\uFileSplit.pas',
   uArchiveTest in 'Core\uArchiveTest.pas',
   uPackEach in 'Core\uPackEach.pas',
+  uCloudFiles in 'Core\uCloudFiles.pas',
   uThemeTypes in 'Core\uThemeTypes.pas',
   uMessageBus in 'Core\uMessageBus.pas',
   uDualPanelInput in 'Core\uDualPanelInput.pas',

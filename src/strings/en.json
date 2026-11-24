@@ -1370,6 +1370,7 @@
     "job.confirmCopyMoveMany": "%s %d item(s) to:",
     "job.renameTitle": "Rename",
     "job.sameFolder": "The destination is the folder the items are in: choose another one",
+    "job.cloudOnly": "%d cloud-only file(s): they are downloaded first",
     "job.renameNewName": "New name:",
 
     "hotlist.addTitle": "Add to hotlist",
