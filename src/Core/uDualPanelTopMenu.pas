@@ -106,9 +106,6 @@ begin
     tmaFileProperties: CallProc(AHost.ShowProperties);
     tmaFileShellMenu: CallProc(AHost.ShellContextMenu);
     tmaFileCompare: CallProc(AHost.BeginCompareFiles);
-    tmaFileSplitCombine: CallProc(AHost.BeginSplitCombine);
-    tmaFileTestArchive: CallProc(AHost.BeginTestArchive);
-    tmaFilePackEach: CallProc(AHost.BeginPackEach);
     tmaFileMultiRename: CallProc(AHost.BeginMultiRename);
     tmaFileRestore: CallProc(AHost.RestoreCursorItemFromRecycleBin);
     tmaFileDelete: CallJob(AHost.BeginJob, pjkDelete, True);

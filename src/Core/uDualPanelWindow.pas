@@ -92,13 +92,6 @@ type
     /// <summary>A pair opened from the list is showing; closing it brings
     /// the list back.</summary>
     FGroupReturn: Boolean;
-    /// <summary>Split / combine: the file the open dialog works on, the parts
-    /// found for a join, the last part size typed, and the cancel token while
-    /// the job runs.</summary>
-    FSplitSrc: string;
-    FSplitParts: TArray<string>;
-    FSplitSizeText: string;
-    FSplitToken: IJobCancelToken;
     FNextTabId: Cardinal;
     FDocuments: TObjectDictionary<Cardinal, TEditorWindow>;
     FTerminals: TObjectDictionary<Cardinal, TTerminalWorkspaceWindow>;
@@ -1022,12 +1015,6 @@ type
     function HandleExportListCommand(const AControlId: string;
       const AFields: TDialogCommandFields): Boolean;
     procedure OpenMarkdownColorsDialog;
-    procedure BeginSplitCombine;
-    procedure BeginTestArchive;
-    procedure BeginPackEach;
-    procedure DispatchSplitCombineCommand(AKind: THostDialogKind; const AControlId: string);
-    procedure StartSplitJob(const ASrc, ADestDir: string; APartSize: Int64);
-    procedure StartCombineJob(const AParts: TArray<string>; const ADest: string);
     procedure BeginMultiRename;
     procedure StartMultiRenameJob(const ASources, ADests: TArray<string>);
     procedure HostUndoMultiRename;
@@ -1695,7 +1682,7 @@ implementation
 uses
   uFindRouter,
   uPlatformInfo, uPlatformProcess, uPlatformFolders, uPlatformPaths, uImageInfo, uFileClip, uWinFileDragDrop, uStrings, uFileHistory, uChromeRows,
-  uExternalTools, uEnvProfiles, uDialogHistory, uFileSplit, uArchiveTest, uPackEach, uCloudFiles, uKeyChord, uConsoleSettings, uZipVfs,
+  uExternalTools, uEnvProfiles, uDialogHistory, uCloudFiles, uKeyChord, uConsoleSettings, uZipVfs,
   uCharWidth, uConfigMode, uPluginChrome, uColorPickerControl, uRenameJournal, uConfigLocation;
 
 const
@@ -2118,8 +2105,6 @@ begin
   FreeAndNil(FKeyHints);
   FreeAndNil(FFeatureTips);
   FreeAndNil(FSaver);
-  if Assigned(FSplitToken) then
-    FSplitToken.Cancel;
   if Assigned(FCompareToken) then
     FCompareToken.Cancel;
   if Assigned(FQuickText) then
@@ -2391,9 +2376,6 @@ begin
   FKeymapHost.OpenEnvironmentProfiles := OpenEnvironmentProfiles;
   FKeymapHost.ClearConsoleBuffer := ClearConsoleBuffer;
   FKeymapHost.OpenMarkdownColorsDialog := OpenMarkdownColorsDialog;
-  FKeymapHost.BeginSplitCombine := BeginSplitCombine;
-  FKeymapHost.BeginTestArchive := BeginTestArchive;
-  FKeymapHost.BeginPackEach := BeginPackEach;
   FKeymapHost.BeginMultiRename := BeginMultiRename;
   FKeymapHost.NavigateToRecycleBin := NavigateToRecycleBin;
   FKeymapHost.RestoreCursorItemFromRecycleBin := RestoreCursorItemFromRecycleBin;
@@ -3865,7 +3847,6 @@ procedure TDualPanelWindow.BindRuntimeControllers;
 begin
   FCmdLineMgr := TDualPanelCmdLineManager.Create(HostCmdLineSubmit, NotifyChanged);
   FCmdLineMgr.OnGetNames := HostCmdLineNames;
-  FSplitSizeText := '100M';
   FCompareOptions := TPanelCompareOptions.Default;
   FCmdLineMgr.OnGetBaseDir := ActiveLocalPath;
   FCmdLineMgr.OnOpenHistoryPopup := OpenCmdHistoryPopup;
@@ -6955,11 +6936,6 @@ begin
   // Only cancel an in-flight folder-size job; other stubs must not bump Gen.
   if Assigned(FFolderSizeMgr) and FFolderSizeMgr.IsActive then
     CancelFolderSize;
-  if Assigned(FSplitToken) then
-  begin
-    FSplitToken.Cancel;
-    FSplitToken := nil;
-  end;
   if Assigned(FCompareToken) then
   begin
     FCompareToken.Cancel;
@@ -7216,8 +7192,6 @@ begin
         if not DialogCmdIsReject(AControlId) then
           ApplyWorkspaceTabTitle(AFields.Name);
       end;
-    hdkSplitFile, hdkCombineFiles:
-      DispatchSplitCombineCommand(AKind, AControlId);
     hdkCompareOptions:
       DispatchCompareOptionsCommand(AControlId);
   else
@@ -10352,353 +10326,6 @@ begin
       FJobs.BeginJobPairs(FromUris, BackUris, pjkMove, jomAsk);
       NotifyChanged;
     end);
-end;
-
-procedure TDualPanelWindow.BeginSplitCombine;
-var
-  Uris, Paths: TArray<string>;
-  Ws: TDualPanelWorkspaceTab;
-  OtherUri, OtherDir, Base: string;
-  Idx: Integer;
-begin
-  if not HostInPanelsWorkspace or not CanStartOperation or Assigned(FSplitToken) then
-    Exit;
-  Uris := CollectActiveSources;
-  if Length(Uris) = 0 then
-    Exit; // ".." with nothing selected
-  Paths := FileUrisToLocalPaths(Uris);
-  if (Length(Paths) <> 1) or not TFile.Exists(Paths[0]) then
-  begin
-    OpenStub(skShellInfo, T('ui.split.title', 'Split / combine'),
-      T('ui.split.oneFile', 'Select one file on disk'));
-    Exit;
-  end;
-  // Results go to the other panel's folder when it is a local one.
-  Ws := ActiveWorkspace;
-  if Ws.State.ActiveSide = psLeft then
-    OtherUri := ActiveTab(Ws.State.RightPanel).CurrentURI
-  else
-    OtherUri := ActiveTab(Ws.State.LeftPanel).CurrentURI;
-  OtherDir := ExcludeTrailingPathDelimiter(FileUriToPath(OtherUri));
-  if (OtherDir = '') or not TDirectory.Exists(OtherDir) then
-    OtherDir := ExcludeTrailingPathDelimiter(ExtractFilePath(Paths[0]));
-  FSplitSrc := Paths[0];
-  FSplitParts := nil;
-  if SplitPartInfo(ExtractFileName(Paths[0]), Base, Idx) then
-    FSplitParts := CollectSplitParts(Paths[0]);
-  CloseTransientUiBeforeDialog;
-  if Length(FSplitParts) > 0 then
-  begin
-    FDialogKind := hdkCombineFiles;
-    FDialog.Open(BuildCombineFilesDialog(TPath.Combine(OtherDir,
-      ExtractFileName(CombineDefaultName(Paths[0])))), DialogCommand);
-  end
-  else
-  begin
-    FDialogKind := hdkSplitFile;
-    FDialog.Open(BuildSplitFileDialog(OtherDir, FSplitSizeText), DialogCommand);
-  end;
-  NotifyChanged;
-end;
-
-procedure TDualPanelWindow.DispatchSplitCombineCommand(AKind: THostDialogKind;
-  const AControlId: string);
-var
-  Dest, SizeText: string;
-  PartSize: Int64;
-begin
-  if not DialogCmdIsAccept(AControlId) then
-  begin
-    FDialog.Close;
-    NotifyChanged;
-    Exit;
-  end;
-  Dest := Trim(FDialog.GetInputValue('dest'));
-  if Dest = '' then
-  begin
-    // The dialog stays up so the value can be corrected.
-    FDialogKind := AKind;
-    FToast.Show(T('ui.split.noDest', 'Enter where the result goes'), '', tkWarning);
-    Exit;
-  end;
-  if AKind = hdkSplitFile then
-  begin
-    SizeText := Trim(FDialog.GetInputValue('size'));
-    if not ParseSplitSize(SizeText, PartSize) or (PartSize < cSplitMinPartSize) then
-    begin
-      FDialogKind := AKind;
-      FToast.Show(T('ui.split.badSize', 'Part size: a number with K, M or G, at least 1K'),
-        '', tkWarning);
-      Exit;
-    end;
-    FSplitSizeText := SizeText;
-    FDialog.Close;
-    StartSplitJob(FSplitSrc, Dest, PartSize);
-  end
-  else
-  begin
-    FDialog.Close;
-    if TPath.IsRelativePath(Dest) then
-      Dest := TPath.Combine(ExtractFilePath(FSplitSrc), Dest);
-    StartCombineJob(Copy(FSplitParts), Dest);
-  end;
-  NotifyChanged;
-end;
-
-procedure TDualPanelWindow.StartSplitJob(const ASrc, ADestDir: string;
-  APartSize: Int64);
-var
-  Life: ILifeFlag;
-  Token: IJobCancelToken;
-  Src, DestDir, Title: string;
-begin
-  Life := FLife;
-  Token := TJobCancelToken.Create;
-  FSplitToken := Token;
-  Src := ASrc;
-  DestDir := ADestDir;
-  Title := T('ui.split.splitTitle', 'Split file');
-  OpenStub(skShellInfo, Title, T('ui.split.working', 'Working... Esc=Cancel'));
-  TThread.CreateAnonymousThread(
-    procedure
-    var
-      Count: Integer;
-      Done: Boolean;
-      Err: string;
-    begin
-      Count := 0;
-      Done := False;
-      Err := '';
-      try
-        ForceDirectories(DestDir);
-        Done := SplitFile(Src, DestDir, APartSize,
-          function: Boolean
-          begin
-            Result := Token.IsCancellationRequested;
-          end, Count);
-      except
-        on E: Exception do
-          Err := E.Message;
-      end;
-      TThread.Queue(nil,
-        procedure
-        begin
-          if Token.IsCancellationRequested or not Life.Alive then
-            Exit;
-          FSplitToken := nil;
-          CloseStub;
-          if Err <> '' then
-          begin
-            OpenStub(skShellInfo, Title, Err);
-            Exit;
-          end;
-          if not Done then
-            Exit;
-          ReloadPanelsTouching([DestDir, ExtractFilePath(Src)]);
-          NotifyChanged;
-          FToast.Show(T('ui.split.splitDone', '%d parts created', [Count]), '', tkInfo);
-        end);
-    end).Start;
-end;
-
-procedure TDualPanelWindow.StartCombineJob(const AParts: TArray<string>;
-  const ADest: string);
-var
-  Life: ILifeFlag;
-  Token: IJobCancelToken;
-  Parts: TArray<string>;
-  Dest, Title: string;
-begin
-  Life := FLife;
-  Token := TJobCancelToken.Create;
-  FSplitToken := Token;
-  Parts := Copy(AParts);
-  Dest := ADest;
-  Title := T('ui.split.combineTitle', 'Combine files');
-  OpenStub(skShellInfo, Title, T('ui.split.working', 'Working... Esc=Cancel'));
-  TThread.CreateAnonymousThread(
-    procedure
-    var
-      Done: Boolean;
-      Err: string;
-    begin
-      Done := False;
-      Err := '';
-      try
-        ForceDirectories(ExtractFilePath(Dest));
-        Done := CombineParts(Parts, Dest,
-          function: Boolean
-          begin
-            Result := Token.IsCancellationRequested;
-          end);
-      except
-        on E: Exception do
-          Err := E.Message;
-      end;
-      TThread.Queue(nil,
-        procedure
-        begin
-          if Token.IsCancellationRequested or not Life.Alive then
-            Exit;
-          FSplitToken := nil;
-          CloseStub;
-          if Err <> '' then
-          begin
-            OpenStub(skShellInfo, Title, Err);
-            Exit;
-          end;
-          if not Done then
-            Exit;
-          ReloadPanelsTouching([ExtractFilePath(Dest)]);
-          NotifyChanged;
-          FToast.Show(T('ui.split.combineDone', 'Created %s', [ExtractFileName(Dest)]),
-            '', tkInfo);
-        end);
-    end).Start;
-end;
-
-procedure TDualPanelWindow.BeginTestArchive;
-var
-  Paths: TArray<string>;
-  Life: ILifeFlag;
-  Token: IJobCancelToken;
-  Src, Title: string;
-begin
-  if not HostInPanelsWorkspace or not CanStartOperation or Assigned(FSplitToken) then
-    Exit;
-  Paths := FileUrisToLocalPaths(CollectActiveSources);
-  Title := T('ui.archtest.title', 'Test archive');
-  // Formats other than ZIP are tested by the archive plugin, when it is loaded.
-  if (Length(Paths) = 1) and TFile.Exists(Paths[0]) and
-    not SameText(ExtractFileExt(Paths[0]), '.zip') and
-    CommandRegistry.TryExecute('sevenzip.test') then
-    Exit;
-  if (Length(Paths) <> 1) or not TFile.Exists(Paths[0]) or
-    not SameText(ExtractFileExt(Paths[0]), '.zip') then
-  begin
-    OpenStub(skShellInfo, Title, T('ui.archtest.oneZip', 'Select one ZIP archive on disk'));
-    Exit;
-  end;
-  Life := FLife;
-  Token := TJobCancelToken.Create;
-  FSplitToken := Token;
-  Src := Paths[0];
-  OpenStub(skShellInfo, Title, T('ui.split.working', 'Working... Esc=Cancel'));
-  TThread.CreateAnonymousThread(
-    procedure
-    var
-      R: TArchiveTestResult;
-      Err: string;
-    begin
-      R := Default(TArchiveTestResult);
-      Err := '';
-      try
-        R := TestZipArchive(Src,
-          function: Boolean
-          begin
-            Result := Token.IsCancellationRequested;
-          end);
-      except
-        on E: Exception do
-          Err := E.Message;
-      end;
-      TThread.Queue(nil,
-        procedure
-        var
-          Text: string;
-        begin
-          if Token.IsCancellationRequested or not Life.Alive then
-            Exit;
-          FSplitToken := nil;
-          CloseStub;
-          if Err <> '' then
-          begin
-            OpenStub(skShellInfo, Title, Err);
-            Exit;
-          end;
-          if R.Cancelled then
-            Exit;
-          if R.Failed = 0 then
-          begin
-            FToast.Show(T('ui.archtest.ok', '%d files OK', [R.Checked]), '', tkInfo);
-            Exit;
-          end;
-          Text := T('ui.archtest.failed', '%d of %d files are damaged:',
-            [R.Failed, R.Checked]) + sLineBreak + string.Join(sLineBreak, R.Errors);
-          OpenStub(skShellInfo, Title, Text);
-        end);
-    end).Start;
-end;
-
-procedure TDualPanelWindow.BeginPackEach;
-var
-  Paths: TArray<string>;
-  Ws: TDualPanelWorkspaceTab;
-  OtherUri, DestDir, Title: string;
-  Life: ILifeFlag;
-  Token: IJobCancelToken;
-begin
-  if not HostInPanelsWorkspace or not CanStartOperation or Assigned(FSplitToken) then
-    Exit;
-  Paths := FileUrisToLocalPaths(CollectActiveSources);
-  Title := T('ui.packeach.title', 'Pack each item');
-  if (Length(Paths) = 0) or SourcesContainArchive(CollectActiveSources) or
-    not (TFile.Exists(Paths[0]) or TDirectory.Exists(Paths[0])) then
-  begin
-    OpenStub(skShellInfo, Title, T('ui.packeach.noSources', 'Select files or folders on disk'));
-    Exit;
-  end;
-  // Archives go to the other panel's folder when it is a local one.
-  Ws := ActiveWorkspace;
-  if Ws.State.ActiveSide = psLeft then
-    OtherUri := ActiveTab(Ws.State.RightPanel).CurrentURI
-  else
-    OtherUri := ActiveTab(Ws.State.LeftPanel).CurrentURI;
-  DestDir := ExcludeTrailingPathDelimiter(FileUriToPath(OtherUri));
-  if (DestDir = '') or not TDirectory.Exists(DestDir) then
-    DestDir := ExcludeTrailingPathDelimiter(ExtractFilePath(ExcludeTrailingPathDelimiter(Paths[0])));
-  Life := FLife;
-  Token := TJobCancelToken.Create;
-  FSplitToken := Token;
-  OpenStub(skShellInfo, Title, T('ui.split.working', 'Working... Esc=Cancel'));
-  TThread.CreateAnonymousThread(
-    procedure
-    var
-      Count: Integer;
-      Done: Boolean;
-      Err: string;
-    begin
-      Count := 0;
-      Done := False;
-      Err := '';
-      try
-        Done := PackEachToZip(Paths, DestDir,
-          function: Boolean
-          begin
-            Result := Token.IsCancellationRequested;
-          end, Count);
-      except
-        on E: Exception do
-          Err := E.Message;
-      end;
-      TThread.Queue(nil,
-        procedure
-        begin
-          if Token.IsCancellationRequested or not Life.Alive then
-            Exit;
-          FSplitToken := nil;
-          CloseStub;
-          ReloadPanelsTouching([DestDir]);
-          NotifyChanged;
-          if Err <> '' then
-          begin
-            OpenStub(skShellInfo, Title, Err);
-            Exit;
-          end;
-          if Done then
-            FToast.Show(T('ui.packeach.done', '%d archives created', [Count]), '', tkInfo);
-        end);
-    end).Start;
 end;
 
 procedure TDualPanelWindow.ExternalView;

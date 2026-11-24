@@ -21,6 +21,8 @@ This file describes what changes for the user from version to version: new featu
 ### Changed
 
 - Checksums moved out of the program core into the `mtn.checksums` plugin. The command, its Ctrl+Alt+H key and the dialogs work as before, but the item is now at the end of the Files menu after a line, the Ctrl+Alt+F3 key bar hint and the "Checksums" tip are gone, and turning the plugin off in Plugins... removes the command. A plugin menu item can now name `Files` or `Commands` as its parent to sit in that menu.
+- Split / combine moved out of the program core into the `mtn.splitfile` plugin. The command works as before and stays in the Files menu, but turning the plugin off in Plugins... removes it.
+- "Test archive" and "Pack each item" moved out of the program core into the `mtn.archivetools` plugin. Both commands work as before and stay in the Files menu, but turning the plugin off in Plugins... removes them.
 
 ## Dev v0.5.12.4 – 2026-11-24
 

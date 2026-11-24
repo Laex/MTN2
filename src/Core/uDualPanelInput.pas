@@ -148,9 +148,6 @@ type
     OpenEnvironmentProfiles: TKeymapProc;
     ClearConsoleBuffer: TKeymapProc;
     OpenMarkdownColorsDialog: TKeymapProc;
-    BeginSplitCombine: TKeymapProc;
-    BeginTestArchive: TKeymapProc;
-    BeginPackEach: TKeymapProc;
     BeginMultiRename: TKeymapProc;
     NavigateToRecycleBin: TKeymapProc;
     RestoreCursorItemFromRecycleBin: TKeymapProc;
@@ -1006,15 +1003,6 @@ begin
     kaCompareFolders:
       if Assigned(AHost.CompareFolders) then
         AHost.CompareFolders();
-    kaSplitCombine:
-      if Assigned(AHost.BeginSplitCombine) then
-        AHost.BeginSplitCombine();
-    kaTestArchive:
-      if Assigned(AHost.BeginTestArchive) then
-        AHost.BeginTestArchive();
-    kaPackEach:
-      if Assigned(AHost.BeginPackEach) then
-        AHost.BeginPackEach();
     kaMultiRename:
       if Assigned(AHost.BeginMultiRename) then
         AHost.BeginMultiRename();

@@ -412,8 +412,6 @@ Nur für Dateien und Ordner auf der Festplatte: Archive, SFTP, Papierkorb und Su
 
 <!--copy-->Im Dialog Kopieren/Verschieben lassen sich alle Zeitstempel beibehalten, nur neuere Dateien kopieren, der Inhalt symbolischer Links kopieren und eine Ausschlussmaske festlegen. Bei einem Namenskonflikt fragt das Programm, was zu tun ist (überschreiben, überspringen, umbenennen, für alle…).
 
-<!--checksums-->**Prüfsummen.** Sie werden im Hintergrund berechnet (Esc – abbrechen). In der Ergebnisliste: **Kopieren** – in die Zwischenablage, **Speichern** – nach `<Datei>.sha256` (eine Datei) oder `checksums.sha256` im Panelordner. Die Prüfung markiert jede Zeile mit `OK`, `FAILED` oder `MISSING`. Zeilen der Form `Hash *Name`, `Hash  Name` und `SHA256 (Name) = Hash` werden verstanden.
-
 <!--multi-rename-->**Mehrfach umbenennen.** Die Masken für Name und Erweiterung kennen:
 - `[N]` – alter Name ohne Erweiterung;
 - `[E]` – alte Erweiterung;

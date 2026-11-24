@@ -56,8 +56,8 @@ A short overview of the features; details are in the help (F1), the other docume
 - **Folder merge** – copying or moving a folder onto an existing one merges the contents; the "File already exists" prompt offers overwrite, skip, rename, append, overwrite if newer, overwrite if the size differs and automatic rename (`name (2).ext`), and a Compare button that opens both files in the comparison view; the same rules can be picked in the copy dialog in advance.
 - **Split / combine** – File > Split / combine... cuts a file into numbered parts (`name.001`, ...) of a given size, or joins the parts back when the cursor is on one of them; runs in the background and can be cancelled.
 - **Thumbnails** – the Thumbnails plugin shows the pictures of the active panel's folder as a sheet of thumbnails (Plugins menu); Enter or a double click opens one.
-- **Archive test** – File > Test archive checks every file of an archive against its stored checksums without unpacking (ZIP directly, 7z, RAR, TAR and others through the 7-Zip plugin); runs in the background.
-- **Pack each item** – File > Pack each item makes a separate ZIP for every selected file or folder; runs in the background.
+- **Archive test** – the Archive tools plugin: File > Test archive checks every file of an archive against its stored checksums without unpacking (ZIP directly, 7z, RAR, TAR and others through the 7-Zip plugin); runs in the background.
+- **Pack each item** – the Archive tools plugin: File > Pack each item makes a separate ZIP for every selected file or folder; runs in the background.
 - **Verified copy** – the "Verify after copying" option compares every copied file with its source before it is kept; a difference is an error of that file with the usual retry / skip.
 - **Far-style delete** – `F8` / `Del` to the Recycle Bin, `Shift+Del` permanently, `Shift+F8` only the item under the cursor; if the Recycle Bin fails, permanent deletion is offered.
 - **Multi-rename** – `Ctrl+Alt+N`: `[N]`, `[E]`, `[C]` masks, date, parent, size and metadata tags, text replacement and regular expressions, case changes, preview with conflict checks; "In editor" types the new names by hand, "Undo last" takes the previous batch back.
@@ -67,7 +67,7 @@ A short overview of the features; details are in the help (F1), the other docume
 - **Link markers** – links in the panels carry a marker before the name: `~` for a folder, `@` for a file; the "Mark links" option turns it off.
 - **Apply command to selection** – `Ctrl+G` runs a command on the selected files with user menu substitutions (`!.!`, `!&`, `!\`, `!#`).
 - **File descriptions** – `Ctrl+Z`: a description in `Descript.ion` in Far and Total Commander format, shown in the status line.
-- **Checksums** – `Ctrl+Alt+H`: MD5, SHA-1, SHA-256 and SHA-512 of the selected files and folders, calculated in the background; the result is copied or saved to a `.sha256` file, and a `.md5` / `.sha1` / `.sha256` / `.sha512` file is verified with OK, FAILED and MISSING marks.
+- **Checksums** – the Checksums plugin, `Ctrl+Alt+H` or File menu: MD5, SHA-1, SHA-256 and SHA-512 of the selected files and folders, calculated in the background; the result is copied or saved to a `.sha256` file, and a `.md5` / `.sha1` / `.sha256` / `.sha512` file is verified with OK, FAILED and MISSING marks.
 - **Save list to file** – selected items as text, a Markdown table or CSV with a choice of fields.
 - **Copy names and paths** – `Ctrl+Shift+Ins` copies names, `Alt+Shift+Ins` full paths to the clipboard.
 - **Long paths** – paths longer than 260 characters work in operations, search, comparison and extraction.

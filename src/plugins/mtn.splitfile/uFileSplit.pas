@@ -4,7 +4,7 @@ unit uFileSplit;
   back. Parts are plain slices, the same layout as the Total Commander and
   HJSplit families, so the files can be joined by "copy /b" too.
 
-  Pure logic -- TDualPanelWindow runs it on a worker thread. }
+  Pure logic -- the plugin runs it on a worker thread. }
 
 interface
 

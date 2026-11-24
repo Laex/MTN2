@@ -1,0 +1,21 @@
+{
+  "id": "mtn.archivetools",
+  "name": "Archive tools",
+  "version": "0.1.0",
+  "abi": 7,
+  "declarative": true,
+  "commands": [
+    {"id": "archivetools.test"},
+    {"id": "archivetools.packeach"}
+  ],
+  "menuItems": [
+    {"id": "archivetools.test", "parent": "Files", "caption": {"en": "Test archive", "ru": "Проверить архив"}, "priority": 70},
+    {"id": "archivetools.packeach", "parent": "Files", "caption": {"en": "Pack each item", "ru": "Упаковать каждый элемент"}, "priority": 71}
+  ],
+  "description": {
+    "en": "Test archive checks every file of the ZIP under the cursor against its stored CRC-32 without unpacking it (other formats go to the 7-Zip plugin). Pack each item packs every selected file or folder into its own ZIP in the other panel's folder. Both run in the background.",
+    "ru": "«Проверить архив» сверяет каждый файл ZIP под курсором с записанным CRC-32, не распаковывая его (другие форматы – через плагин 7-Zip). «Упаковать каждый элемент» упаковывает каждый выбранный файл или папку в свой ZIP в папке другой панели. Обе команды работают в фоне."
+  },
+  "author": "MTN2",
+  "help": "help.md"
+}

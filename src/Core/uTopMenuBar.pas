@@ -50,9 +50,6 @@ type
     tmaFileProperties,
     tmaFileShellMenu,
     tmaFileCompare,
-    tmaFileSplitCombine,
-    tmaFileTestArchive,
-    tmaFilePackEach,
     tmaFileMultiRename,
     tmaFileRestore,
     tmaFileDelete,
@@ -505,12 +502,6 @@ begin
       Result := kaShellContextMenu;
     tmaFileCompare:
       Result := kaCompareFiles;
-    tmaFileSplitCombine:
-      Result := kaSplitCombine;
-    tmaFileTestArchive:
-      Result := kaTestArchive;
-    tmaFilePackEach:
-      Result := kaPackEach;
     tmaFileMultiRename:
       Result := kaMultiRename;
     tmaFileRestore:

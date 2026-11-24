@@ -1,0 +1,19 @@
+{
+  "id": "mtn.splitfile",
+  "name": "Split / combine",
+  "version": "0.1.0",
+  "abi": 7,
+  "declarative": true,
+  "commands": [
+    {"id": "splitfile.run"}
+  ],
+  "menuItems": [
+    {"id": "splitfile.run", "parent": "Files", "caption": {"en": "Split / combine...", "ru": "Разрезать / склеить..."}, "priority": 60}
+  ],
+  "description": {
+    "en": "Cuts the file under the cursor into numbered parts (name.001, name.002, ...) of a chosen size, or joins the parts back into one file when the cursor is on any part. Runs in the background; existing files are never overwritten.",
+    "ru": "Режет файл под курсором на пронумерованные части (имя.001, имя.002, ...) заданного размера или склеивает части обратно в один файл, когда курсор стоит на любой части. Работает в фоне; существующие файлы не перезаписываются."
+  },
+  "author": "MTN2",
+  "help": "help.md"
+}

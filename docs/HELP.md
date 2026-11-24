@@ -423,8 +423,6 @@ Only for files and folders on disk: archives, SFTP, the Recycle Bin and search r
 
 <!--copy-->The copy/move dialog lets you keep all timestamps, copy only newer files, copy the contents of symbolic links and set an exclusion mask. On a name conflict the program asks what to do (overwrite, skip, rename, for all…).
 
-<!--checksums-->**Checksums.** They are calculated in the background (Esc – cancel). In the result list: **Copy** – to the clipboard, **Save** – to `<file>.sha256` (one file) or `checksums.sha256` in the panel folder. Verification marks every line `OK`, `FAILED` or `MISSING`. Lines `hash *name`, `hash  name` and `SHA256 (name) = hash` are understood.
-
 <!--multi-rename-->**Multi-rename.** The name and extension masks understand:
 - `[N]` – the old name without extension;
 - `[E]` – the old extension;
