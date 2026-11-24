@@ -1001,15 +1001,10 @@ begin
 end;
 
 function TabIsSelected(const ATab: TTab; const AURI: string): Boolean;
-var
-  S: string;
 begin
-  Result := False;
-  if AURI = '' then
-    Exit;
-  for S in ATab.SelectedURIs do
-    if SameVfsUri(S, AURI) then
-      Exit(True);
+  // Drawing already keeps these keys. Comparing the URI with every selected
+  // one stalls the start of a Shift gesture once the selection is large.
+  Result := SelectionKeysHas(TabSelectionKeys(ATab), AURI);
 end;
 
 function SortedKeysHas(const AKeys: TArray<string>; const AKey: string): Boolean;
@@ -1068,6 +1063,72 @@ begin
   Result := True;
 end;
 
+procedure RememberSelectionKeys(const ASource, AKeys: TArray<string>);
+begin
+  if Length(ASource) = 0 then
+    Exit;
+  TMonitor.Enter(GSelectionKeysLock);
+  try
+    GSelectionKeysCache[GSelectionKeysNext].Source := Copy(ASource);
+    GSelectionKeysCache[GSelectionKeysNext].Keys := AKeys;
+    GSelectionKeysNext := (GSelectionKeysNext + 1) mod Length(GSelectionKeysCache);
+  finally
+    TMonitor.Exit(GSelectionKeysLock);
+  end;
+end;
+
+// AKeys stays sorted by CompareStr. A second copy of the same key is ignored.
+procedure InsertSortedKey(var AKeys: TArray<string>; const AKey: string);
+var
+  Lo, Hi, Mid, I, At: Integer;
+begin
+  Lo := 0;
+  Hi := Length(AKeys);
+  while Lo < Hi do
+  begin
+    Mid := (Lo + Hi) shr 1;
+    if CompareStr(AKeys[Mid], AKey) < 0 then
+      Lo := Mid + 1
+    else
+      Hi := Mid;
+  end;
+  At := Lo;
+  if (At <= High(AKeys)) and (AKeys[At] = AKey) then
+    Exit;
+  SetLength(AKeys, Length(AKeys) + 1);
+  for I := High(AKeys) downto At + 1 do
+    AKeys[I] := AKeys[I - 1];
+  AKeys[At] := AKey;
+end;
+
+procedure DeleteSortedKey(var AKeys: TArray<string>; const AKey: string);
+var
+  Lo, Hi, Mid, C, I, At: Integer;
+begin
+  Lo := 0;
+  Hi := High(AKeys);
+  At := -1;
+  while Lo <= Hi do
+  begin
+    Mid := (Lo + Hi) shr 1;
+    C := CompareStr(AKeys[Mid], AKey);
+    if C = 0 then
+    begin
+      At := Mid;
+      Break;
+    end;
+    if C < 0 then
+      Lo := Mid + 1
+    else
+      Hi := Mid - 1;
+  end;
+  if At < 0 then
+    Exit;
+  for I := At to High(AKeys) - 1 do
+    AKeys[I] := AKeys[I + 1];
+  SetLength(AKeys, Length(AKeys) - 1);
+end;
+
 // Building the sorted keys of a large selection takes milliseconds and every
 // repaint asks for them several times, so the last few results are kept.
 function TabSelectionKeys(const ATab: TTab): TArray<string>;
@@ -1088,14 +1149,7 @@ begin
   for I := 0 to High(ATab.SelectedURIs) do
     Result[I] := VfsUriKey(ATab.SelectedURIs[I]);
   Result := SortKeys(Result);
-  TMonitor.Enter(GSelectionKeysLock);
-  try
-    GSelectionKeysCache[GSelectionKeysNext].Source := Copy(ATab.SelectedURIs);
-    GSelectionKeysCache[GSelectionKeysNext].Keys := Result;
-    GSelectionKeysNext := (GSelectionKeysNext + 1) mod Length(GSelectionKeysCache);
-  finally
-    TMonitor.Exit(GSelectionKeysLock);
-  end;
+  RememberSelectionKeys(ATab.SelectedURIs, Result);
 end;
 
 function SelectionKeysHas(const AKeys: TArray<string>; const AURI: string): Boolean;
@@ -1131,23 +1185,37 @@ procedure TabToggleSelectedRange(var ATab: TTab; const ARows: TPanelRows;
 var
   Keys, Drop, Add: TArray<string>;
   K: string;
-  I: Integer;
+  I, DropN, AddN: Integer;
 begin
   ALo := Max(ALo, 0);
   AHi := Min(AHi, High(ARows));
   if ALo > AHi then
     Exit;
   Keys := TabSelectionKeys(ATab);
+  // One allocation for the whole span. Growing the arrays per row stalls
+  // Shift+End on a large folder.
+  SetLength(Drop, AHi - ALo + 1);
+  SetLength(Add, AHi - ALo + 1);
+  DropN := 0;
+  AddN := 0;
   for I := ALo to AHi do
   begin
     if ARows[I].IsParent or (ARows[I].URI = '') then
       Continue;
     K := VfsUriKey(ARows[I].URI);
     if SortedKeysHas(Keys, K) then
-      Drop := Drop + [K]
+    begin
+      Drop[DropN] := K;
+      Inc(DropN);
+    end
     else
-      Add := Add + [ARows[I].URI];
+    begin
+      Add[AddN] := ARows[I].URI;
+      Inc(AddN);
+    end;
   end;
+  SetLength(Drop, DropN);
+  SetLength(Add, AddN);
   ApplySelectionChange(ATab, Drop, Add);
 end;
 
@@ -1156,13 +1224,17 @@ procedure TabSetSelectedRange(var ATab: TTab; const ARows: TPanelRows;
 var
   Keys, Drop, Add: TArray<string>;
   K: string;
-  I: Integer;
+  I, DropN, AddN: Integer;
 begin
   ALo := Max(ALo, 0);
   AHi := Min(AHi, High(ARows));
   if ALo > AHi then
     Exit;
   Keys := TabSelectionKeys(ATab);
+  SetLength(Drop, AHi - ALo + 1);
+  SetLength(Add, AHi - ALo + 1);
+  DropN := 0;
+  AddN := 0;
   for I := ALo to AHi do
   begin
     if ARows[I].IsParent or (ARows[I].URI = '') then
@@ -1171,11 +1243,19 @@ begin
     if SortedKeysHas(Keys, K) then
     begin
       if not ASelected then
-        Drop := Drop + [K];
+      begin
+        Drop[DropN] := K;
+        Inc(DropN);
+      end;
     end
     else if ASelected then
-      Add := Add + [ARows[I].URI];
+    begin
+      Add[AddN] := ARows[I].URI;
+      Inc(AddN);
+    end;
   end;
+  SetLength(Drop, DropN);
+  SetLength(Add, AddN);
   ApplySelectionChange(ATab, Drop, Add);
 end;
 
@@ -1197,22 +1277,37 @@ end;
 
 procedure TabToggleSelected(var ATab: TTab; const AURI: string);
 var
+  Keys: TArray<string>;
+  K: string;
   I, N: Integer;
 begin
   if AURI = '' then
     Exit;
-  for I := 0 to High(ATab.SelectedURIs) do
-    if SameVfsUri(ATab.SelectedURIs[I], AURI) then
-    begin
-      N := Length(ATab.SelectedURIs);
-      if I < N - 1 then
-        ATab.SelectedURIs[I] := ATab.SelectedURIs[N - 1];
-      SetLength(ATab.SelectedURIs, N - 1);
-      Exit;
-    end;
+  // Membership is the sorted key. Holding Insert down a large folder used to
+  // compare the new URI with every selected one, and the next repaint built
+  // the keys again from scratch.
+  K := VfsUriKey(AURI);
+  Keys := TabSelectionKeys(ATab);
+  if SortedKeysHas(Keys, K) then
+  begin
+    for I := 0 to High(ATab.SelectedURIs) do
+      if SameVfsUri(ATab.SelectedURIs[I], AURI) then
+      begin
+        N := Length(ATab.SelectedURIs);
+        if I < N - 1 then
+          ATab.SelectedURIs[I] := ATab.SelectedURIs[N - 1];
+        SetLength(ATab.SelectedURIs, N - 1);
+        DeleteSortedKey(Keys, K);
+        RememberSelectionKeys(ATab.SelectedURIs, Keys);
+        Exit;
+      end;
+    Exit;
+  end;
   N := Length(ATab.SelectedURIs);
   SetLength(ATab.SelectedURIs, N + 1);
   ATab.SelectedURIs[N] := AURI;
+  InsertSortedKey(Keys, K);
+  RememberSelectionKeys(ATab.SelectedURIs, Keys);
 end;
 
 procedure TabSetSelected(var ATab: TTab; const AURI: string; ASelected: Boolean);
@@ -1392,30 +1487,38 @@ end;
 procedure TabSelectByMask(var ATab: TTab; const ARows: TPanelRows;
   const AMask: string; AIncludeFolders: Boolean);
 var
-  Masks: TArray<string>;
+  Masks: TNameMaskSet;
 begin
-  Masks := SplitMasks(AMask);
-  // FAR default: Gray+/Gray- do not select folders (Select folders = off).
-  ChangeSelectionOfRows(ATab, ARows, soSelect,
-    function(const ARow: TPanelRow): Boolean
-    begin
-      Result := TabRowSelectable(ARow, AIncludeFolders) and
-        NameMatchesAnyMask(PanelRowMaskName(ARow), Masks);
-    end);
+  Masks := TNameMaskSet.Create(SplitMasks(AMask));
+  try
+    // FAR default: Gray+/Gray- do not select folders (Select folders = off).
+    ChangeSelectionOfRows(ATab, ARows, soSelect,
+      function(const ARow: TPanelRow): Boolean
+      begin
+        Result := TabRowSelectable(ARow, AIncludeFolders) and
+          Masks.Matches(PanelRowMaskName(ARow));
+      end);
+  finally
+    Masks.Free;
+  end;
 end;
 
 procedure TabUnselectByMask(var ATab: TTab; const ARows: TPanelRows;
   const AMask: string; AIncludeFolders: Boolean);
 var
-  Masks: TArray<string>;
+  Masks: TNameMaskSet;
 begin
-  Masks := SplitMasks(AMask);
-  ChangeSelectionOfRows(ATab, ARows, soUnselect,
-    function(const ARow: TPanelRow): Boolean
-    begin
-      Result := TabRowSelectable(ARow, AIncludeFolders) and
-        NameMatchesAnyMask(PanelRowMaskName(ARow), Masks);
-    end);
+  Masks := TNameMaskSet.Create(SplitMasks(AMask));
+  try
+    ChangeSelectionOfRows(ATab, ARows, soUnselect,
+      function(const ARow: TPanelRow): Boolean
+      begin
+        Result := TabRowSelectable(ARow, AIncludeFolders) and
+          Masks.Matches(PanelRowMaskName(ARow));
+      end);
+  finally
+    Masks.Free;
+  end;
 end;
 
 procedure TabSelectByNameStem(var ATab: TTab; const ARows: TPanelRows;
@@ -1448,42 +1551,56 @@ end;
 function CollectSelectedDirectoryUris(const ATab: TTab;
   const ARows: TPanelRows): TArray<string>;
 var
-  S, Path: string;
+  S, Path, Key, RowUri: string;
   R: TPanelRow;
-  Found: Boolean;
+  Dirs: TDictionary<string, string>;
+  Seen: TDictionary<string, Byte>;
   N: Integer;
 begin
   SetLength(Result, 0);
-  for S in ATab.SelectedURIs do
-  begin
-    if S = '' then
-      Continue;
-    Found := False;
+  if Length(ATab.SelectedURIs) = 0 then
+    Exit;
+  // The row key is known once. Matching every selected URI against every row
+  // stalls F3 when the selection is large. A URI that is no longer in the
+  // panel is still a directory when the path on disk is one.
+  Dirs := TDictionary<string, string>.Create;
+  Seen := TDictionary<string, Byte>.Create;
+  try
     for R in ARows do
     begin
       if R.IsParent or (R.URI = '') then
         Continue;
-      if not SameVfsUri(R.URI, S) then
-        Continue;
-      Found := True;
-      if PanelRowIsDirectory(R) then
-      begin
-        N := Length(Result);
-        SetLength(Result, N + 1);
-        Result[N] := R.URI;
-      end;
-      Break;
+      Key := VfsUriKey(R.URI);
+      Seen.AddOrSetValue(Key, 0);
+      if PanelRowIsDirectory(R) and not Dirs.ContainsKey(Key) then
+        Dirs.Add(Key, R.URI);
     end;
-    if not Found then
+    SetLength(Result, Length(ATab.SelectedURIs));
+    N := 0;
+    for S in ATab.SelectedURIs do
     begin
-      Path := FileUriToPath(S);
-      if (Path <> '') and LocalPathIsDirectory(Path) then
+      if S = '' then
+        Continue;
+      Key := VfsUriKey(S);
+      if Dirs.TryGetValue(Key, RowUri) then
       begin
-        N := Length(Result);
-        SetLength(Result, N + 1);
-        Result[N] := S;
+        Result[N] := RowUri;
+        Inc(N);
+      end
+      else if not Seen.ContainsKey(Key) then
+      begin
+        Path := FileUriToPath(S);
+        if (Path <> '') and LocalPathIsDirectory(Path) then
+        begin
+          Result[N] := S;
+          Inc(N);
+        end;
       end;
     end;
+    SetLength(Result, N);
+  finally
+    Seen.Free;
+    Dirs.Free;
   end;
 end;
 

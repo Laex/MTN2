@@ -65,14 +65,26 @@ end;
 function EncodeMtnFileClip(const AUris: TArray<string>; ACut: Boolean): string;
 var
   I: Integer;
+  Text: TStringBuilder;
 begin
-  if ACut then
-    Result := 'CUT'
-  else
-    Result := 'COPY';
-  for I := 0 to High(AUris) do
-    if Trim(AUris[I]) <> '' then
-      Result := Result + #10 + AUris[I];
+  // One buffer for the payload. Appending each URI stalls copying a large
+  // selection.
+  Text := TStringBuilder.Create;
+  try
+    if ACut then
+      Text.Append('CUT')
+    else
+      Text.Append('COPY');
+    for I := 0 to High(AUris) do
+      if Trim(AUris[I]) <> '' then
+      begin
+        Text.Append(#10);
+        Text.Append(AUris[I]);
+      end;
+    Result := Text.ToString;
+  finally
+    Text.Free;
+  end;
 end;
 
 function DecodeMtnFileClip(const AText: string; out AUris: TArray<string>;

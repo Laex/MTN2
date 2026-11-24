@@ -8,6 +8,7 @@ library MultiRenamePlugin;
 
 uses
   System.SysUtils, System.Classes, System.JSON, System.Math, System.StrUtils,
+  System.Generics.Collections,
   uPluginHostAbi in '..\..\Core\uPluginHostAbi.pas',
   uPluginSdk in '..\..\Core\uPluginSdk.pas',
   uVfsTypes in '..\..\Core\uVfsTypes.pas',
@@ -484,8 +485,10 @@ var
   Rows, Selected: TJSONArray;
   Row: TJSONValue;
   Sel: TArray<string>;
-  Uri, Name, ActiveSide: string;
+  Uri, Name, ActiveSide, Home: string;
   Cursor, I, J, N: Integer;
+  RowAt: TDictionary<string, Integer>;
+  Names: TList<string>;
   IsDir: Boolean;
   Info1: TRenameItemInfo;
   Cols: TJSONValue;
@@ -502,6 +505,8 @@ begin
   GManualNames := nil;
   List := TJSONObject.ParseJSONValue(HostPanelListText);
   Info := TJSONObject.ParseJSONValue(HostText(GHostApi.PanelInfo));
+  RowAt := nil;
+  Names := nil;
   try
     if not (List is TJSONObject) or not (Info is TJSONObject) or
        not TJSONObject(List).TryGetValue<string>('uri', GDirUri) or
@@ -514,8 +519,11 @@ begin
     begin
       Side := TJSONObject(Info).GetValue(ActiveSide);
       if (Side is TJSONObject) and TJSONObject(Side).TryGetValue<TJSONArray>('selected', Selected) then
+      begin
+        SetLength(Sel, Selected.Count);
         for I := 0 to Selected.Count - 1 do
-          Sel := Sel + [Selected.Items[I].Value];
+          Sel[I] := Selected.Items[I].Value;
+      end;
     end;
     if (Length(Sel) = 0) and TJSONObject(List).TryGetValue<Integer>('cursor', Cursor) and
        (Cursor >= 0) and (Cursor < Rows.Count) and (Rows.Items[Cursor] is TJSONObject) and
@@ -526,26 +534,37 @@ begin
       Notice(Tr('msg.nothingSelected', 'Select files or folders first'), 1);
       Exit;
     end;
+    Home := ParentFileUri(Sel[0]);
     for Uri in Sel do
-      if ParentFileUri(Uri) <> ParentFileUri(Sel[0]) then
+      if ParentFileUri(Uri) <> Home then
       begin
         Notice(Tr('msg.oneFolder', 'Select items of one folder'), 1);
         Exit;
       end;
-    for Row in Rows do
-      if (Row is TJSONObject) and TJSONObject(Row).TryGetValue<string>('name', Name) then
-        GExisting := GExisting + [StripSlash(Name)];
+    // One pass: every name in the folder, and the row index of each URI.
+    // Scanning the folder again for every selected item stalls the command
+    // when the folder is large.
+    Names := TList<string>.Create;
+    Names.Capacity := Rows.Count;
+    RowAt := TDictionary<string, Integer>.Create;
+    for I := 0 to Rows.Count - 1 do
+    begin
+      Row := Rows.Items[I];
+      if not (Row is TJSONObject) then
+        Continue;
+      if TJSONObject(Row).TryGetValue<string>('name', Name) then
+        Names.Add(StripSlash(Name));
+      if TJSONObject(Row).TryGetValue<string>('uri', Uri) and not RowAt.ContainsKey(Uri) then
+        RowAt.Add(Uri, I);
+    end;
+    GExisting := Names.ToArray;
+    SetLength(GSources, Length(Sel));
+    SetLength(GNames, Length(Sel));
+    SetLength(GIsDir, Length(Sel));
+    SetLength(GInfos, Length(Sel));
     for J := 0 to High(Sel) do
     begin
-      N := -1;
-      for I := 0 to Rows.Count - 1 do
-        if (Rows.Items[I] is TJSONObject) and
-           TJSONObject(Rows.Items[I]).TryGetValue<string>('uri', Uri) and (Uri = Sel[J]) then
-        begin
-          N := I;
-          Break;
-        end;
-      if N < 0 then
+      if not RowAt.TryGetValue(Sel[J], N) then
       begin
         Notice(Tr('msg.nothingSelected', 'Select files or folders first'), 1);
         Exit;
@@ -574,13 +593,15 @@ begin
         if TJSONObject(Cols).TryGetValue<string>('title', S) then
           Info1.Title := S;
       end;
-      GSources := GSources + [Sel[J]];
-      GNames := GNames + [Name];
-      GIsDir := GIsDir + [IsDir];
-      GInfos := GInfos + [Info1];
+      GSources[J] := Sel[J];
+      GNames[J] := Name;
+      GIsDir[J] := IsDir;
+      GInfos[J] := Info1;
     end;
     Result := True;
   finally
+    Names.Free;
+    RowAt.Free;
     List.Free;
     Info.Free;
   end;

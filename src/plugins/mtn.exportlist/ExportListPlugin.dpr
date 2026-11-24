@@ -7,6 +7,7 @@ library ExportListPlugin;
 
 uses
   System.SysUtils, System.Classes, System.JSON, System.IOUtils,
+  System.Generics.Collections,
   uPluginHostAbi in '..\..\Core\uPluginHostAbi.pas',
   uPluginSdk in '..\..\Core\uPluginSdk.pas',
   uVfsTypes in '..\..\Core\uVfsTypes.pas',
@@ -202,7 +203,7 @@ begin
     Result := 0;
 end;
 
-procedure AddRow(ARow: TJSONObject);
+procedure AddRow(ARow: TJSONObject; AItems: TList<TListExportItem>);
 var
   Item: TListExportItem;
   Uri, S: string;
@@ -232,15 +233,27 @@ begin
     Item.TypeName := S;
   if ARow.TryGetValue<string>('attr', S) then
     Item.Attr := S;
-  GItems := GItems + [Item];
+  AItems.Add(Item);
 end;
 
 { Reads the panel: the selected rows of the active panel, or the row under the
   cursor, become the list. False, with a message shown, when there is none. }
 function CollectItems: Boolean;
+var
+  Items: TList<TListExportItem>;
 begin
   GItems := nil;
-  Result := ForEachSelectedRow(GDirUri, AddRow) and (Length(GItems) > 0);
+  Items := TList<TListExportItem>.Create;
+  try
+    Result := ForEachSelectedRow(GDirUri,
+      procedure(ARow: TJSONObject)
+      begin
+        AddRow(ARow, Items);
+      end) and (Items.Count > 0);
+    GItems := Items.ToArray;
+  finally
+    Items.Free;
+  end;
   if not Result then
     Notice(Tr('msg.nothing', 'Nothing to save'), 1);
 end;

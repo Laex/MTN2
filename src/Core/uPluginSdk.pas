@@ -220,7 +220,7 @@ var
   List, Info, Side: TJSONValue;
   Rows, Selected: TJSONArray;
   Row: TJSONValue;
-  Sel: TArray<string>;
+  Chosen: TDictionary<string, Byte>;
   Uri, ActiveSide: string;
   Cursor, I: Integer;
 begin
@@ -228,6 +228,7 @@ begin
   ADirUri := '';
   List := TJSONObject.ParseJSONValue(HostPanelListText);
   Info := TJSONObject.ParseJSONValue(HostText(GHostApi.PanelInfo));
+  Chosen := nil;
   try
     if not (List is TJSONObject) or not (Info is TJSONObject) or
        not TJSONObject(List).TryGetValue<string>('uri', ADirUri) or
@@ -236,26 +237,28 @@ begin
     if TJSONObject(Info).TryGetValue<string>('active', ActiveSide) then
     begin
       Side := TJSONObject(Info).GetValue(ActiveSide);
-      if (Side is TJSONObject) and TJSONObject(Side).TryGetValue<TJSONArray>('selected', Selected) then
+      if (Side is TJSONObject) and TJSONObject(Side).TryGetValue<TJSONArray>('selected', Selected) and
+         (Selected.Count > 0) then
+      begin
+        // Membership, so each row is matched without scanning the selection.
+        Chosen := TDictionary<string, Byte>.Create;
         for I := 0 to Selected.Count - 1 do
-          Sel := Sel + [Selected.Items[I].Value];
+          Chosen.AddOrSetValue(Selected.Items[I].Value, 0);
+      end;
     end;
-    if Length(Sel) > 0 then
+    if Chosen <> nil then
     begin
       for Row in Rows do
-        if (Row is TJSONObject) and TJSONObject(Row).TryGetValue<string>('uri', Uri) then
-          for I := 0 to High(Sel) do
-            if Sel[I] = Uri then
-            begin
-              AHandler(TJSONObject(Row));
-              Break;
-            end;
+        if (Row is TJSONObject) and TJSONObject(Row).TryGetValue<string>('uri', Uri) and
+           Chosen.ContainsKey(Uri) then
+          AHandler(TJSONObject(Row));
     end
     else if TJSONObject(List).TryGetValue<Integer>('cursor', Cursor) and
             (Cursor >= 0) and (Cursor < Rows.Count) and (Rows.Items[Cursor] is TJSONObject) then
       AHandler(TJSONObject(Rows.Items[Cursor]));
     Result := True;
   finally
+    Chosen.Free;
     List.Free;
     Info.Free;
   end;

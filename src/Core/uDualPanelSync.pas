@@ -1147,15 +1147,18 @@ end;
 function EntriesFromFilesArray(Arr: TJSONArray; ASwapped: Boolean):
   TArray<TSyncSnapshotEntry>;
 var
-  I: Integer;
+  I, N: Integer;
   Item: TJSONValue;
   Obj: TJSONObject;
   Ent: TSyncSnapshotEntry;
   LeftTicks, RightTicks: Int64;
 begin
-  SetLength(Result, 0);
   if Arr = nil then
-    Exit;
+    Exit(nil);
+  // One allocation for the snapshot. Growing the list per file stalls
+  // reopening a large pair of folders.
+  SetLength(Result, Arr.Count);
+  N := 0;
   for I := 0 to Arr.Count - 1 do
   begin
     Item := Arr.Items[I];
@@ -1177,9 +1180,10 @@ begin
       Ent.LeftUtcTicks := LeftTicks;
       Ent.RightUtcTicks := RightTicks;
     end;
-    SetLength(Result, Length(Result) + 1);
-    Result[High(Result)] := Ent;
+    Result[N] := Ent;
+    Inc(N);
   end;
+  SetLength(Result, N);
 end;
 
 function LoadDirSyncSnapshotFromFile(const AFile, ALeftRoot,

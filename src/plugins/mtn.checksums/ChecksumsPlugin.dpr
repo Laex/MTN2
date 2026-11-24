@@ -159,7 +159,7 @@ var
   Files: TArray<TChecksumFile>;
   Items: TArray<TChecksumVerifyItem>;
   Lines: TArray<string>;
-  I, Bad: Integer;
+  I, N, Bad: Integer;
   Hash, Status, SaveName, Err: string;
   Done: Boolean;
   Cancelled: TChecksumCancelled;
@@ -179,10 +179,11 @@ begin
     if AVerify then
     begin
       Done := VerifyChecksumFile(APaths[0], AAlgo, Items, Cancelled);
+      SetLength(Lines, Length(Items));
       for I := 0 to High(Items) do
       begin
-        Lines := Lines + [Format('%-8s %s',
-          [ChecksumVerifyStatusText(Items[I].Status), Items[I].RelName])];
+        Lines[I] := Format('%-8s %s',
+          [ChecksumVerifyStatusText(Items[I].Status), Items[I].RelName]);
         if Items[I].Status <> cvsOk then
           Inc(Bad);
       end;
@@ -192,28 +193,36 @@ begin
     else
     begin
       Files := CollectChecksumFiles(APaths, ABase);
-      for I := 0 to High(Files) do
-      begin
-        if Cancelled() then
+      SetLength(Lines, Length(Files));
+      N := 0;
+      try
+        for I := 0 to High(Files) do
         begin
-          Done := False;
-          Break;
-        end;
-        try
-          Hash := HashFileHex(Files[I].Path, AAlgo, Cancelled);
-        except
-          on E: Exception do
+          if Cancelled() then
           begin
-            Hash := 'ERROR: ' + E.Message;
-            Inc(Bad);
+            Done := False;
+            Break;
           end;
+          try
+            Hash := HashFileHex(Files[I].Path, AAlgo, Cancelled);
+          except
+            on E: Exception do
+            begin
+              Hash := 'ERROR: ' + E.Message;
+              Inc(Bad);
+            end;
+          end;
+          if (Hash = '') and Cancelled() then
+          begin
+            Done := False;
+            Break;
+          end;
+          Lines[N] := FormatChecksumLine(Hash, Files[I].RelName);
+          Inc(N);
         end;
-        if (Hash = '') and Cancelled() then
-        begin
-          Done := False;
-          Break;
-        end;
-        Lines := Lines + [FormatChecksumLine(Hash, Files[I].RelName)];
+      finally
+        // Drop the slots that a cancel or an error never filled.
+        SetLength(Lines, N);
       end;
       SaveName := ChecksumSaveFileName(Files, ABase, AAlgo);
       Status := Format(Tr('msg.done', '%d files'), [Length(Files)]);
@@ -336,9 +345,12 @@ begin
     if not (Side is TJSONObject) then
       Exit;
     Side.TryGetValue<string>('uri', Panel);
-    if Side.TryGetValue<TJSONArray>('selected', Selected) then
+    if Side.TryGetValue<TJSONArray>('selected', Selected) and (Selected.Count > 0) then
+    begin
+      SetLength(Uris, Selected.Count);
       for I := 0 to Selected.Count - 1 do
-        Uris := Uris + [Selected.Items[I].Value];
+        Uris[I] := Selected.Items[I].Value;
+    end;
     if (Length(Uris) = 0) and Side.TryGetValue<string>('cursor', Uri) and (Uri <> '') then
       Uris := [Uri];
   finally
@@ -346,14 +358,15 @@ begin
   end;
   if Length(Uris) = 0 then
     Exit;
-  for Uri in Uris do
+  SetLength(GPaths, Length(Uris));
+  for I := 0 to High(Uris) do
   begin
-    if not SameText(Copy(Uri, 1, 8), 'file:///') then
+    if not SameText(Copy(Uris[I], 1, 8), 'file:///') then
     begin
       Notice(Tr('msg.localOnly', 'Only for files and folders on disk'), 1);
       Exit;
     end;
-    GPaths := GPaths + [FileUriToPath(Uri)];
+    GPaths[I] := FileUriToPath(Uris[I]);
   end;
   GBaseDir := FileUriToPath(Panel);
   Result := True;

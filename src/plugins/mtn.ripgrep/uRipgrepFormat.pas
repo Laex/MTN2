@@ -137,18 +137,22 @@ function ParseRgOutput(const AOutput: string): TArray<TSearchHit>;
 var
   Lines: TStringList;
   Hit: TSearchHit;
-  I: Integer;
+  I, N: Integer;
 begin
-  SetLength(Result, 0);
   Lines := TStringList.Create;
   try
     Lines.Text := AOutput;
+    // One allocation for the matches. Growing the list per line stalls a
+    // search that hits thousands of files.
+    SetLength(Result, Lines.Count);
+    N := 0;
     for I := 0 to Lines.Count - 1 do
       if TryParseRgMatch(Lines[I], Hit) then
       begin
-        SetLength(Result, Length(Result) + 1);
-        Result[High(Result)] := Hit;
+        Result[N] := Hit;
+        Inc(N);
       end;
+    SetLength(Result, N);
   finally
     Lines.Free;
   end;

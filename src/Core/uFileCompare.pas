@@ -93,23 +93,28 @@ begin
   end;
 end;
 
-procedure AppendSpan(var ASpans: TArray<TDiffSpan>; AKind: TDiffKind;
-  const AText: string);
-var
-  N: Integer;
+procedure AppendSpan(var ASpans: TArray<TDiffSpan>; var ACount: Integer;
+  AKind: TDiffKind; const AText: string);
 begin
-  N := Length(ASpans);
-  SetLength(ASpans, N + 1);
-  ASpans[N].Kind := AKind;
-  ASpans[N].Text := AText;
+  // The list doubles. Growing it per line stalls a comparison of a long file.
+  if ACount = Length(ASpans) then
+  begin
+    if ACount < 64 then
+      SetLength(ASpans, 64)
+    else
+      SetLength(ASpans, ACount * 2);
+  end;
+  ASpans[ACount].Kind := AKind;
+  ASpans[ACount].Text := AText;
+  Inc(ACount);
 end;
 
 function LinearDiff(const ALeft, ARight: TArray<string>): TArray<TDiffSpan>;
 var
-  I, J, K, Look: Integer;
+  I, J, K, Look, Count: Integer;
   Found: Boolean;
 begin
-  SetLength(Result, 0);
+  Count := 0;
   I := 0;
   J := 0;
   Look := 40;
@@ -117,7 +122,7 @@ begin
   begin
     if (I <= High(ALeft)) and (J <= High(ARight)) and (ALeft[I] = ARight[J]) then
     begin
-      AppendSpan(Result, dkEqual, ALeft[I]);
+      AppendSpan(Result, Count, dkEqual, ALeft[I]);
       Inc(I);
       Inc(J);
       Continue;
@@ -138,22 +143,23 @@ begin
     end;
     if (I <= High(ALeft)) and not Found then
     begin
-      AppendSpan(Result, dkDelete, ALeft[I]);
+      AppendSpan(Result, Count, dkDelete, ALeft[I]);
       Inc(I);
     end
     else if J <= High(ARight) then
     begin
-      AppendSpan(Result, dkInsert, ARight[J]);
+      AppendSpan(Result, Count, dkInsert, ARight[J]);
       Inc(J);
     end
     else if I <= High(ALeft) then
     begin
-      AppendSpan(Result, dkDelete, ALeft[I]);
+      AppendSpan(Result, Count, dkDelete, ALeft[I]);
       Inc(I);
     end
     else
       Break;
   end;
+  SetLength(Result, Count);
 end;
 
 function MyersDiff(const ALeft, ARight: TArray<string>): TArray<TDiffSpan>;
@@ -162,6 +168,7 @@ var
   V: TArray<Integer>;
   Trace: TArray<TArray<Integer>>;
   Spans: TArray<TDiffSpan>;
+  Count: Integer;
 begin
   N := Length(ALeft);
   M := Length(ARight);
@@ -210,7 +217,7 @@ begin
   if EndX < 0 then
     Exit(LinearDiff(ALeft, ARight));
 
-  SetLength(Spans, 0);
+  Count := 0;
   X := N;
   Y := M;
   for T := High(Trace) downto 0 do
@@ -233,25 +240,26 @@ begin
     begin
       Dec(X);
       Dec(Y);
-      AppendSpan(Spans, dkEqual, ALeft[X]);
+      AppendSpan(Spans, Count, dkEqual, ALeft[X]);
     end;
     if D = 0 then
       Break;
     if X = Px then
     begin
       Dec(Y);
-      AppendSpan(Spans, dkInsert, ARight[Y]);
+      AppendSpan(Spans, Count, dkInsert, ARight[Y]);
     end
     else
     begin
       Dec(X);
-      AppendSpan(Spans, dkDelete, ALeft[X]);
+      AppendSpan(Spans, Count, dkDelete, ALeft[X]);
     end;
     X := Px;
     Y := Py;
   end;
 
-  SetLength(Result, Length(Spans));
+  SetLength(Spans, Count);
+  SetLength(Result, Count);
   for T := 0 to High(Spans) do
     Result[T] := Spans[High(Spans) - T];
 end;

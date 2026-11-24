@@ -86,12 +86,14 @@ type
     /// inside a recursive tree copy so FJob.FilesDone can count real files
     /// instead of top-level selected items.</summary>
     FLastItemSrcPath: string;
-    /// <summary>The sources of a copy or move that went through.</summary>
+    /// <summary>The sources of a copy or move that went through.
+    /// FCopiedCount of the slots are filled; the array grows by doubling.</summary>
     FCopiedSources: TArray<string>;
+    FCopiedCount: Integer;
     /// <summary>When the job started or last went to the background; a
     /// background job that ends soon after is not worth a toast.</summary>
     FWatchTick: UInt64;
-    FExcludeMasks: TArray<string>;
+    FExcludeSet: TNameMaskSet;
     FExcludeMasksReady: Boolean;
     /// <summary>Set while a copy worker waits for the answer to a per-file
     /// conflict inside a folder merge.</summary>
@@ -264,7 +266,7 @@ type
 implementation
 
 uses
-  System.SyncObjs, uLinkUtils, uNotice;
+  System.SyncObjs, System.Generics.Collections, uLinkUtils, uNotice;
 
 // False when either side is not a readable file (a folder, a missing path, an
 // unreachable share): a conflict rule cannot decide those.
@@ -419,12 +421,13 @@ end;
 
 procedure TPanelJobController.ResetExcludeMasks;
 begin
-  SetLength(FExcludeMasks, 0);
+  FreeAndNil(FExcludeSet);
   FExcludeMasksReady := False;
 end;
 
 destructor TPanelJobController.Destroy;
 begin
+  ResetExcludeMasks;
   FLife.Alive := False;
   if Assigned(FJob.Cancel) then
     FJob.Cancel.Cancel;
@@ -870,6 +873,7 @@ begin
   FJob.FilesSkipped := 0;
   FLastItemSrcPath := '';
   SetLength(FCopiedSources, 0);
+  FCopiedCount := 0;
   ResetExcludeMasks;
   if Assigned(FOnInvalidate) then
     FOnInvalidate;
@@ -1181,18 +1185,26 @@ begin
     Exit;
   if not FExcludeMasksReady then
   begin
-    FExcludeMasks := SplitMasks(FJob.ExcludeMask);
+    FExcludeSet := TNameMaskSet.Create(SplitMasks(FJob.ExcludeMask));
     FExcludeMasksReady := True;
   end;
-  Result := NameMatchesAnyMask(AName, FExcludeMasks);
+  Result := FExcludeSet.Matches(AName);
 end;
 
 procedure TPanelJobController.AdvanceJobAfterItem(AIndex: Integer; ACopied: Boolean);
 begin
   if ACopied and (AIndex >= 0) and (AIndex <= High(FJob.Sources)) then
   begin
-    SetLength(FCopiedSources, Length(FCopiedSources) + 1);
-    FCopiedSources[High(FCopiedSources)] := FJob.Sources[AIndex];
+    // Doubling keeps a large copy from copying this list once per file.
+    if FCopiedCount = Length(FCopiedSources) then
+    begin
+      if FCopiedCount < 8 then
+        SetLength(FCopiedSources, 8)
+      else
+        SetLength(FCopiedSources, FCopiedCount * 2);
+    end;
+    FCopiedSources[FCopiedCount] := FJob.Sources[AIndex];
+    Inc(FCopiedCount);
   end;
   CommitItemBytes;
   // Flush the last file of this item into FilesDone - NoteItemProgress only
@@ -1492,6 +1504,7 @@ begin
   FJob.FilesSkipped := 0;
   FLastItemSrcPath := '';
   SetLength(FCopiedSources, 0);
+  FCopiedCount := 0;
   if FJob.FilesTotal < 1 then
     FJob.FilesTotal := Length(FJob.Sources);
   if Assigned(FOnInvalidate) then
@@ -2800,24 +2813,27 @@ end;
 
 function TPanelJobController.SourcesNotCopied: TArray<string>;
 var
-  Src, Done: string;
-  Found: Boolean;
+  Src: string;
+  Done: TDictionary<string, Byte>;
+  I, N: Integer;
 begin
-  SetLength(Result, 0);
-  for Src in FJob.Sources do
-  begin
-    Found := False;
-    for Done in FCopiedSources do
-      if SameVfsUri(Src, Done) then
+  // One lookup per source. Matching each source against every copied URI
+  // stalls the end of a large copy, move or pack.
+  Done := TDictionary<string, Byte>.Create;
+  try
+    for I := 0 to FCopiedCount - 1 do
+      Done.AddOrSetValue(VfsUriKey(FCopiedSources[I]), 0);
+    SetLength(Result, Length(FJob.Sources));
+    N := 0;
+    for Src in FJob.Sources do
+      if not Done.ContainsKey(VfsUriKey(Src)) then
       begin
-        Found := True;
-        Break;
+        Result[N] := Src;
+        Inc(N);
       end;
-    if not Found then
-    begin
-      SetLength(Result, Length(Result) + 1);
-      Result[High(Result)] := Src;
-    end;
+    SetLength(Result, N);
+  finally
+    Done.Free;
   end;
 end;
 
@@ -2827,7 +2843,7 @@ procedure TPanelJobController.DeselectCopied(const AOriginSrc: string);
 begin
   if Assigned(FOnClearSelection) and
      (FJob.Kind in [pjkCopy, pjkMove, pjkPack, pjkUnpack]) and
-     (Length(FCopiedSources) > 0) then
+     (FCopiedCount > 0) then
     FOnClearSelection(AOriginSrc, SourcesNotCopied);
 end;
 

@@ -208,13 +208,92 @@ procedure SetColorCodingDefaultsProvider(AProvider: TColorCodingDefaultsProvider
 implementation
 
 uses
-  System.SysUtils, System.Classes, System.JSON, System.Generics.Collections,
-  uFileFind;
+  System.SysUtils, System.Classes, System.JSON, System.Masks,
+  System.Generics.Collections, uFileFind;
+
+type
+  // Masks compiled when the groups are stored. Building a mask for every row
+  // stalls sorting and drawing a large folder.
+  TGroupMasks = record
+    All: Boolean;
+    Items: TArray<TMask>;
+  end;
 
 var
   GLoaded: Boolean = False;
   GGroups: TArray<TColorCodingGroup>;
+  GMasks: TArray<TGroupMasks>;
   GDefaultsProvider: TColorCodingDefaultsProvider;
+
+procedure FreeGroupMasks;
+var
+  I, J: Integer;
+begin
+  for I := 0 to High(GMasks) do
+    for J := 0 to High(GMasks[I].Items) do
+      GMasks[I].Items[J].Free;
+  SetLength(GMasks, 0);
+end;
+
+procedure CompileGroupMasks;
+var
+  I, N: Integer;
+  M: string;
+begin
+  FreeGroupMasks;
+  SetLength(GMasks, Length(GGroups));
+  for I := 0 to High(GGroups) do
+  begin
+    SetLength(GMasks[I].Items, Length(GGroups[I].Masks));
+    N := 0;
+    for M in GGroups[I].Masks do
+    begin
+      // Same short-circuit as NameMatchesAnyMask / MatchesMask: these match
+      // every name, including one without a dot.
+      if (M = '') or SameText(M, '*') or SameText(M, '*.*') then
+      begin
+        GMasks[I].All := True;
+        Break;
+      end;
+      try
+        GMasks[I].Items[N] := TMask.Create(M);
+        Inc(N);
+      except
+        on Exception do
+          ; // A mask the compiler rejects matches nothing.
+      end;
+    end;
+    if GMasks[I].All then
+    begin
+      for N := 0 to High(GMasks[I].Items) do
+        GMasks[I].Items[N].Free;
+      SetLength(GMasks[I].Items, 0);
+    end
+    else
+      SetLength(GMasks[I].Items, N);
+  end;
+end;
+
+function GroupMatchesName(AIndex: Integer; const AName: string): Boolean;
+var
+  J: Integer;
+begin
+  if (AIndex < 0) or (AIndex > High(GMasks)) then
+    Exit(False);
+  if GMasks[AIndex].All then
+    Exit(True);
+  for J := 0 to High(GMasks[AIndex].Items) do
+    if (GMasks[AIndex].Items[J] <> nil) and GMasks[AIndex].Items[J].Matches(AName) then
+      Exit(True);
+  Result := False;
+end;
+
+procedure AdoptGroups(const AGroups: TArray<TColorCodingGroup>);
+begin
+  GGroups := AGroups;
+  CompileGroupMasks;
+  GLoaded := True;
+end;
 
 function HexToColor(const AHex: string; out AColor: TAlphaColor): Boolean;
 var
@@ -417,8 +496,7 @@ end;
 
 procedure SetActiveColorCodingGroups(const AGroups: TArray<TColorCodingGroup>);
 begin
-  GGroups := Copy(AGroups);
-  GLoaded := True;
+  AdoptGroups(Copy(AGroups));
 end;
 
 procedure EnsureGroups;
@@ -426,10 +504,9 @@ begin
   if GLoaded then
     Exit;
   if Assigned(GDefaultsProvider) then
-    GGroups := GDefaultsProvider()
+    AdoptGroups(GDefaultsProvider())
   else
-    SetLength(GGroups, 0);
-  GLoaded := True;
+    AdoptGroups(nil);
 end;
 
 function ColorCodingNameItem(const AName: string; AIsDirectory: Boolean): TColorCodingItem;
@@ -475,7 +552,7 @@ begin
       Continue;
     if (GGroups[I].ApplyTo = ccaDirsOnly) and not AItem.IsDirectory then
       Continue;
-    if NameMatchesAnyMask(AItem.Name, GGroups[I].Masks) and
+    if GroupMatchesName(I, AItem.Name) and
        ColorCodingConditionMet(GGroups[I].Cond, AItem, Moment) then
     begin
       AFg := GGroups[I].Colors[AState].Fg;
@@ -508,7 +585,7 @@ begin
       Continue;
     if (GGroups[I].ApplyTo = ccaDirsOnly) and not AItem.IsDirectory then
       Continue;
-    if NameMatchesAnyMask(AItem.Name, GGroups[I].Masks) and
+    if GroupMatchesName(I, AItem.Name) and
        ColorCodingConditionMet(GGroups[I].Cond, AItem, Moment) then
       Exit(GGroups[I].SortPriority);
   end;
@@ -885,5 +962,10 @@ begin
   EnsureGroups;
   Result := Copy(GGroups);
 end;
+
+initialization
+
+finalization
+  FreeGroupMasks;
 
 end.

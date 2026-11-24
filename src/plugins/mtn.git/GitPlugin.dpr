@@ -396,24 +396,21 @@ end;
   (a viewer, a dialog) keeps the last folder. }
 procedure ReadActiveUri;
 var
-  Buf: UTF8String;
-  Len: Int64;
-  Uri: string;
+  Json, Uri: string;
+  Folders: TArray<string>;
 begin
   if not Assigned(GHostApi.PanelInfo) then
     Exit;
-  Len := GHostApi.PanelInfo(nil, 0);
-  if Len <= 0 then
+  // One read and one parse. The JSON lists every selected URI, and this runs
+  // on the main thread once a second while the plugin is loaded.
+  Json := HostText(GHostApi.PanelInfo);
+  if Json = '' then
     Exit;
-  SetLength(Buf, Len + 1);
-  Len := GHostApi.PanelInfo(PAnsiChar(Buf), Length(Buf));
-  if (Len <= 0) or (Len >= Length(Buf)) then
-    Exit;
-  Uri := ActivePanelUri(UTF8ToString(PAnsiChar(Buf)));
+  ReadPanelPlaces(Json, Uri, Folders);
   GLock.Enter;
   try
     GActiveUri := Uri;
-    GFolders := PanelFolderUris(UTF8ToString(PAnsiChar(Buf)));
+    GFolders := Folders;
   finally
     GLock.Leave;
   end;

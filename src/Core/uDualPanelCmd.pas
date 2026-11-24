@@ -341,7 +341,7 @@ function CmdLinePathCompletions(const AToken, ABaseDir: string): TArray<string>;
 var
   Cut, I: Integer;
   DirPart, NamePrefix, Dir: string;
-  Dirs, Files: TArray<string>;
+  Dirs, Files: TList<string>;
   SR: TSearchRec;
 begin
   SetLength(Result, 0);
@@ -368,26 +368,33 @@ begin
     Dir := TPath.Combine(ABaseDir, Dir);
   if (Dir = '') or not TDirectory.Exists(Dir) then
     Exit;
-  SetLength(Dirs, 0);
-  SetLength(Files, 0);
-  if System.SysUtils.FindFirst(TPath.Combine(Dir, '*'), faAnyFile, SR) = 0 then
-    try
-      repeat
-        if (SR.Name = '.') or (SR.Name = '..') then
-          Continue;
-        if (NamePrefix <> '') and not StartsText(NamePrefix, SR.Name) then
-          Continue;
-        if (SR.Attr and faDirectory) <> 0 then
-          Dirs := Dirs + [DirPart + SR.Name]
-        else
-          Files := Files + [DirPart + SR.Name];
-      until System.SysUtils.FindNext(SR) <> 0;
-    finally
-      System.SysUtils.FindClose(SR);
-    end;
-  TArray.Sort<string>(Dirs, TIStringComparer.Ordinal);
-  TArray.Sort<string>(Files, TIStringComparer.Ordinal);
-  Result := Dirs + Files;
+  // Lists grow by doubling. Copying the completion per entry stalls Tab in a
+  // large folder.
+  Dirs := TList<string>.Create;
+  Files := TList<string>.Create;
+  try
+    if System.SysUtils.FindFirst(TPath.Combine(Dir, '*'), faAnyFile, SR) = 0 then
+      try
+        repeat
+          if (SR.Name = '.') or (SR.Name = '..') then
+            Continue;
+          if (NamePrefix <> '') and not StartsText(NamePrefix, SR.Name) then
+            Continue;
+          if (SR.Attr and faDirectory) <> 0 then
+            Dirs.Add(DirPart + SR.Name)
+          else
+            Files.Add(DirPart + SR.Name);
+        until System.SysUtils.FindNext(SR) <> 0;
+      finally
+        System.SysUtils.FindClose(SR);
+      end;
+    Dirs.Sort(TIStringComparer.Ordinal);
+    Files.Sort(TIStringComparer.Ordinal);
+    Result := Dirs.ToArray + Files.ToArray;
+  finally
+    Files.Free;
+    Dirs.Free;
+  end;
 end;
 
 function CompactDisplayPath(const APath: string; AMaxLen: Integer): string;

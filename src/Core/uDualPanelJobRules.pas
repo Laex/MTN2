@@ -882,14 +882,23 @@ end;
 function CollectJobItemUris(const AJob: TPanelJobState): TArray<string>;
 var
   Uri: string;
+  N: Integer;
 begin
-  Result := nil;
+  SetLength(Result, Length(AJob.Sources) + Length(AJob.DestURIs));
+  N := 0;
   for Uri in AJob.Sources do
     if Uri <> '' then
-      Result := Result + [Uri];
+    begin
+      Result[N] := Uri;
+      Inc(N);
+    end;
   for Uri in AJob.DestURIs do
     if Uri <> '' then
-      Result := Result + [Uri];
+    begin
+      Result[N] := Uri;
+      Inc(N);
+    end;
+  SetLength(Result, N);
 end;
 
 function CollectJobTouchUris(const AJob: TPanelJobState): TArray<string>;

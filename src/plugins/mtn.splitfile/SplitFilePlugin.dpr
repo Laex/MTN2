@@ -249,11 +249,12 @@ var
   Active, Uri, OtherUri, OtherKey: string;
   Selected: TJSONArray;
   Uris: TArray<string>;
-  I: Integer;
+  Count: Integer;
 begin
   Result := False;
   GSrc := '';
   GDestDir := '';
+  Count := 0;
   Root := TJSONObject.ParseJSONValue(HostText(GHostApi.PanelInfo));
   try
     if not (Root is TJSONObject) or not Root.TryGetValue<string>('active', Active) then
@@ -261,11 +262,17 @@ begin
     Side := TJSONObject(Root).GetValue(Active);
     if not (Side is TJSONObject) then
       Exit;
+    // More than one selected file is rejected below; their URIs are not copied.
+    Count := 0;
     if Side.TryGetValue<TJSONArray>('selected', Selected) then
-      for I := 0 to Selected.Count - 1 do
-        Uris := Uris + [Selected.Items[I].Value];
-    if (Length(Uris) = 0) and Side.TryGetValue<string>('cursor', Uri) and (Uri <> '') then
+      Count := Selected.Count;
+    if Count = 1 then
+      Uris := [Selected.Items[0].Value]
+    else if (Count = 0) and Side.TryGetValue<string>('cursor', Uri) and (Uri <> '') then
+    begin
       Uris := [Uri];
+      Count := 1;
+    end;
     if SameText(Active, 'left') then
       OtherKey := 'right'
     else
@@ -277,9 +284,9 @@ begin
   finally
     Root.Free;
   end;
-  if Length(Uris) = 0 then
+  if Count = 0 then
     Exit;
-  if (Length(Uris) <> 1) or not SameText(Copy(Uris[0], 1, 8), 'file:///') or
+  if (Count <> 1) or not SameText(Copy(Uris[0], 1, 8), 'file:///') or
      not TFile.Exists(FileUriToPath(Uris[0])) then
   begin
     Notice(Tr('msg.oneFile', 'Select one file on disk'), 1);

@@ -172,6 +172,7 @@ begin
     var
       Fresh, Kept: TArray<TFindHit>;
       Hit: TFindHit;
+      N: Integer;
       Outcome: TSearchFilesResult;
       Err: TVfsError;
       Msg: TRpcMessage;
@@ -185,7 +186,8 @@ begin
       begin
         if not TryParseSearchHits(AMessageJson, Fresh) then
           Exit;
-        SetLength(Kept, 0);
+        SetLength(Kept, Length(Fresh));
+        N := 0;
         for Hit in Fresh do
         begin
           if FindHitNeedsBoundCheck(Opts) and not FindHitWithinBounds(Opts, Hit) then
@@ -197,9 +199,10 @@ begin
           end;
           Hits.Add(Hit);
           Seen.AddOrSetValue(LowerCase(Hit.Path), True);
-          SetLength(Kept, Length(Kept) + 1);
-          Kept[High(Kept)] := Hit;
+          Kept[N] := Hit;
+          Inc(N);
         end;
+        SetLength(Kept, N);
         if Length(Kept) > 0 then
         begin
           if Assigned(AOnHits) then

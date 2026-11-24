@@ -54,6 +54,11 @@ function GitStatusSpansJson(const AStatus: TGitStatus; const ALabels: TGitLabels
 /// PanelInfo; '' when the JSON has none.</summary>
 function ActivePanelUri(const APanelInfoJson: string): string;
 
+/// <summary>One parse of PanelInfo: the active panel's folder (any scheme) and
+/// the local file: folders of both panels, without duplicates.</summary>
+procedure ReadPanelPlaces(const APanelInfoJson: string; out AActiveUri: string;
+  out AFolders: TArray<string>);
+
 implementation
 
 uses
@@ -224,26 +229,44 @@ begin
   end;
 end;
 
-function ActivePanelUri(const APanelInfoJson: string): string;
+procedure ReadPanelPlaces(const APanelInfoJson: string; out AActiveUri: string;
+  out AFolders: TArray<string>);
 var
   Root, Side: TJSONValue;
-  Active: string;
+  Active, Name, Uri: string;
 begin
-  Result := '';
+  AActiveUri := '';
+  AFolders := nil;
   if APanelInfoJson = '' then
     Exit;
   Root := TJSONObject.ParseJSONValue(APanelInfoJson);
   try
     if not (Root is TJSONObject) then
       Exit;
-    if not Root.TryGetValue<string>('active', Active) then
-      Exit;
-    Side := Root.GetValue<TJSONValue>(Active, nil);
-    if Side is TJSONObject then
-      Side.TryGetValue<string>('uri', Result);
+    if Root.TryGetValue<string>('active', Active) then
+    begin
+      Side := TJSONObject(Root).GetValue<TJSONValue>(Active, nil);
+      if Side is TJSONObject then
+        Side.TryGetValue<string>('uri', AActiveUri);
+    end;
+    for Name in ['left', 'right'] do
+    begin
+      Side := TJSONObject(Root).GetValue<TJSONValue>(Name, nil);
+      if (Side is TJSONObject) and Side.TryGetValue<string>('uri', Uri) and
+         Uri.StartsWith('file:', True) and
+         ((Length(AFolders) = 0) or (AFolders[0] <> Uri)) then
+        AFolders := AFolders + [Uri];
+    end;
   finally
     Root.Free;
   end;
+end;
+
+function ActivePanelUri(const APanelInfoJson: string): string;
+var
+  Folders: TArray<string>;
+begin
+  ReadPanelPlaces(APanelInfoJson, Result, Folders);
 end;
 
 end.

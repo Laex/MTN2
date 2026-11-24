@@ -69,13 +69,15 @@ begin
   if Length(ATab.SelectedURIs) > 0 then
   begin
     Keys := TabSelectionKeys(ATab);
+    SetLength(Result, Length(ARows));
+    N := 0;
     for R in ARows do
       if (not R.IsParent) and (R.URI <> '') and SelectionKeysHas(Keys, R.URI) then
       begin
-        N := Length(Result);
-        SetLength(Result, N + 1);
         Result[N] := R.URI;
+        Inc(N);
       end;
+    SetLength(Result, N);
     Exit;
   end;
   if (ATab.CursorIndex >= 0) and (ATab.CursorIndex <= High(ARows)) then

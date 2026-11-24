@@ -115,6 +115,10 @@ type
     FFilterMask: string;
     FNeedle: string;
     FNeedleFuzzy: Boolean;
+    // Rows after the sort and the mask filter, before the quick-search needle.
+    // Typing in that filter reuses them instead of sorting the folder again.
+    FPrepared: TPanelRows;
+    FPreparedReady: Boolean;
     FShowHidden: Boolean;
     FOnInvalidate: TPanelInvalidateEvent;
     FOnChanged: TNotifyEvent;
@@ -133,6 +137,7 @@ type
     /// Open's watchdog thread.</summary>
     procedure ApplySlowHint(const ARows: TPanelRows; AGen: Cardinal);
     procedure RebuildSortedRows;
+    procedure ApplyNeedle;
   public
     constructor Create(const AVfs: IVirtualFileSystem; AWindowId: Integer = cPanelWindowIdNone);
     destructor Destroy; override;
@@ -426,9 +431,10 @@ end;
 procedure TFilePanelModel.RebuildSortedRows;
 var
   Masks: TArray<string>;
+  MaskSet: TNameMaskSet;
   Kept: TPanelRows;
   I, N: Integer;
-  Name, Needle: string;
+  Name: string;
   Cell: TVfsExtraCell;
   Moment: TDateTime;
 begin
@@ -475,6 +481,8 @@ begin
   if FFilterMask <> '' then
   begin
     Masks := SplitMasks(FFilterMask);
+    MaskSet := TNameMaskSet.Create(Masks);
+    try
     SetLength(Kept, Length(FRows));
     N := 0;
     for I := 0 to High(FRows) do
@@ -488,36 +496,49 @@ begin
       Name := FRows[I].Text;
       if (Length(Name) > 0) and (Name[Length(Name)] = '/') then
         Name := Copy(Name, 1, Length(Name) - 1);
-      if NameMatchesAnyMask(Name, Masks) then
+      if MaskSet.Matches(Name) then
       begin
         Kept[N] := FRows[I];
         Inc(N);
       end;
     end;
     SetLength(Kept, N);
+    finally
+      MaskSet.Free;
+    end;
     FRows := Kept;
   end;
-  if FNeedle <> '' then
+  FPrepared := Copy(FRows);
+  FPreparedReady := True;
+  ApplyNeedle;
+end;
+
+procedure TFilePanelModel.ApplyNeedle;
+var
+  Kept: TPanelRows;
+  I, N: Integer;
+  Name, Needle: string;
+begin
+  if FNeedle = '' then
+    Exit;
+  Needle := AnsiLowerCase(FNeedle);
+  SetLength(Kept, Length(FRows));
+  N := 0;
+  for I := 0 to High(FRows) do
   begin
-    Needle := AnsiLowerCase(FNeedle);
-    SetLength(Kept, Length(FRows));
-    N := 0;
-    for I := 0 to High(FRows) do
+    Name := FRows[I].Text;
+    while (Name <> '') and CharInSet(Name[Length(Name)], ['/', '\']) do
+      SetLength(Name, Length(Name) - 1);
+    if FRows[I].IsParent or
+       (Copy(AnsiLowerCase(Name), 1, Length(Needle)) = Needle) or
+       (FNeedleFuzzy and IsSubsequence(Needle, AnsiLowerCase(Name))) then
     begin
-      Name := FRows[I].Text;
-      while (Name <> '') and CharInSet(Name[Length(Name)], ['/', '\']) do
-        SetLength(Name, Length(Name) - 1);
-      if FRows[I].IsParent or
-         (Copy(AnsiLowerCase(Name), 1, Length(Needle)) = Needle) or
-         (FNeedleFuzzy and IsSubsequence(Needle, AnsiLowerCase(Name))) then
-      begin
-        Kept[N] := FRows[I];
-        Inc(N);
-      end;
+      Kept[N] := FRows[I];
+      Inc(N);
     end;
-    SetLength(Kept, N);
-    FRows := Kept;
   end;
+  SetLength(Kept, N);
+  FRows := Kept;
 end;
 
 procedure TFilePanelModel.SetShowHidden(AValue: Boolean);
@@ -550,7 +571,13 @@ begin
     Exit;
   FNeedle := ANeedle;
   FNeedleFuzzy := AFuzzy;
-  RebuildSortedRows;
+  if FPreparedReady then
+  begin
+    FRows := Copy(FPrepared);
+    ApplyNeedle;
+  end
+  else
+    RebuildSortedRows;
   NotifyChanged;
 end;
 
@@ -695,6 +722,8 @@ begin
   FLastError := TVfsError.Ok;
   SetLength(FRawRows, 0);
   SetLength(FRows, 0);
+  SetLength(FPrepared, 0);
+  FPreparedReady := False;
   FLoading := False;
   NotifyChanged;
 end;
@@ -850,6 +879,13 @@ begin
     begin
       FRows[I].Size := ASize;
       FRows[I].SizeText := ASizeText;
+      Break;
+    end;
+  for I := 0 to High(FPrepared) do
+    if SameVfsUri(FPrepared[I].URI, AURI) then
+    begin
+      FPrepared[I].Size := ASize;
+      FPrepared[I].SizeText := ASizeText;
       Break;
     end;
   NotifyChanged;

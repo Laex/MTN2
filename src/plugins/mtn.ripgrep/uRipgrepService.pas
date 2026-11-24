@@ -142,8 +142,12 @@ begin
     Exit;
   end;
 
-  SetLength(Kept, 0);
   Truncated := False;
+  if Length(Found) < Max then
+    SetLength(Kept, Length(Found))
+  else
+    SetLength(Kept, Max);
+  N := 0;
   for I := 0 to High(Found) do
   begin
     if AJob.IsCancelled then
@@ -153,14 +157,15 @@ begin
       Continue;
     if SearchRequestHasBounds(Req) and not SearchRequestBoundsPass(Req, False, Hit.Size, Hit.Modified) then
       Continue;
-    if Length(Kept) >= Max then
+    if N >= Max then
     begin
       Truncated := True;
       Break;
     end;
-    SetLength(Kept, Length(Kept) + 1);
-    Kept[High(Kept)] := Hit;
+    Kept[N] := Hit;
+    Inc(N);
   end;
+  SetLength(Kept, N);
 
   Sent := 0;
   while Sent < Length(Kept) do

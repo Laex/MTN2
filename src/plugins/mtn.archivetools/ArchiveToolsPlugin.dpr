@@ -187,7 +187,7 @@ var
   Active, Uri, OtherUri, OtherKey: string;
   Selected: TJSONArray;
   Uris: TArray<string>;
-  I: Integer;
+  I, N: Integer;
 begin
   Result := False;
   APaths := nil;
@@ -200,9 +200,12 @@ begin
     Side := TJSONObject(Root).GetValue(Active);
     if not (Side is TJSONObject) then
       Exit;
-    if Side.TryGetValue<TJSONArray>('selected', Selected) then
+    if Side.TryGetValue<TJSONArray>('selected', Selected) and (Selected.Count > 0) then
+    begin
+      SetLength(Uris, Selected.Count);
       for I := 0 to Selected.Count - 1 do
-        Uris := Uris + [Selected.Items[I].Value];
+        Uris[I] := Selected.Items[I].Value;
+    end;
     if (Length(Uris) = 0) and Side.TryGetValue<string>('cursor', Uri) and (Uri <> '') then
       Uris := [Uri];
     if SameText(Active, 'left') then
@@ -218,11 +221,17 @@ begin
   end;
   if Length(Uris) = 0 then
     Exit;
+  SetLength(APaths, Length(Uris));
+  N := 0;
   for Uri in Uris do
     if SameText(Copy(Uri, 1, 8), 'file:///') then
-      APaths := APaths + [FileUriToPath(Uri)]
+    begin
+      APaths[N] := FileUriToPath(Uri);
+      Inc(N);
+    end
     else
       AAllLocal := False;
+  SetLength(APaths, N);
   Result := True;
 end;
 

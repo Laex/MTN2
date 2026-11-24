@@ -247,20 +247,46 @@ begin
   end;
 end;
 
-// Search and replace over one name part; a pattern that is not a valid
-// regular expression leaves the text as it is.
-function ReplaceInPart(const AText: string; const ARules: TMultiRenameRules): string;
+// One compiled expression for a whole batch. Compiling it again for every
+// name stalls the preview when the batch is large. An invalid pattern is
+// Invalid: the name part stays as it is.
+type
+  TPreparedReplace = record
+    Regex: TRegEx;
+    Compiled: Boolean;
+    Invalid: Boolean;
+  end;
+
+function PrepareReplace(const ARules: TMultiRenameRules): TPreparedReplace;
 var
-  Flags: TReplaceFlags;
   Options: TRegExOptions;
 begin
-  if ARules.UseRegex then
+  Result := Default(TPreparedReplace);
+  if (not ARules.UseRegex) or (ARules.Search = '') then
+    Exit;
+  Options := [];
+  if not ARules.MatchCase then
+    Include(Options, roIgnoreCase);
+  try
+    Result.Regex := TRegEx.Create(ARules.Search, Options);
+    Result.Compiled := True;
+  except
+    on Exception do
+      Result.Invalid := True;
+  end;
+end;
+
+function ApplyReplace(const AText: string; const ARules: TMultiRenameRules;
+  const AReplace: TPreparedReplace): string;
+var
+  Flags: TReplaceFlags;
+begin
+  if AReplace.Invalid then
+    Exit(AText);
+  if AReplace.Compiled then
   begin
-    Options := [];
-    if not ARules.MatchCase then
-      Include(Options, roIgnoreCase);
     try
-      Result := TRegEx.Replace(AText, ARules.Search, ARules.Replace, Options);
+      Result := AReplace.Regex.Replace(AText, ARules.Replace);
     except
       on Exception do
         Result := AText;
@@ -300,8 +326,9 @@ begin
   Result := MultiRenameName(AOldName, AIsDir, AIndex, ARules, EmptyRenameItemInfo);
 end;
 
-function MultiRenameName(const AOldName: string; AIsDir: Boolean; AIndex: Integer;
-  const ARules: TMultiRenameRules; const AInfo: TRenameItemInfo): string;
+function RenameOne(const AOldName: string; AIsDir: Boolean; AIndex: Integer;
+  const ARules: TMultiRenameRules; const AInfo: TRenameItemInfo;
+  const AReplace: TPreparedReplace): string;
 var
   Base, Ext, NewBase, NewExt, Counter: string;
 begin
@@ -314,8 +341,8 @@ begin
     NewExt := ExpandMask(ARules.ExtMask, Base, Ext, Counter, AInfo);
   if ARules.Search <> '' then
   begin
-    NewBase := ReplaceInPart(NewBase, ARules);
-    NewExt := ReplaceInPart(NewExt, ARules);
+    NewBase := ApplyReplace(NewBase, ARules, AReplace);
+    NewExt := ApplyReplace(NewExt, ARules, AReplace);
   end;
   case ARules.CaseMode of
     rcLower:
@@ -336,6 +363,12 @@ begin
   Result := NewBase;
   if NewExt <> '' then
     Result := Result + '.' + NewExt;
+end;
+
+function MultiRenameName(const AOldName: string; AIsDir: Boolean; AIndex: Integer;
+  const ARules: TMultiRenameRules; const AInfo: TRenameItemInfo): string;
+begin
+  Result := RenameOne(AOldName, AIsDir, AIndex, ARules, AInfo, PrepareReplace(ARules));
 end;
 
 function NameIsValid(const AName: string): Boolean;
@@ -373,15 +406,17 @@ var
   I: Integer;
   Info: TRenameItemInfo;
   NewNames: TArray<string>;
+  Prep: TPreparedReplace;
 begin
   SetLength(NewNames, Length(ANames));
+  Prep := PrepareReplace(ARules);
   for I := 0 to High(ANames) do
   begin
     if I <= High(AInfos) then
       Info := AInfos[I]
     else
       Info := EmptyRenameItemInfo;
-    NewNames[I] := MultiRenameName(ANames[I], AIsDir[I], I, ARules, Info);
+    NewNames[I] := RenameOne(ANames[I], AIsDir[I], I, ARules, Info, Prep);
   end;
   Result := PlanRenameTo(ANames, NewNames, AExisting);
 end;
@@ -390,12 +425,18 @@ function PlanRenameTo(const ANames, ANewNames, AExisting: TArray<string>): TRena
 var
   I: Integer;
   Taken: TDictionary<string, Integer>;
+  InFolder: TDictionary<string, Byte>;
   Count: Integer;
-  Existing: string;
+  Existing, NewKey: string;
 begin
   SetLength(Result, Length(ANames));
   Taken := TDictionary<string, Integer>.Create;
+  // One entry per folder name. Scanning the folder for every new name stalls
+  // the preview when the folder holds tens of thousands of files.
+  InFolder := TDictionary<string, Byte>.Create;
   try
+    for Existing in AExisting do
+      InFolder.AddOrSetValue(Key(Existing), 0);
     for I := 0 to High(ANames) do
     begin
       Result[I].OldName := ANames[I];
@@ -412,13 +453,11 @@ begin
     // a case change of that item's own name.
     for I := 0 to High(Result) do
       if Result[I].Problem = rpNone then
-        for Existing in AExisting do
-          if (Key(Existing) = Key(Result[I].NewName)) and
-             (Key(Existing) <> Key(Result[I].OldName)) then
-          begin
-            Result[I].Problem := rpExists;
-            Break;
-          end;
+      begin
+        NewKey := Key(Result[I].NewName);
+        if InFolder.ContainsKey(NewKey) and (NewKey <> Key(Result[I].OldName)) then
+          Result[I].Problem := rpExists;
+      end;
     for I := 0 to High(Result) do
       if Result[I].Problem in [rpNone, rpUnchanged] then
       begin
@@ -432,6 +471,7 @@ begin
          Taken.TryGetValue(Key(Result[I].NewName), Count) and (Count > 1) then
         Result[I].Problem := rpDuplicate;
   finally
+    InFolder.Free;
     Taken.Free;
   end;
 end;
@@ -439,31 +479,47 @@ end;
 function RenameLinesText(const ANames: TArray<string>): string;
 var
   Name: string;
+  Text: TStringBuilder;
 begin
-  Result := '';
-  for Name in ANames do
-    Result := Result + Name + #10;
+  // One buffer for the whole list. Appending each name to a growing string
+  // stalls handing a large batch to the editor.
+  Text := TStringBuilder.Create;
+  try
+    for Name in ANames do
+    begin
+      Text.Append(Name);
+      Text.Append(#10);
+    end;
+    Result := Text.ToString;
+  finally
+    Text.Free;
+  end;
 end;
 
 function ParseRenameLines(const AText: string; ACount: Integer;
   out ANames: TArray<string>): Boolean;
 var
   Text: string;
-  Start, I: Integer;
+  Start, I, N, Count: Integer;
 begin
-  SetLength(ANames, 0);
   Text := StringReplace(AText, #13#10, #10, [rfReplaceAll]);
   if (Text <> '') and (Text[Length(Text)] = #10) then
     Delete(Text, Length(Text), 1);
+  Count := 0;
+  for I := 1 to Length(Text) + 1 do
+    if (I > Length(Text)) or (Text[I] = #10) then
+      Inc(Count);
+  SetLength(ANames, Count);
+  N := 0;
   Start := 1;
   for I := 1 to Length(Text) + 1 do
     if (I > Length(Text)) or (Text[I] = #10) then
     begin
-      SetLength(ANames, Length(ANames) + 1);
-      ANames[High(ANames)] := Copy(Text, Start, I - Start);
+      ANames[N] := Copy(Text, Start, I - Start);
+      Inc(N);
       Start := I + 1;
     end;
-  Result := Length(ANames) = ACount;
+  Result := Count = ACount;
   if not Result then
     SetLength(ANames, 0);
 end;

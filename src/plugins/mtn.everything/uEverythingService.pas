@@ -69,7 +69,13 @@ begin
   end;
   Truncated := Length(Items) >= cDefaultMaxResults;
 
-  SetLength(Kept, 0);
+  // One allocation for the hits that fit. Growing the list per hit stalls
+  // a search that returns tens of thousands of names.
+  if Length(Items) < Max then
+    SetLength(Kept, Length(Items))
+  else
+    SetLength(Kept, Max);
+  N := 0;
   for I := 0 to High(Items) do
   begin
     if AJob.IsCancelled then
@@ -79,14 +85,15 @@ begin
       Continue; // gone since Everything indexed it
     if SearchRequestHasBounds(Req) and not SearchRequestBoundsPass(Req, Hit.IsDir, Hit.Size, Hit.Modified) then
       Continue;
-    if Length(Kept) >= Max then
+    if N >= Max then
     begin
       Truncated := True;
       Break;
     end;
-    SetLength(Kept, Length(Kept) + 1);
-    Kept[High(Kept)] := Hit;
+    Kept[N] := Hit;
+    Inc(N);
   end;
+  SetLength(Kept, N);
 
   Sent := 0;
   while Sent < Length(Kept) do

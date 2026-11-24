@@ -27,7 +27,7 @@ function PanelFolderUris(const APanelInfoJson: string): TArray<string>;
 implementation
 
 uses
-  System.Classes, System.JSON, System.Generics.Collections, uGitRepo;
+  System.Classes, System.JSON, System.Generics.Collections, uGitRepo, uGitStatus;
 
 function Severity(const ARole: string): Integer;
 begin
@@ -133,33 +133,9 @@ end;
 
 function PanelFolderUris(const APanelInfoJson: string): TArray<string>;
 var
-  Root, Side: TJSONValue;
-  Uris: TList<string>;
-  Name, Uri: string;
+  Active: string;
 begin
-  Result := nil;
-  if APanelInfoJson = '' then
-    Exit;
-  Root := TJSONObject.ParseJSONValue(APanelInfoJson);
-  try
-    if not (Root is TJSONObject) then
-      Exit;
-    Uris := TList<string>.Create;
-    try
-      for Name in ['left', 'right'] do
-      begin
-        Side := Root.GetValue<TJSONValue>(Name, nil);
-        if (Side is TJSONObject) and Side.TryGetValue<string>('uri', Uri) and
-           Uri.StartsWith('file:', True) and not Uris.Contains(Uri) then
-          Uris.Add(Uri);
-      end;
-      Result := Uris.ToArray;
-    finally
-      Uris.Free;
-    end;
-  finally
-    Root.Free;
-  end;
+  ReadPanelPlaces(APanelInfoJson, Active, Result);
 end;
 
 end.

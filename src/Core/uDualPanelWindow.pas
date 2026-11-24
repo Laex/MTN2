@@ -3160,6 +3160,8 @@ var
   Name, Kept: string;
   Remaining: TArray<string>;
   Side: TPanelSide;
+  Keep: TDictionary<string, Byte>;
+  N: Integer;
 begin
   Ws := ActiveWorkspace;
   Side := Ws.State.ActiveSide;
@@ -3170,16 +3172,25 @@ begin
   if Length(AKeep) > 0 then
   begin
     // Only the items the job did not copy stay selected; Ctrl+M brings the
-    // whole selection back.
-    SetLength(Remaining, 0);
-    for Name in Tab.SelectedURIs do
+    // whole selection back. One lookup per selected URI: comparing each of
+    // them with every kept URI stalls the end of a large copy.
+    Keep := TDictionary<string, Byte>.Create;
+    try
       for Kept in AKeep do
-        if SameVfsUri(Name, Kept) then
+        if Kept <> '' then
+          Keep.AddOrSetValue(VfsUriKey(Kept), 0);
+      SetLength(Remaining, Length(Tab.SelectedURIs));
+      N := 0;
+      for Name in Tab.SelectedURIs do
+        if (Name <> '') and Keep.ContainsKey(VfsUriKey(Name)) then
         begin
-          SetLength(Remaining, Length(Remaining) + 1);
-          Remaining[High(Remaining)] := Name;
-          Break;
+          Remaining[N] := Name;
+          Inc(N);
         end;
+      SetLength(Remaining, N);
+    finally
+      Keep.Free;
+    end;
     if Length(Remaining) = Length(Tab.SelectedURIs) then
       Exit;
     Tab.PrevSelectedURIs := Tab.SelectedURIs;
@@ -9469,7 +9480,7 @@ var
   Panel: TPanelState;
   Side: TPanelSide;
   Targets: TArray<string>;
-  I: Integer;
+  I, N: Integer;
 begin
   if not GetActiveRow(Ws, Panel, Tab, Rows, Row, Idx) then
     Exit;
@@ -9482,9 +9493,15 @@ begin
     if Row.IsParent then
     begin
       // On the ".." row: every folder of the panel.
+      SetLength(Targets, Length(Rows));
+      N := 0;
       for I := 0 to High(Rows) do
         if PanelRowIsDirectory(Rows[I]) and not Rows[I].IsParent and (Rows[I].URI <> '') then
-          Targets := Targets + [Rows[I].URI];
+        begin
+          Targets[N] := Rows[I].URI;
+          Inc(N);
+        end;
+      SetLength(Targets, N);
       if Length(Targets) = 0 then
         Exit;
     end
@@ -11477,6 +11494,7 @@ function TDualPanelWindow.HostUserMenuContext: TUserMenuContext;
     Rows: TPanelRows;
     Row: TPanelRow;
     Names, Keys: TArray<string>;
+    N: Integer;
 
     function RowName(const ARow: TPanelRow): string;
     begin
@@ -11502,9 +11520,17 @@ function TDualPanelWindow.HostUserMenuContext: TUserMenuContext;
         Result.CurrentName := RowName(Row);
     end;
     Keys := TabSelectionKeys(Tab);
+    // One allocation for the selection. Growing the list per row stalls the
+    // user menu when many files are selected.
+    SetLength(Names, Length(Rows));
+    N := 0;
     for Row in Rows do
       if not Row.IsParent and SelectionKeysHas(Keys, Row.URI) then
-        Names := Names + [RowName(Row)];
+      begin
+        Names[N] := RowName(Row);
+        Inc(N);
+      end;
+    SetLength(Names, N);
     if (Length(Names) = 0) and (Result.CurrentName <> '') then
       Names := [Result.CurrentName];
     Result.SelectedNames := Names;

@@ -28,6 +28,12 @@ This file describes what changes for the user from version to version: new featu
 
 ### Fixed
 
+- Comparing two long files no longer copies the line list once per line, and a mask used to search, filter or select a folder is compiled once for the whole folder. A ripgrep search and a batch of hits from a search provider allocate their lists once.
+- Saving a long document and writing a long comparison back no longer copy the text once per line. Opening a comparison allocates its lines once. Copying a large selection, an Everything search of many names and reopening a large folder-sync snapshot collect their lists in one allocation.
+- A text search with a regular expression compiles the expression once per file. Comparing two large folders, copying many names to the clipboard and handing a long rename list to the editor no longer copy their lists once per item.
+- The multi-rename preview compiles a regular expression once for the whole batch. File highlighting compiles its masks when the groups are loaded, instead of again for every row. The user menu, command-line completion and the folder-size command on ".." collect their lists in one allocation.
+- Selecting a wide span, Insert on a large selection, F3 and the start and end of a copy, move or delete no longer pause on a folder of many files. The quick filter reuses the sorted list, so typing in it does not sort the folder again on every letter.
+- Multi-rename, list export and file descriptions open without a pause on a large folder: the selected rows are found without walking the whole list for each one, and the multi-rename preview checks a new name against the folder in one pass. Checksums, split and pack-each collect the selection the same way. The git status line reads the panel once per refresh.
 - German and Chinese texts of the dialogs and messages of the plugins that took over checksums, split, archive tools, multi-rename, list export, descriptions and thumbnails are back; texts without a translation show in English.
 - Both panels refresh after a plugin job (checksums, split, test archive, pack each item, multi-rename) instead of one.
 - Multi-rename "In editor": starting the command again no longer stays blocked after the editor was closed, and unloading the plugin drops the pending edit.

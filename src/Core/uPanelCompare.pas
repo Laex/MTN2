@@ -302,21 +302,15 @@ begin
   Result := -CompareFileTimes(A, B);
 end;
 
-procedure Add(var AList: TArray<string>; const AURI: string);
-begin
-  SetLength(AList, Length(AList) + 1);
-  AList[High(AList)] := AURI;
-end;
-
 procedure MarkUnique(const ARows: TPanelRows;
-  AOther: TDictionary<string, Integer>; var AMarks: TArray<string>);
+  AOther: TDictionary<string, Integer>; AMarks: TList<string>);
 var
   R: TPanelRow;
 begin
   for R in ARows do
     if IsComparable(R) and
        not AOther.ContainsKey(AnsiUpperCase(PanelCompareName(R))) then
-      Add(AMarks, R.URI);
+      AMarks.Add(R.URI);
 end;
 
 function ComparePanelRows(const ALeft, ARight: TPanelRows): TPanelCompareResult;
@@ -329,6 +323,7 @@ function ComparePanelRows(const ALeft, ARight: TPanelRows;
   const AContentEqual: TPanelContentEqualFn): TPanelCompareResult;
 var
   LeftIdx, RightIdx: TDictionary<string, Integer>;
+  LeftList, RightList: TList<string>;
   L, R: TPanelRow;
   J: Integer;
   Differs: Boolean;
@@ -336,8 +331,10 @@ begin
   Result := Default(TPanelCompareResult);
   LeftIdx := BuildIndex(ALeft);
   RightIdx := BuildIndex(ARight);
+  LeftList := TList<string>.Create;
+  RightList := TList<string>.Create;
   try
-    MarkUnique(ALeft, RightIdx, Result.LeftUris);
+    MarkUnique(ALeft, RightIdx, LeftList);
     for L in ALeft do
     begin
       if not IsComparable(L) or L.IsDirectory or
@@ -350,12 +347,12 @@ begin
         case CompareTimes(L.ModificationTime, R.ModificationTime) of
           -1:
             begin
-              Add(Result.LeftUris, L.URI);
+              LeftList.Add(L.URI);
               Continue;
             end;
           1:
             begin
-              Add(Result.RightUris, R.URI);
+              RightList.Add(R.URI);
               Continue;
             end;
         end;
@@ -368,12 +365,16 @@ begin
         Differs := True;
       if Differs then
       begin
-        Add(Result.LeftUris, L.URI);
-        Add(Result.RightUris, R.URI);
+        LeftList.Add(L.URI);
+        RightList.Add(R.URI);
       end;
     end;
-    MarkUnique(ARight, LeftIdx, Result.RightUris);
+    MarkUnique(ARight, LeftIdx, RightList);
+    Result.LeftUris := LeftList.ToArray;
+    Result.RightUris := RightList.ToArray;
   finally
+    RightList.Free;
+    LeftList.Free;
     LeftIdx.Free;
     RightIdx.Free;
   end;

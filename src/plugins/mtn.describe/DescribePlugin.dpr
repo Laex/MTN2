@@ -83,35 +83,42 @@ end;
 function CollectNames: Boolean;
 var
   DirUri: string;
+  Names: TList<string>;
 begin
   Result := False;
   GNames := nil;
   GDir := '';
-  if not ForEachSelectedRow(DirUri,
-    procedure(ARow: TJSONObject)
-    var
-      Name: string;
+  Names := TList<string>.Create;
+  try
+    if not ForEachSelectedRow(DirUri,
+      procedure(ARow: TJSONObject)
+      var
+        Name: string;
+      begin
+        if ARow.TryGetValue<string>('name', Name) then
+          Names.Add(StripSlash(Name));
+      end) then
     begin
-      if ARow.TryGetValue<string>('name', Name) then
-        GNames := GNames + [StripSlash(Name)];
-    end) then
-  begin
-    Notice(Tr('msg.nothing', 'Nothing to describe'), 1);
-    Exit;
+      Notice(Tr('msg.nothing', 'Nothing to describe'), 1);
+      Exit;
+    end;
+    GNames := Names.ToArray;
+    if DirUri.StartsWith('file:', True) and (Pos('!/', DirUri) = 0) then
+      GDir := FileUriToPath(DirUri);
+    if (GDir = '') or not TDirectory.Exists(GDir) then
+    begin
+      Notice(Tr('msg.local', 'Descriptions need a folder on a local disk'), 1);
+      Exit;
+    end;
+    if Length(GNames) = 0 then
+    begin
+      Notice(Tr('msg.nothing', 'Nothing to describe'), 1);
+      Exit;
+    end;
+    Result := True;
+  finally
+    Names.Free;
   end;
-  if DirUri.StartsWith('file:', True) and (Pos('!/', DirUri) = 0) then
-    GDir := FileUriToPath(DirUri);
-  if (GDir = '') or not TDirectory.Exists(GDir) then
-  begin
-    Notice(Tr('msg.local', 'Descriptions need a folder on a local disk'), 1);
-    Exit;
-  end;
-  if Length(GNames) = 0 then
-  begin
-    Notice(Tr('msg.nothing', 'Nothing to describe'), 1);
-    Exit;
-  end;
-  Result := True;
 end;
 
 procedure CmdRun(AUserData: Pointer); cdecl;

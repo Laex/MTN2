@@ -1396,19 +1396,32 @@ end;
 
 function TEditorDoc.BuildSaveText: string;
 var
-  I: Integer;
+  I, N: Integer;
   EOL: string;
+  Text: TStringBuilder;
 begin
   if FCrlf then
     EOL := #13#10
   else
     EOL := #10;
-  Result := '';
+  // One buffer for the whole file. Appending each line to a growing string
+  // stalls saving a long document.
+  N := 0;
   for I := 0 to FLines.Count - 1 do
-  begin
-    Result := Result + FLines[I];
-    if I < FLines.Count - 1 then
-      Result := Result + EOL;
+    Inc(N, Length(FLines[I]));
+  if FLines.Count > 1 then
+    Inc(N, Length(EOL) * (FLines.Count - 1));
+  Text := TStringBuilder.Create(N);
+  try
+    for I := 0 to FLines.Count - 1 do
+    begin
+      Text.Append(FLines[I]);
+      if I < FLines.Count - 1 then
+        Text.Append(EOL);
+    end;
+    Result := Text.ToString;
+  finally
+    Text.Free;
   end;
 end;
 

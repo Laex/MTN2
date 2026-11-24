@@ -219,7 +219,8 @@ procedure TDiffMerge.Rebuild;
 var
   Spans: TArray<TDiffSpan>;
   Dels, Ins: TArray<string>;
-  I, J, K, LeftPos, RightPos, NextIns, RowCount, Hunk: Integer;
+  I, J, K, LeftPos, RightPos, NextIns, RowCount, Hunk, HunkCount: Integer;
+  DelN, InsN: Integer;
   Match: TArray<Integer>;
 
   procedure AddRow(AKind: TDiffRowKind; const ALeft, ARight: string;
@@ -241,6 +242,7 @@ begin
   SetLength(FRows, 0);
   SetLength(FHunks, 0);
   RowCount := 0;
+  HunkCount := 0;
   LeftPos := 0;
   RightPos := 0;
   I := 0;
@@ -254,25 +256,43 @@ begin
       Inc(I);
       Continue;
     end;
-    SetLength(Dels, 0);
-    SetLength(Ins, 0);
     J := I;
+    DelN := 0;
+    InsN := 0;
     while (J <= High(Spans)) and (Spans[J].Kind <> dkEqual) do
     begin
       if Spans[J].Kind = dkDelete then
+        Inc(DelN)
+      else
+        Inc(InsN);
+      Inc(J);
+    end;
+    // One allocation for the hunk. Growing the lists per line stalls a
+    // comparison where a long run of lines differs.
+    SetLength(Dels, DelN);
+    SetLength(Ins, InsN);
+    DelN := 0;
+    InsN := 0;
+    for K := I to J - 1 do
+      if Spans[K].Kind = dkDelete then
       begin
-        SetLength(Dels, Length(Dels) + 1);
-        Dels[High(Dels)] := Spans[J].Text;
+        Dels[DelN] := Spans[K].Text;
+        Inc(DelN);
       end
       else
       begin
-        SetLength(Ins, Length(Ins) + 1);
-        Ins[High(Ins)] := Spans[J].Text;
+        Ins[InsN] := Spans[K].Text;
+        Inc(InsN);
       end;
-      Inc(J);
+    if HunkCount = Length(FHunks) then
+    begin
+      if HunkCount < 16 then
+        SetLength(FHunks, 16)
+      else
+        SetLength(FHunks, HunkCount * 2);
     end;
-    Hunk := Length(FHunks);
-    SetLength(FHunks, Hunk + 1);
+    Hunk := HunkCount;
+    Inc(HunkCount);
     FHunks[Hunk].LeftStart := LeftPos;
     FHunks[Hunk].LeftCount := Length(Dels);
     FHunks[Hunk].RightStart := RightPos;
@@ -304,6 +324,7 @@ begin
     I := J;
   end;
   SetLength(FRows, RowCount);
+  SetLength(FHunks, HunkCount);
 end;
 
 function TDiffMerge.HunkCount: Integer;
@@ -484,7 +505,15 @@ begin
   else
     AEol := #13#10;
   AFinalEol := (N > 0) and ((AText[N] = #10) or (AText[N] = #13));
-  SetLength(Result, 0);
+  // The first walk already counted every break, so the lines are allocated
+  // once. Growing the array per line stalls opening a long diff.
+  if N = 0 then
+    Count := 0
+  else if AFinalEol then
+    Count := Crlf + Lf + Cr
+  else
+    Count := Crlf + Lf + Cr + 1;
+  SetLength(Result, Count);
   Count := 0;
   Start := 1;
   I := 1;
@@ -492,7 +521,6 @@ begin
   begin
     if (AText[I] = #13) or (AText[I] = #10) then
     begin
-      SetLength(Result, Count + 1);
       Result[Count] := Copy(AText, Start, I - Start);
       Inc(Count);
       if (AText[I] = #13) and (I < N) and (AText[I + 1] = #10) then
@@ -503,25 +531,42 @@ begin
   end;
   if Start <= N then
   begin
-    SetLength(Result, Count + 1);
     Result[Count] := Copy(AText, Start, N - Start + 1);
+    Inc(Count);
   end;
+  if Count <> Length(Result) then
+    SetLength(Result, Count);
 end;
 
 function JoinTextLines(const ALines: TArray<string>; const AEol: string;
   AFinalEol: Boolean): string;
 var
-  I: Integer;
+  I, N: Integer;
+  Text: TStringBuilder;
 begin
-  Result := '';
+  // One buffer for the whole file. Appending each line stalls writing a
+  // long diff back.
+  N := 0;
   for I := 0 to High(ALines) do
-  begin
-    if I > 0 then
-      Result := Result + AEol;
-    Result := Result + ALines[I];
-  end;
+    Inc(N, Length(ALines[I]));
+  if Length(ALines) > 1 then
+    Inc(N, Length(AEol) * (Length(ALines) - 1));
   if AFinalEol and (Length(ALines) > 0) then
-    Result := Result + AEol;
+    Inc(N, Length(AEol));
+  Text := TStringBuilder.Create(N);
+  try
+    for I := 0 to High(ALines) do
+    begin
+      if I > 0 then
+        Text.Append(AEol);
+      Text.Append(ALines[I]);
+    end;
+    if AFinalEol and (Length(ALines) > 0) then
+      Text.Append(AEol);
+    Result := Text.ToString;
+  finally
+    Text.Free;
+  end;
 end;
 
 function DiffRowMarker(AKind: TDiffRowKind): string;

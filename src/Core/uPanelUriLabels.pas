@@ -74,6 +74,7 @@ var
   R: TPanelRow;
   Keys: TArray<string>;
   Text: string;
+  N: Integer;
 
   function ItemText(const ARow: TPanelRow): string;
   begin
@@ -90,13 +91,21 @@ begin
   if Length(ATab.SelectedURIs) > 0 then
   begin
     Keys := TabSelectionKeys(ATab);
+    // One allocation for the selection. Growing the list per row stalls
+    // copying many names to the clipboard.
+    SetLength(Result, Length(ARows));
+    N := 0;
     for R in ARows do
       if (not R.IsParent) and (R.URI <> '') and SelectionKeysHas(Keys, R.URI) then
       begin
         Text := ItemText(R);
         if Text <> '' then
-          Result := Result + [Text];
+        begin
+          Result[N] := Text;
+          Inc(N);
+        end;
       end;
+    SetLength(Result, N);
   end
   else if (ATab.CursorIndex >= 0) and (ATab.CursorIndex <= High(ARows)) then
   begin

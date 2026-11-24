@@ -6,7 +6,7 @@ unit uFileFind;
 interface
 
 uses
-  System.SysUtils, System.Classes,
+  System.SysUtils, System.Classes, System.Masks,
   uVfsTypes, uTextEncoding;
 
 const
@@ -54,6 +54,19 @@ type
     RequireAttr: Integer;      // fa* bits an entry must all have; 0 = any
     ForbidAttr: Integer;       // fa* bits an entry must not have; 0 = any
     MaxResults: Integer;       // 0 = cFindMaxResults
+  end;
+
+  // Masks compiled once for a whole folder. Creating a mask per file
+  // stalls a search, a filter or a selection on a large folder.
+  TNameMaskSet = class
+  private
+    FMasks: TArray<string>;
+    FItems: TArray<TMask>;
+    FBuilt: TArray<Boolean>;
+  public
+    constructor Create(const AMasks: TArray<string>);
+    destructor Destroy; override;
+    function Matches(const AName: string): Boolean;
   end;
 
   /// <summary>One attribute of the Find dialog: ignored, required to be clear,
@@ -200,7 +213,7 @@ procedure FindFilesAsync(const AOptions: TFindOptions; ACancel: IJobCancelToken;
 implementation
 
 uses
-  System.IOUtils, System.Masks, System.Math, System.Generics.Collections,
+  System.IOUtils, System.Math, System.Generics.Collections,
   System.RegularExpressions, uPlatformFileOps, uFindArchive, uMaskGroups;
 
 function DefaultFindOptions(const ARootPath, AMask: string;
@@ -475,22 +488,56 @@ begin
   end;
 end;
 
-function NameMatchesAnyMask(const AName: string;
-  const AMasks: TArray<string>): Boolean;
-var
-  M: string;
+constructor TNameMaskSet.Create(const AMasks: TArray<string>);
 begin
-  for M in AMasks do
+  inherited Create;
+  FMasks := Copy(AMasks);
+  SetLength(FItems, Length(FMasks));
+  SetLength(FBuilt, Length(FMasks));
+end;
+
+destructor TNameMaskSet.Destroy;
+var
+  I: Integer;
+begin
+  for I := 0 to High(FItems) do
+    FItems[I].Free;
+  inherited;
+end;
+
+function TNameMaskSet.Matches(const AName: string): Boolean;
+var
+  I: Integer;
+begin
+  for I := 0 to High(FMasks) do
   begin
     // FAR / Win32: * and *.* match every name, including names without a dot.
-    // System.Masks treats '.' as literal, so bare MatchesMask(Name, '*.*') would
-    // skip extensionless files like hash-{GUID} temp names.
-    if SameText(M, '*') or SameText(M, '*.*') then
+    // System.Masks treats '.' as literal, so a bare mask '*.*' would skip
+    // extensionless files like hash-{GUID} temp names.
+    if SameText(FMasks[I], '*') or SameText(FMasks[I], '*.*') then
       Exit(True);
-    if MatchesMask(AName, M) then
+    if not FBuilt[I] then
+    begin
+      FItems[I] := TMask.Create(FMasks[I]);
+      FBuilt[I] := True;
+    end;
+    if FItems[I].Matches(AName) then
       Exit(True);
   end;
   Result := False;
+end;
+
+function NameMatchesAnyMask(const AName: string;
+  const AMasks: TArray<string>): Boolean;
+var
+  Set_: TNameMaskSet;
+begin
+  Set_ := TNameMaskSet.Create(AMasks);
+  try
+    Result := Set_.Matches(AName);
+  finally
+    Set_.Free;
+  end;
 end;
 
 function IsWordChar(C: Char): Boolean;
@@ -917,6 +964,7 @@ function BytesContentMatch(const ABytes: TBytes; const AOptions: TFindOptions;
 var
   Lines: TArray<string>;
   Opts: TRegExOptions;
+  Rx: TRegEx;
   I: Integer;
 begin
   ALine := 0;
@@ -930,20 +978,24 @@ begin
       .Split([#10]);
     if AOptions.UseRegex then
     begin
-      Opts := [roNotEmpty];
+      // One compile for the file. Compiling again on every line stalls a
+      // search through a long log.
+      Opts := [roNotEmpty, roCompiled];
       if not AOptions.CaseSensitive then
-        Opts := Opts + [roIgnoreCase];
+        Include(Opts, roIgnoreCase);
+      try
+        Rx := TRegEx.Create(AOptions.ContainingText, Opts);
+        Rx.IsMatch('');
+      except
+        on Exception do
+          Exit(False);
+      end;
       for I := 0 to High(Lines) do
-        try
-          if TRegEx.IsMatch(Lines[I], AOptions.ContainingText, Opts) then
-          begin
-            ALine := I + 1;
-            ASnippet := TrimSnippet(Lines[I]);
-            Exit(True);
-          end;
-        except
-          // Malformed pattern reaching here despite upfront validation -
-          // treat as no match on this line rather than aborting the job.
+        if Rx.IsMatch(Lines[I]) then
+        begin
+          ALine := I + 1;
+          ASnippet := TrimSnippet(Lines[I]);
+          Exit(True);
         end;
     end
     else
@@ -1102,6 +1154,7 @@ var
   Truncated: Boolean;
   Options: TFindOptions;
   Vfs: IVirtualFileSystem;
+  MaskSet: TNameMaskSet;
 begin
   Root := AResolver.RootUriOf(AArchivePath);
   if Root = '' then
@@ -1111,6 +1164,8 @@ begin
   Vfs := AVfs;
   Options := AOptions;
   Truncated := False;
+  MaskSet := TNameMaskSet.Create(AMasks);
+  try
   WalkArchiveEntries(Vfs, Root, Options.Subdirs, ACancel,
     function(const AEntryUri: string; const AEntry: TVfsEntry): Boolean
     var
@@ -1120,7 +1175,7 @@ begin
       Hit: TFindHit;
     begin
       Result := True;
-      if not NameMatchesAnyMask(AEntry.Name, AMasks) or
+      if not MaskSet.Matches(AEntry.Name) or
          not FindEntryPassesFilters(Options, False, AEntry.Size,
            AEntry.ModificationTime, 0) then
         Exit;
@@ -1151,6 +1206,9 @@ begin
     end);
   if Truncated then
     ATruncated := True;
+  finally
+    MaskSet.Free;
+  end;
 end;
 
 function MakeFindHit(const APath: string; const SR: TSearchRec; AIsDir: Boolean;
@@ -1176,6 +1234,7 @@ type
   private
     FOpts: TFindOptions;
     FMasks: TArray<string>;
+    FNameMasks: TNameMaskSet;
     FCancel: IJobCancelToken;
     FOnProgress: TFindProgressCallback;
     FOnHits: TFindHitsCallback;
@@ -1212,6 +1271,7 @@ begin
   inherited Create;
   FOpts := AOptions;
   FMasks := AMasks;
+  FNameMasks := TNameMaskSet.Create(AMasks);
   FCancel := ACancel;
   FOnProgress := AOnProgress;
   FOnHits := AOnHits;
@@ -1225,6 +1285,7 @@ end;
 
 destructor TFindWalk.Destroy;
 begin
+  FNameMasks.Free;
   FArchives.Free;
   FStack.Free;
   FList.Free;
@@ -1262,7 +1323,7 @@ end;
 
 function TFindWalk.VisitFolder(const AFull: string; const SR: TSearchRec): Boolean;
 begin
-  if FOpts.SearchFolders and NameMatchesAnyMask(SR.Name, FMasks) and
+  if FOpts.SearchFolders and FNameMasks.Matches(SR.Name) and
      not FindNeedsContent(FOpts) and
      FindEntryPassesFilters(FOpts, True, 0, SR.TimeStamp, SR.Attr) and
      not AddHit(AFull, SR, True, 0, '') then
@@ -1281,7 +1342,7 @@ begin
   if FOpts.OnlyExtractable and ((FOpts.TextExtract = nil) or
      not FOpts.TextExtract.Serves(ExtractFileExt(SR.Name))) then
     Exit(True);
-  if NameMatchesAnyMask(SR.Name, FMasks) and
+  if FNameMasks.Matches(SR.Name) and
      FindEntryPassesFilters(FOpts, False, SR.Size, SR.TimeStamp, SR.Attr) and
      FindContentMatch(AFull, FOpts, Line, Snippet) and
      not AddHit(AFull, SR, False, Line, Snippet) then
