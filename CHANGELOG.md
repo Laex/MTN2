@@ -10,7 +10,7 @@ This file describes what changes for the user from version to version: new featu
 
 - The "File already exists" prompt has a "Compare" button: it opens both files in the comparison view (the new one on the left, the existing one on the right) and brings the prompt back when the view is closed. Files that cannot be shown as a text comparison (binary, identical) get a one-line verdict instead.
 - "Split / combine..." in the File menu cuts the file under the cursor into numbered parts (`name.001`, `name.002`, ...) of a chosen size (`700M`, `1.44M`, `4G`) and joins the parts back into one file when the cursor is on any part. Existing files are never overwritten; Esc cancels and removes the unfinished result.
-- "Test archive" in the File menu checks every file of the ZIP archive under the cursor against its stored checksum without unpacking it, and lists the damaged ones.
+- "Test archive" in the File menu checks every file of the archive under the cursor against its stored checksums without unpacking it, and lists the damaged ones. ZIP is checked by the program, 7z, RAR, TAR and the other formats of the 7-Zip plugin by the plugin (also in its Plugins menu).
 - "Pack each item" in the File menu packs every selected file or folder into its own ZIP archive in the other panel's folder, without replacing existing archives.
 - A download from FTP, SFTP, WebDAV or S3 that was cut off by a lost connection continues from the partial file on the next attempt, as long as the file on the server has not changed.
 - Copying, moving or packing files that exist only in the cloud (OneDrive, Dropbox and similar placeholders) warns how many of them will be downloaded first.

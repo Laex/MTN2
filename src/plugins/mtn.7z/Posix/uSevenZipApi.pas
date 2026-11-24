@@ -22,6 +22,15 @@ type
     Attrib: Cardinal;
   end;
 
+  /// <summary>Outcome of SevenZipTestArchive: Checked files, Failed ones with
+  /// "path (reason)" in Errors; Cancelled when the run was stopped.</summary>
+  T7zTestResult = record
+    Checked: Integer;
+    Failed: Integer;
+    Cancelled: Boolean;
+    Errors: TArray<string>;
+  end;
+
 /// <summary>AProgramPath is the 7-Zip executable; True when it answers as 7-Zip.</summary>
 function SevenZipLoadEngine(const AProgramPath: string): Boolean;
 procedure SevenZipUnloadEngine;
@@ -49,6 +58,11 @@ function SevenZipAddLocalPath(const AArchivePath, ALocalPath, AInnerPath: string
 /// existing archive. The archive is rewritten; it stays unchanged on failure.</summary>
 function SevenZipDeleteInner(const AArchivePath, AInnerPath: string;
   out AError: string): Boolean;
+/// <summary>Checks every file of the archive against its stored checksums
+/// without writing anything. False with AError when the archive cannot be tested
+/// at all (not supported, encrypted); damaged files are reported in AResult.</summary>
+function SevenZipTestArchive(const AArchivePath: string; const ACancelled: TFunc<Boolean>;
+  out AResult: T7zTestResult; out AError: string): Boolean;
 function SevenZipNormInner(const APath: string): string;
 procedure SevenZipSetPassword(const AArchivePath, APassword: string);
 procedure SevenZipClearPassword(const AArchivePath: string);
@@ -676,6 +690,51 @@ begin
     Dirs.Free;
     Files.Free;
   end;
+end;
+
+function SevenZipTestArchive(const AArchivePath: string; const ACancelled: TFunc<Boolean>;
+  out AResult: T7zTestResult; out AError: string): Boolean;
+var
+  Items: TArray<T7zItem>;
+  Output, Line, Name: string;
+  Code: Cardinal;
+  I: Integer;
+begin
+  Result := False;
+  AResult := Default(T7zTestResult);
+  if not SevenZipListArchive(AArchivePath, Items, AError) then
+    Exit;
+  for I := 0 to High(Items) do
+    if not Items[I].IsDir then
+      Inc(AResult.Checked);
+  if AResult.Checked = 0 then
+    Exit(True);
+  if not RunEngine(['t'] + CommonArgs(AArchivePath, False) + ['--', AArchivePath],
+    Output, Code) then
+  begin
+    AError := '7-Zip is not available';
+    Exit;
+  end;
+  if Code = 0 then
+    Exit(True);
+  // The program names each failed entry on a line of the form "ERROR: reason : path".
+  for Line in Output.Split([#10]) do
+  begin
+    Name := Line.Trim;
+    if not Name.StartsWith('ERROR:') then
+      Continue;
+    AResult.Errors := AResult.Errors + [Name.Substring(6).Trim];
+    Inc(AResult.Failed);
+  end;
+  if AResult.Failed = 0 then
+  begin
+    if LooksEncrypted(Output, AArchivePath) then
+      AError := 'Encrypted'
+    else
+      AError := 'Archive test failed';
+    Exit;
+  end;
+  Result := True;
 end;
 
 function SevenZipCreateSimpleArchive(const AArchivePath, ASourceFile: string;

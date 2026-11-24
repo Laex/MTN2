@@ -5,7 +5,7 @@ library SevenZipPlugin;
   Archives open like folders; entries are listed, read, unpacked and packed. }
 
 uses
-  System.SysUtils, System.Classes, System.IOUtils,
+  System.SysUtils, System.Classes, System.IOUtils, System.JSON, System.Math, System.SyncObjs,
   uPluginHostAbi in '..\..\Core\uPluginHostAbi.pas',
   uSevenZipApi,
   uPlatformProcess, uPlatformInfo,
@@ -265,6 +265,240 @@ begin
   Result := 0;
 end;
 
+const
+  cPluginId = 'mtn.7z';
+  cTestCommand = 'sevenzip.test';
+  cTestJobKey = 'archive.test';
+
+var
+  GTestBusy: Integer;
+  GTestCancel: Integer;
+  GTestText: string;
+  GTestKind: Int64;
+  GTestJob: Boolean;
+  GTestLock: TCriticalSection;
+
+function Tr(const AKey, ADefault: string): string;
+var
+  Id, Key, Def: UTF8String;
+  Buf: array[0..511] of AnsiChar;
+  Len: Int64;
+begin
+  Result := ADefault;
+  if (GHostApi = nil) or not Assigned(GHostApi.Translate) then
+    Exit;
+  Id := UTF8String(cPluginId);
+  Key := UTF8String(AKey);
+  Def := UTF8String(ADefault);
+  Len := GHostApi.Translate(PAnsiChar(Id), PAnsiChar(Key), PAnsiChar(Def), @Buf[0], SizeOf(Buf));
+  if (Len >= 0) and (Len < SizeOf(Buf)) then
+    Result := UTF8ToString(PAnsiChar(@Buf[0]));
+end;
+
+procedure ShowNotice(const AText: string; AKind: Int64);
+var
+  Text: UTF8String;
+begin
+  if (GHostApi = nil) or not Assigned(GHostApi.ShowMessage) then
+    Exit;
+  Text := UTF8String(AText);
+  GHostApi.ShowMessage(PAnsiChar(Text), AKind);
+end;
+
+function ReadPanelInfo: string;
+var
+  Buf: UTF8String;
+  Len: Int64;
+begin
+  Result := '';
+  if (GHostApi = nil) or not Assigned(GHostApi.PanelInfo) then
+    Exit;
+  Len := GHostApi.PanelInfo(nil, 0);
+  if Len <= 0 then
+    Exit;
+  SetLength(Buf, Len + 1);
+  Len := GHostApi.PanelInfo(PAnsiChar(Buf), Length(Buf));
+  if (Len > 0) and (Len < Length(Buf)) then
+    Result := UTF8ToString(PAnsiChar(Buf));
+end;
+
+/// <summary>The file under the cursor of the active panel (a file: URI); empty
+/// when the cursor is on no file.</summary>
+function CursorFileUri: string;
+var
+  Root, Side: TJSONValue;
+  Active: string;
+  IsDir: Boolean;
+  Json: string;
+begin
+  Result := '';
+  Json := ReadPanelInfo;
+  if Json = '' then
+    Exit;
+  Root := TJSONObject.ParseJSONValue(Json);
+  try
+    if not (Root is TJSONObject) or not Root.TryGetValue<string>('active', Active) then
+      Exit;
+    Side := Root.GetValue<TJSONValue>(Active, nil);
+    if not (Side is TJSONObject) or not Side.TryGetValue<string>('cursor', Result) then
+      Exit('');
+    IsDir := False;
+    Side.TryGetValue<Boolean>('cursorIsDirectory', IsDir);
+    if IsDir then
+      Result := '';
+  finally
+    Root.Free;
+  end;
+end;
+
+function HostHasJobs: Boolean;
+begin
+  Result := (GHostApi.AbiVersion >= 7) and Assigned(GHostApi.JobBegin) and
+    Assigned(GHostApi.JobEnd);
+end;
+
+procedure OnTestJobCancel(AUserData: Pointer); cdecl;
+begin
+  TInterlocked.Exchange(GTestCancel, 1);
+end;
+
+procedure EndTestJob;
+var
+  Plugin, Key: UTF8String;
+begin
+  if not GTestJob then
+    Exit;
+  GTestJob := False;
+  Plugin := UTF8String(cPluginId);
+  Key := UTF8String(cTestJobKey);
+  GHostApi.JobEnd(PAnsiChar(Plugin), PAnsiChar(Key));
+end;
+
+{ Main thread: the run is over - report it. }
+procedure MainTestDone(AUserData: Pointer); cdecl;
+var
+  Text: string;
+  Kind: Int64;
+begin
+  try
+    EndTestJob;
+    GTestLock.Enter;
+    try
+      Text := GTestText;
+      Kind := GTestKind;
+      GTestText := '';
+    finally
+      GTestLock.Leave;
+    end;
+    TInterlocked.Exchange(GTestBusy, 0);
+    if Text <> '' then
+      ShowNotice(Text, Kind);
+  except
+  end;
+end;
+
+type
+  TArchiveTestThread = class(TThread)
+  private
+    FPath: string;
+  protected
+    procedure Execute; override;
+  public
+    constructor Create(const APath: string);
+  end;
+
+constructor TArchiveTestThread.Create(const APath: string);
+begin
+  FPath := APath;
+  FreeOnTerminate := True;
+  inherited Create(False);
+end;
+
+procedure TArchiveTestThread.Execute;
+var
+  R: T7zTestResult;
+  Err, Text: string;
+  Kind: Int64;
+  I: Integer;
+begin
+  Kind := 0;
+  try
+    if not SevenZipTestArchive(FPath,
+      function: Boolean
+      begin
+        Result := Terminated or (TInterlocked.CompareExchange(GTestCancel, 0, 0) <> 0);
+      end, R, Err) then
+    begin
+      Kind := 1;
+      if Err = 'Encrypted' then
+        Text := Tr('msg.testEncrypted', 'The archive is encrypted: open it and enter the password first.')
+      else
+        Text := Tr('msg.testUnsupported', 'This archive cannot be tested.');
+    end
+    else if R.Cancelled then
+      Text := Tr('msg.cancelled', 'Cancelled.')
+    else if R.Failed = 0 then
+      Text := Format(Tr('msg.testOk', '%d files OK'), [R.Checked])
+    else
+    begin
+      Kind := 1;
+      Text := Format(Tr('msg.testFailed', '%d of %d files are damaged:'), [R.Failed, R.Checked]);
+      for I := 0 to Min(High(R.Errors), 9) do
+        Text := Text + sLineBreak + R.Errors[I];
+      if Length(R.Errors) > 10 then
+        Text := Text + sLineBreak + '...';
+    end;
+  except
+    Kind := 1;
+    Text := Tr('msg.testUnsupported', 'This archive cannot be tested.');
+  end;
+  GTestLock.Enter;
+  try
+    GTestText := Text;
+    GTestKind := Kind;
+  finally
+    GTestLock.Leave;
+  end;
+  if Assigned(GHostApi) and Assigned(GHostApi.PostToMain) then
+    GHostApi.PostToMain(PAnsiChar(UTF8String(cPluginId)), MainTestDone, nil);
+end;
+
+{ The "Test archive" command: checks the archive under the cursor of the active
+  panel against its checksums, in the background. }
+procedure CmdTestArchive(AUserData: Pointer); cdecl;
+var
+  Plugin, Key, Title: UTF8String;
+  Uri, Local: string;
+begin
+  try
+    if (GHostApi = nil) or not Assigned(GHostApi.PostToMain) then
+      Exit;
+    Uri := CursorFileUri;
+    Local := '';
+    if Uri <> '' then
+      Local := FileUriToPath(Uri);
+    if (Local = '') or not TFile.Exists(Local) then
+    begin
+      ShowNotice(Tr('msg.testNoFile', 'Put the cursor on an archive file on disk.'), 0);
+      Exit;
+    end;
+    if TInterlocked.CompareExchange(GTestBusy, 1, 0) <> 0 then
+      Exit;
+    TInterlocked.Exchange(GTestCancel, 0);
+    GTestJob := HostHasJobs;
+    if GTestJob then
+    begin
+      Plugin := UTF8String(cPluginId);
+      Key := UTF8String(cTestJobKey);
+      Title := UTF8String(Tr('msg.testJob', 'Archive test'));
+      GHostApi.JobBegin(PAnsiChar(Plugin), PAnsiChar(Key), PAnsiChar(Title), @OnTestJobCancel, nil);
+    end;
+    TArchiveTestThread.Create(Local);
+  except
+    TInterlocked.Exchange(GTestBusy, 0);
+  end;
+end;
+
 function mtn_plugin_get_abi_version: Int64; cdecl;
 begin
   Result := cPluginAbiVersion;
@@ -299,11 +533,24 @@ begin
   if Assigned(AHostApi.RegisterPanelPlugin) then
     AHostApi.RegisterPanelPlugin(PAnsiChar(UTF8String('mtn.7z')),
       PAnsiChar(UTF8String('7z')), 40);
+  GTestLock := TCriticalSection.Create;
+  if Assigned(AHostApi.RegisterCommand) and Assigned(AHostApi.PanelInfo) and
+     Assigned(AHostApi.PostToMain) then
+  begin
+    AHostApi.RegisterCommand(PAnsiChar(UTF8String(cPluginId)), PAnsiChar(UTF8String(cTestCommand)),
+      @CmdTestArchive, nil);
+    if Assigned(AHostApi.RegisterMenuItem) then
+      AHostApi.RegisterMenuItem(PAnsiChar(UTF8String(cPluginId)), 'Plugins',
+        PAnsiChar(UTF8String(cTestCommand)),
+        PAnsiChar(UTF8String(Tr('ui.menu.test', 'Test archive (checksums)'))),
+        @CmdTestArchive, nil, 72);
+  end;
   Result := 0;
 end;
 
 procedure mtn_plugin_shutdown; cdecl;
 begin
+  TInterlocked.Exchange(GTestCancel, 1);
   SevenZipClearAllPasswords;
   SevenZipUnloadEngine;
   GHostApi := nil;

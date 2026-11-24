@@ -21,6 +21,15 @@ type
     Attrib: Cardinal;
   end;
 
+  /// <summary>Outcome of SevenZipTestArchive: Checked files, Failed ones with
+  /// "path (reason)" in Errors; Cancelled when the run was stopped.</summary>
+  T7zTestResult = record
+    Checked: Integer;
+    Failed: Integer;
+    Cancelled: Boolean;
+    Errors: TArray<string>;
+  end;
+
 function SevenZipLoadEngine(const ADllPath: string): Boolean;
 procedure SevenZipUnloadEngine;
 function SevenZipEngineLoaded: Boolean;
@@ -47,6 +56,11 @@ function SevenZipAddLocalPath(const AArchivePath, ALocalPath, AInnerPath: string
 /// existing archive. The archive is rewritten; it stays unchanged on failure.</summary>
 function SevenZipDeleteInner(const AArchivePath, AInnerPath: string;
   out AError: string): Boolean;
+/// <summary>Checks every file of the archive against its stored checksums
+/// without writing anything. False with AError when the archive cannot be tested
+/// at all (not supported, encrypted); damaged files are reported in AResult.</summary>
+function SevenZipTestArchive(const AArchivePath: string; const ACancelled: TFunc<Boolean>;
+  out AResult: T7zTestResult; out AError: string): Boolean;
 function SevenZipNormInner(const APath: string): string;
 procedure SevenZipSetPassword(const AArchivePath, APassword: string);
 procedure SevenZipClearPassword(const AArchivePath: string);
@@ -1698,6 +1712,177 @@ begin
   finally
     Written.Free;
     Targets.Free;
+  end;
+end;
+
+type
+  /// <summary>Extract callback of a test run: no stream is given, so 7z.dll only
+  /// unpacks to check the CRCs; each item's result is recorded, and a failure
+  /// does not stop the run.</summary>
+  T7zTestCallback = class(TInterfacedObject, IProgress, IArchiveExtractCallback,
+    ICryptoGetTextPassword, ICryptoGetTextPassword2)
+  private
+    FCancelled: TFunc<Boolean>;
+    FCurrent: UInt32;
+    FFailed: TDictionary<UInt32, Int32>;
+    FPassword: string;
+    FHasPassword: Boolean;
+    FAsked: Boolean;
+    FStopped: Boolean;
+  public
+    constructor Create(const ACancelled: TFunc<Boolean>; AHasPassword: Boolean;
+      const APassword: string);
+    destructor Destroy; override;
+    function SetTotal(total: UInt64): HRESULT; stdcall;
+    function SetCompleted(completeValue: PUInt64): HRESULT; stdcall;
+    function GetStream(index: UInt32; out outStream: ISequentialOutStream;
+      askExtractMode: Int32): HRESULT; stdcall;
+    function PrepareOperation(askExtractMode: Int32): HRESULT; stdcall;
+    function SetOperationResult(opRes: Int32): HRESULT; stdcall;
+    function CryptoGetTextPassword(out password: TBStr): HRESULT; stdcall;
+    function CryptoGetTextPassword2(out passwordIsDefined: Int32;
+      out password: TBStr): HRESULT; stdcall;
+    property Failed: TDictionary<UInt32, Int32> read FFailed;
+    property Asked: Boolean read FAsked;
+    property Stopped: Boolean read FStopped;
+  end;
+
+constructor T7zTestCallback.Create(const ACancelled: TFunc<Boolean>;
+  AHasPassword: Boolean; const APassword: string);
+begin
+  inherited Create;
+  FCancelled := ACancelled;
+  FFailed := TDictionary<UInt32, Int32>.Create;
+  FHasPassword := AHasPassword;
+  FPassword := APassword;
+end;
+
+destructor T7zTestCallback.Destroy;
+begin
+  FFailed.Free;
+  inherited;
+end;
+
+function T7zTestCallback.SetTotal(total: UInt64): HRESULT;
+begin
+  Result := S_OK;
+end;
+
+function T7zTestCallback.SetCompleted(completeValue: PUInt64): HRESULT;
+begin
+  if Assigned(FCancelled) and FCancelled() then
+  begin
+    FStopped := True;
+    Exit(E_ABORT);
+  end;
+  Result := S_OK;
+end;
+
+function T7zTestCallback.GetStream(index: UInt32; out outStream: ISequentialOutStream;
+  askExtractMode: Int32): HRESULT;
+begin
+  FCurrent := index;
+  outStream := nil;
+  Result := S_OK;
+end;
+
+function T7zTestCallback.PrepareOperation(askExtractMode: Int32): HRESULT;
+begin
+  Result := S_OK;
+end;
+
+function T7zTestCallback.SetOperationResult(opRes: Int32): HRESULT;
+begin
+  if opRes <> 0 then
+    FFailed.AddOrSetValue(FCurrent, opRes);
+  Result := S_OK;
+end;
+
+function T7zTestCallback.CryptoGetTextPassword(out password: TBStr): HRESULT;
+begin
+  FAsked := True;
+  password := nil;
+  if not FHasPassword then
+    Exit(E_ABORT);
+  Result := AllocPassword(FPassword, password);
+end;
+
+function T7zTestCallback.CryptoGetTextPassword2(out passwordIsDefined: Int32;
+  out password: TBStr): HRESULT;
+begin
+  passwordIsDefined := Ord(FHasPassword);
+  Result := CryptoGetTextPassword(password);
+end;
+
+function SevenZipTestArchive(const AArchivePath: string; const ACancelled: TFunc<Boolean>;
+  out AResult: T7zTestResult; out AError: string): Boolean;
+var
+  Items: TArray<T7zItem>;
+  Arc: IInArchive;
+  Cb: T7zTestCallback;
+  HoldCb: IArchiveExtractCallback;
+  Password: string;
+  HasPassword: Boolean;
+  Hr: HRESULT;
+  I: Integer;
+  Code: Int32;
+  Reason: string;
+begin
+  Result := False;
+  AResult := Default(T7zTestResult);
+  if not SevenZipListArchive(AArchivePath, Items, AError) then
+    Exit;
+  for I := 0 to High(Items) do
+    if not Items[I].IsDir then
+      Inc(AResult.Checked);
+  if AResult.Checked = 0 then
+    Exit(True);
+
+  GLock.Acquire;
+  try
+    if not OpenArchive(AArchivePath, Arc, AError) then
+      Exit;
+    HasPassword := SevenZipTryGetPassword(AArchivePath, Password);
+    Cb := T7zTestCallback.Create(ACancelled, HasPassword, Password);
+    HoldCb := Cb;
+    try
+      Hr := Arc.Extract(nil, $FFFFFFFF, 1, HoldCb);
+      Arc.Close;
+      if Cb.Stopped then
+      begin
+        AResult.Cancelled := True;
+        Exit(True);
+      end;
+      if Cb.Asked and (Cb.Failed.Count = 0) and not HResOk(Hr) then
+      begin
+        AError := 'Encrypted';
+        Exit;
+      end;
+      for I := 0 to High(Items) do
+        if (not Items[I].IsDir) and Cb.Failed.TryGetValue(Items[I].Index, Code) then
+        begin
+          case Code of
+            1: Reason := 'unsupported method';
+            2: Reason := 'data error';
+            3: Reason := 'CRC error';
+            4: Reason := 'unavailable data';
+            5: Reason := 'unexpected end of data';
+            6: Reason := 'data after the end';
+            7: Reason := 'not an archive';
+            8: Reason := 'headers error';
+            9: Reason := 'wrong password';
+          else
+            Reason := 'error ' + IntToStr(Code);
+          end;
+          AResult.Errors := AResult.Errors + [Items[I].Path + ' (' + Reason + ')'];
+          Inc(AResult.Failed);
+        end;
+      Result := True;
+    finally
+      HoldCb := nil;
+    end;
+  finally
+    GLock.Release;
   end;
 end;
 

@@ -10785,6 +10785,11 @@ begin
     Exit;
   Paths := FileUrisToLocalPaths(CollectActiveSources);
   Title := T('ui.archtest.title', 'Test archive');
+  // Formats other than ZIP are tested by the archive plugin, when it is loaded.
+  if (Length(Paths) = 1) and TFile.Exists(Paths[0]) and
+    not SameText(ExtractFileExt(Paths[0]), '.zip') and
+    CommandRegistry.TryExecute('sevenzip.test') then
+    Exit;
   if (Length(Paths) <> 1) or not TFile.Exists(Paths[0]) or
     not SameText(ExtractFileExt(Paths[0]), '.zip') then
   begin

@@ -55,7 +55,7 @@ A short overview of the features; details are in the help (F1), the other docume
 - **Folder sizes** – `F3` on a folder (or the selected folders) calculates the size into the Size column, `F3` on the `..` row does it for all folders of the panel; the sizes are kept while a folder is unchanged.
 - **Folder merge** – copying or moving a folder onto an existing one merges the contents; the "File already exists" prompt offers overwrite, skip, rename, append, overwrite if newer, overwrite if the size differs and automatic rename (`name (2).ext`), and a Compare button that opens both files in the comparison view; the same rules can be picked in the copy dialog in advance.
 - **Split / combine** – File > Split / combine... cuts a file into numbered parts (`name.001`, ...) of a given size, or joins the parts back when the cursor is on one of them; runs in the background and can be cancelled.
-- **Archive test** – File > Test archive checks every file of a ZIP against its stored CRC-32 without unpacking; runs in the background.
+- **Archive test** – File > Test archive checks every file of an archive against its stored checksums without unpacking (ZIP directly, 7z, RAR, TAR and others through the 7-Zip plugin); runs in the background.
 - **Pack each item** – File > Pack each item makes a separate ZIP for every selected file or folder; runs in the background.
 - **Verified copy** – the "Verify after copying" option compares every copied file with its source before it is kept; a difference is an error of that file with the usual retry / skip.
 - **Far-style delete** – `F8` / `Del` to the Recycle Bin, `Shift+Del` permanently, `Shift+F8` only the item under the cursor; if the Recycle Bin fails, permanent deletion is offered.

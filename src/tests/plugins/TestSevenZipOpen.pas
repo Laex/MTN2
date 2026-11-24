@@ -32,6 +32,8 @@ type
     [Test] procedure TestPackWithEncryptedNames;
     [Test] procedure TestPackCompressionLevel;
     [Test] procedure TestExtractFolderInOnePass;
+    [Test] procedure TestArchiveIntegrity;
+    [Test] procedure TestEncryptedArchiveIntegrity;
   end;
 
 implementation
@@ -446,6 +448,77 @@ begin
       Assert.IsFalse(SevenZipExtractTree(Arc, 'missing', Dest, True, Err), Tag + 'missing folder');
       Assert.AreEqual('Not found', Err, Tag + 'missing folder error');
     finally
+      SevenZipUnloadEngine;
+    end;
+  end;
+end;
+
+procedure TTestSevenZipOpen.TestArchiveIntegrity;
+var
+  Dll, Arc, SrcDir, Err, Tag, Joined: string;
+  Bytes: TBytes;
+  R: T7zTestResult;
+  E: string;
+begin
+  if Length(Engines) = 0 then
+    Assert.Pass('SKIP: no 7-Zip engine found');
+  SrcDir := TPath.Combine(TPath.GetTempPath, 'mtn2-7z-test-src');
+  if TDirectory.Exists(SrcDir) then
+    TDirectory.Delete(SrcDir, True);
+  TDirectory.CreateDirectory(SrcDir);
+  TFile.WriteAllText(TPath.Combine(SrcDir, 'first.txt'), StringOfChar('a', 400));
+  for Dll in Engines do
+  begin
+    Tag := Dll + ': ';
+    Arc := NewPackArchive('intact.7z');
+    Assert.IsTrue(SevenZipLoadEngine(Dll), Tag + 'load');
+    try
+      SevenZipSetCompressionLevel(Arc, 0);
+      Assert.IsTrue(SevenZipAddLocalPath(Arc, TPath.Combine(SrcDir, 'first.txt'), 'first.txt',
+        True, Err), Tag + 'pack: ' + Err);
+      Assert.IsTrue(SevenZipTestArchive(Arc, nil, R, Err), Tag + 'intact archive: ' + Err);
+      Assert.AreEqual(1, R.Checked, Tag + 'checked files');
+      Assert.AreEqual(0, R.Failed, Tag + 'intact archive has no failures');
+      Bytes := TFile.ReadAllBytes(Arc);
+      Bytes[40] := Bytes[40] xor $FF;
+      TFile.WriteAllBytes(Arc, Bytes);
+      Assert.IsTrue(SevenZipTestArchive(Arc, nil, R, Err), Tag + 'damaged archive is testable: ' + Err);
+      Assert.AreEqual(1, R.Failed, Tag + 'damaged file counted');
+      Joined := '';
+      for E in R.Errors do
+        Joined := Joined + E;
+      Assert.IsTrue(Joined.Contains('first.txt'), Tag + 'damaged file named: ' + Joined);
+      R := Default(T7zTestResult);
+      Assert.IsTrue(SevenZipTestArchive(Arc, function: Boolean begin Result := True; end,
+        R, Err), Tag + 'cancelled run');
+    finally
+      SevenZipSetCompressionLevel(Arc, -1);
+      SevenZipUnloadEngine;
+    end;
+  end;
+end;
+
+procedure TTestSevenZipOpen.TestEncryptedArchiveIntegrity;
+var
+  Dll, Arc, Err, Tag: string;
+  R: T7zTestResult;
+begin
+  if Length(Engines) = 0 then
+    Assert.Pass('SKIP: no 7-Zip engine found');
+  Arc := WriteFixture('data.7z', cDataEncrypted);
+  for Dll in Engines do
+  begin
+    Tag := Dll + ': ';
+    Assert.IsTrue(SevenZipLoadEngine(Dll), Tag + 'load');
+    try
+      SevenZipClearPassword(Arc);
+      Assert.IsFalse(SevenZipTestArchive(Arc, nil, R, Err), Tag + 'no password');
+      Assert.AreEqual('Encrypted', Err, Tag + 'no password reported as encrypted');
+      SevenZipSetPassword(Arc, '1');
+      Assert.IsTrue(SevenZipTestArchive(Arc, nil, R, Err), Tag + 'right password: ' + Err);
+      Assert.AreEqual(0, R.Failed, Tag + 'right password has no failures');
+    finally
+      SevenZipClearPassword(Arc);
       SevenZipUnloadEngine;
     end;
   end;
