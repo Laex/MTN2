@@ -1031,6 +1031,7 @@ type
     procedure OpenMarkdownColorsDialog;
     procedure BeginChecksums;
     procedure BeginSplitCombine;
+    procedure BeginTestArchive;
     procedure DispatchSplitCombineCommand(AKind: THostDialogKind; const AControlId: string);
     procedure StartSplitJob(const ASrc, ADestDir: string; APartSize: Int64);
     procedure StartCombineJob(const AParts: TArray<string>; const ADest: string);
@@ -1705,7 +1706,7 @@ implementation
 uses
   uFindRouter,
   uPlatformInfo, uPlatformProcess, uPlatformFolders, uPlatformPaths, uImageInfo, uFileClip, uWinFileDragDrop, uStrings, uFileHistory, uChromeRows,
-  uExternalTools, uEnvProfiles, uDialogHistory, uChecksums, uFileSplit, uKeyChord, uConsoleSettings, uZipVfs,
+  uExternalTools, uEnvProfiles, uDialogHistory, uChecksums, uFileSplit, uArchiveTest, uKeyChord, uConsoleSettings, uZipVfs,
   uCharWidth, uConfigMode, uPluginChrome, uColorPickerControl, uRenameJournal, uConfigLocation;
 
 const
@@ -2405,6 +2406,7 @@ begin
   FKeymapHost.OpenMarkdownColorsDialog := OpenMarkdownColorsDialog;
   FKeymapHost.BeginChecksums := BeginChecksums;
   FKeymapHost.BeginSplitCombine := BeginSplitCombine;
+  FKeymapHost.BeginTestArchive := BeginTestArchive;
   FKeymapHost.BeginMultiRename := BeginMultiRename;
   FKeymapHost.NavigateToRecycleBin := NavigateToRecycleBin;
   FKeymapHost.RestoreCursorItemFromRecycleBin := RestoreCursorItemFromRecycleBin;
@@ -10750,6 +10752,74 @@ begin
           NotifyChanged;
           FToast.Show(T('ui.split.combineDone', 'Created %s', [ExtractFileName(Dest)]),
             '', tkInfo);
+        end);
+    end).Start;
+end;
+
+procedure TDualPanelWindow.BeginTestArchive;
+var
+  Paths: TArray<string>;
+  Life: ILifeFlag;
+  Token: IJobCancelToken;
+  Src, Title: string;
+begin
+  if not HostInPanelsWorkspace or not CanStartOperation or Assigned(FSplitToken) then
+    Exit;
+  Paths := FileUrisToLocalPaths(CollectActiveSources);
+  Title := T('ui.archtest.title', 'Test archive');
+  if (Length(Paths) <> 1) or not TFile.Exists(Paths[0]) or
+    not SameText(ExtractFileExt(Paths[0]), '.zip') then
+  begin
+    OpenStub(skShellInfo, Title, T('ui.archtest.oneZip', 'Select one ZIP archive on disk'));
+    Exit;
+  end;
+  Life := FLife;
+  Token := TJobCancelToken.Create;
+  FSplitToken := Token;
+  Src := Paths[0];
+  OpenStub(skShellInfo, Title, T('ui.split.working', 'Working... Esc=Cancel'));
+  TThread.CreateAnonymousThread(
+    procedure
+    var
+      R: TArchiveTestResult;
+      Err: string;
+    begin
+      R := Default(TArchiveTestResult);
+      Err := '';
+      try
+        R := TestZipArchive(Src,
+          function: Boolean
+          begin
+            Result := Token.IsCancellationRequested;
+          end);
+      except
+        on E: Exception do
+          Err := E.Message;
+      end;
+      TThread.Queue(nil,
+        procedure
+        var
+          Text: string;
+        begin
+          if Token.IsCancellationRequested or not Life.Alive then
+            Exit;
+          FSplitToken := nil;
+          CloseStub;
+          if Err <> '' then
+          begin
+            OpenStub(skShellInfo, Title, Err);
+            Exit;
+          end;
+          if R.Cancelled then
+            Exit;
+          if R.Failed = 0 then
+          begin
+            FToast.Show(T('ui.archtest.ok', '%d files OK', [R.Checked]), '', tkInfo);
+            Exit;
+          end;
+          Text := T('ui.archtest.failed', '%d of %d files are damaged:',
+            [R.Failed, R.Checked]) + sLineBreak + string.Join(sLineBreak, R.Errors);
+          OpenStub(skShellInfo, Title, Text);
         end);
     end).Start;
 end;

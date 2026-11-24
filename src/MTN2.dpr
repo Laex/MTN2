@@ -54,6 +54,7 @@ uses
   uHistoryPopup in 'Core\uHistoryPopup.pas',
   uChecksums in 'Core\uChecksums.pas',
   uFileSplit in 'Core\uFileSplit.pas',
+  uArchiveTest in 'Core\uArchiveTest.pas',
   uThemeTypes in 'Core\uThemeTypes.pas',
   uMessageBus in 'Core\uMessageBus.pas',
   uDualPanelInput in 'Core\uDualPanelInput.pas',

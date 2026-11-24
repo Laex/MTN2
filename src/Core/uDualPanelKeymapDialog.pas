@@ -221,6 +221,7 @@ const
     'External editor',
     'Checksums',
     'Split / combine files',
+    'Test archive',
     'Multi-rename',
     'Copy name',
     'Save list to a file',

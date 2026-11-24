@@ -29,6 +29,7 @@ uses
   TestExternalTools in 'TestExternalTools.pas',
   TestFileCompare in 'TestFileCompare.pas',
   TestFileSplit in 'TestFileSplit.pas',
+  TestArchiveTest in 'TestArchiveTest.pas',
   TestFileFind in 'TestFileFind.pas',
   TestFileVfsScanner in 'TestFileVfsScanner.pas',
   TestLongPaths in 'TestLongPaths.pas',

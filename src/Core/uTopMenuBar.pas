@@ -52,6 +52,7 @@ type
     tmaFileCompare,
     tmaFileChecksums,
     tmaFileSplitCombine,
+    tmaFileTestArchive,
     tmaFileMultiRename,
     tmaFileRestore,
     tmaFileDelete,
@@ -502,6 +503,8 @@ begin
       Result := kaChecksums;
     tmaFileSplitCombine:
       Result := kaSplitCombine;
+    tmaFileTestArchive:
+      Result := kaTestArchive;
     tmaFileMultiRename:
       Result := kaMultiRename;
     tmaFileRestore:

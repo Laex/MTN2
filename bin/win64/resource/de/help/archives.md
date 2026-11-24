@@ -6,6 +6,7 @@
 - **Shift+F1** – Auswahl packen, **Shift+F2** – entpacken.
 <!--pack-->- Der Packen-Dialog schlägt den Namen des aktuellen Ordners als Archivnamen vor und lässt den Typ wählen: `zip` oder `7z`. Ein `7z`-Archiv kann eine Kompressionsstufe, ein Passwort und verschlüsselte Dateinamen erhalten (für `zip` sind diese Felder gesperrt); zu einem verschlüsselten `7z`-Archiv lassen sich Dateien hinzufügen und daraus löschen.
 <!--password-->- 7z und andere Formate – über das 7-Zip-Plugin (`7z.dll` gehört zum Programm; sie lässt sich durch eine eigene Kopie in `plugins\mtn.7z\` ersetzen).
+<!--test-->- **Archiv prüfen** (Datei > Archiv prüfen): vergleicht jede Datei des ZIP unter dem Cursor mit der gespeicherten CRC-32, ohne zu entpacken (Esc bricht ab). Ein intaktes Archiv zeigt eine Kurzmeldung, beschädigte Einträge werden namentlich aufgelistet. Der Befehl hat keine Standardtaste und lässt sich im Tastaturdialog zuweisen.
 - Bei verschlüsselten Archiven fragt das Programm nach dem Passwort: beim Öffnen eines Archivs mit verschlüsselten Dateinamen, sonst beim ersten Ansehen oder Kopieren einer verschlüsselten Datei. Ein falsches Passwort wird erneut abgefragt; das richtige bleibt bis zum Beenden des Programms gespeichert.
 
 ---

@@ -234,6 +234,7 @@
         <DCCReference Include="Core\uHistoryPopup.pas"/>
         <DCCReference Include="Core\uChecksums.pas"/>
         <DCCReference Include="Core\uFileSplit.pas"/>
+        <DCCReference Include="Core\uArchiveTest.pas"/>
         <DCCReference Include="Core\uThemeTypes.pas"/>
         <DCCReference Include="Core\uMessageBus.pas"/>
         <DCCReference Include="Core\uDualPanelInput.pas"/>

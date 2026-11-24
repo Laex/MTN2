@@ -150,6 +150,7 @@ type
     OpenMarkdownColorsDialog: TKeymapProc;
     BeginChecksums: TKeymapProc;
     BeginSplitCombine: TKeymapProc;
+    BeginTestArchive: TKeymapProc;
     BeginMultiRename: TKeymapProc;
     NavigateToRecycleBin: TKeymapProc;
     RestoreCursorItemFromRecycleBin: TKeymapProc;
@@ -1011,6 +1012,9 @@ begin
     kaSplitCombine:
       if Assigned(AHost.BeginSplitCombine) then
         AHost.BeginSplitCombine();
+    kaTestArchive:
+      if Assigned(AHost.BeginTestArchive) then
+        AHost.BeginTestArchive();
     kaMultiRename:
       if Assigned(AHost.BeginMultiRename) then
         AHost.BeginMultiRename();

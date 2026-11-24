@@ -108,6 +108,7 @@ begin
     tmaFileCompare: CallProc(AHost.BeginCompareFiles);
     tmaFileChecksums: CallProc(AHost.BeginChecksums);
     tmaFileSplitCombine: CallProc(AHost.BeginSplitCombine);
+    tmaFileTestArchive: CallProc(AHost.BeginTestArchive);
     tmaFileMultiRename: CallProc(AHost.BeginMultiRename);
     tmaFileRestore: CallProc(AHost.RestoreCursorItemFromRecycleBin);
     tmaFileDelete: CallJob(AHost.BeginJob, pjkDelete, True);

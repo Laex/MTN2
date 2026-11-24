@@ -10,6 +10,7 @@ This file describes what changes for the user from version to version: new featu
 
 - The "File already exists" prompt has a "Compare" button: it opens both files in the comparison view (the new one on the left, the existing one on the right) and brings the prompt back when the view is closed. Files that cannot be shown as a text comparison (binary, identical) get a one-line verdict instead.
 - "Split / combine..." in the File menu cuts the file under the cursor into numbered parts (`name.001`, `name.002`, ...) of a chosen size (`700M`, `1.44M`, `4G`) and joins the parts back into one file when the cursor is on any part. Existing files are never overwritten; Esc cancels and removes the unfinished result.
+- "Test archive" in the File menu checks every file of the ZIP archive under the cursor against its stored checksum without unpacking it, and lists the damaged ones.
 
 ## Dev v0.5.12.4 – 2026-11-24
 
