@@ -86,7 +86,7 @@ if (-not $NoPlugins) {
         $Dest = Join-Path $PluginsOut $Plugin.Name
         New-Item -ItemType Directory -Force $Dest | Out-Null
         foreach ($Dpr in Get-ChildItem $Plugin.FullName -Filter '*.dpr' -File) {
-            $Units = "$Src\Core;$Src\Platform\Posix;$($Plugin.FullName);$($Plugin.FullName)\Posix"
+            $Units = "$Src\Core;$Src\Platform\Posix;$Src\Hosts\Sdl;$($Plugin.FullName);$($Plugin.FullName)\Posix"
             $Output = & (Join-Path $Studio 'bin\dcclinux64.exe') "--syslibroot:$Sdk" "--libpath:$Libs" '--linker-option:-lstdc++' `
                 "-U$Units" "-N0$PluginDcu" "-E$Dest" '-$D-' '-$O+' $Dpr.FullName 2>&1
             if ($LASTEXITCODE -ne 0) {

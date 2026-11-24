@@ -1,0 +1,12 @@
+{
+  "id": "mtn.thumbs",
+  "name": "Thumbnails",
+  "version": "0.1.0",
+  "abi": 1,
+  "description": {
+    "en": "Shows the pictures of the folder in the active panel as a sheet of thumbnails (Plugins menu). Arrows move, Enter or a double click opens the picture.",
+    "ru": "Показывает картинки папки активной панели листом миниатюр (меню «Плагины»). Стрелки перемещают, Enter или двойной щелчок открывает картинку."
+  },
+  "author": "MTN2",
+  "help": "help.md"
+}

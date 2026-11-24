@@ -38,6 +38,7 @@ uses
   TestPluginManifest in 'TestPluginManifest.pas',
   TestSevenZipPlugin in 'TestSevenZipPlugin.pas',
   TestSevenZipOpen in 'TestSevenZipOpen.pas',
+  TestThumbsLayout in 'TestThumbsLayout.pas',
   TestTmpPanelPlugin in 'TestTmpPanelPlugin.pas',
   TestTmpPanelCollect in 'TestTmpPanelCollect.pas',
   TestLogFilter in 'TestLogFilter.pas',
