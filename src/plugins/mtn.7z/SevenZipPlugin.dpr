@@ -499,6 +499,143 @@ begin
   end;
 end;
 
+{$IFDEF MSWINDOWS}
+const
+  cSfxCommand = 'sevenzip.sfx';
+
+var
+  GSfxText: string;
+  GSfxBusy: Integer;
+
+{ The self-extracting module (7z.sfx) of this plugin folder, 7-Zip or Far ArcLite. }
+function FindSfxModule: string;
+var
+  Candidates: TArray<string>;
+  C, PF: string;
+begin
+  PF := GetEnvironmentVariable('ProgramFiles');
+  Candidates := [
+    TPath.Combine(ExtractFilePath(GetModuleName(HInstance)), '7z.sfx'),
+    TPath.Combine(PF, '7-Zip\7z.sfx'),
+    TPath.Combine(PF, 'Far Manager\Plugins\ArcLite\7z.sfx')];
+  for C in Candidates do
+    if (C <> '') and TFile.Exists(C) then
+      Exit(C);
+  Result := '';
+end;
+
+procedure MainSfxDone(AUserData: Pointer); cdecl;
+var
+  Text: string;
+begin
+  GTestLock.Enter;
+  try
+    Text := GSfxText;
+  finally
+    GTestLock.Leave;
+  end;
+  TInterlocked.Exchange(GSfxBusy, 0);
+  ShowNotice(Text, 0);
+end;
+
+{ Writes ASfx followed by the archive as AOut: a program that unpacks the archive. }
+function WriteSfx(const ASfx, AArchive, AOut: string; out AError: string): Boolean;
+var
+  Dst, Src: TFileStream;
+begin
+  Result := False;
+  AError := '';
+  try
+    Dst := TFileStream.Create(AOut, fmCreate);
+    try
+      Src := TFileStream.Create(ASfx, fmOpenRead or fmShareDenyWrite);
+      try
+        Dst.CopyFrom(Src, 0);
+      finally
+        Src.Free;
+      end;
+      Src := TFileStream.Create(AArchive, fmOpenRead or fmShareDenyWrite);
+      try
+        Dst.CopyFrom(Src, 0);
+      finally
+        Src.Free;
+      end;
+    finally
+      Dst.Free;
+    end;
+    Result := True;
+  except
+    on E: Exception do
+    begin
+      AError := E.Message;
+      if TFile.Exists(AOut) then
+        TFile.Delete(AOut);
+    end;
+  end;
+end;
+
+{ The "Make self-extracting archive" command: turns the .7z under the cursor into
+  a program next to it; an existing file is never replaced. }
+procedure CmdMakeSfx(AUserData: Pointer); cdecl;
+var
+  Uri, Local, Sfx, Target, DoneFmt, FailText: string;
+  N: Integer;
+begin
+  try
+    if (GHostApi = nil) or not Assigned(GHostApi.PostToMain) then
+      Exit;
+    Uri := CursorFileUri;
+    Local := '';
+    if Uri <> '' then
+      Local := FileUriToPath(Uri);
+    if (Local = '') or not TFile.Exists(Local) or not SameText(ExtractFileExt(Local), '.7z') then
+    begin
+      ShowNotice(Tr('msg.sfxNoFile', 'Put the cursor on a .7z archive on disk.'), 0);
+      Exit;
+    end;
+    Sfx := FindSfxModule;
+    if Sfx = '' then
+    begin
+      ShowNotice(Tr('msg.sfxNoModule', '7z.sfx was not found: put it into the plugin folder.'), 1);
+      Exit;
+    end;
+    if TInterlocked.CompareExchange(GSfxBusy, 1, 0) <> 0 then
+      Exit;
+    Target := ChangeFileExt(Local, '.exe');
+    N := 1;
+    while TFile.Exists(Target) do
+    begin
+      Inc(N);
+      Target := ChangeFileExt(Local, '') + ' (' + IntToStr(N) + ').exe';
+    end;
+    DoneFmt := Tr('msg.sfxDone', 'Created %s');
+    FailText := Tr('msg.sfxFailed', 'Could not create the program: ');
+    TThread.CreateAnonymousThread(
+      procedure
+      var
+        Err, Text: string;
+      begin
+        if WriteSfx(Sfx, Local, Target, Err) then
+          Text := Format(DoneFmt, [ExtractFileName(Target)])
+        else
+          Text := FailText + Err;
+        GTestLock.Enter;
+        try
+          GSfxText := Text;
+        finally
+          GTestLock.Leave;
+        end;
+        if Assigned(GHostApi) and Assigned(GHostApi.PostToMain) then
+          GHostApi.PostToMain(PAnsiChar(UTF8String(cPluginId)), MainSfxDone, nil)
+        else
+          TInterlocked.Exchange(GSfxBusy, 0);
+      end).Start;
+  except
+    TInterlocked.Exchange(GSfxBusy, 0);
+  end;
+end;
+{$ENDIF}
+
 function mtn_plugin_get_abi_version: Int64; cdecl;
 begin
   Result := cPluginAbiVersion;
@@ -544,6 +681,15 @@ begin
         PAnsiChar(UTF8String(cTestCommand)),
         PAnsiChar(UTF8String(Tr('ui.menu.test', 'Test archive (checksums)'))),
         @CmdTestArchive, nil, 72);
+{$IFDEF MSWINDOWS}
+    AHostApi.RegisterCommand(PAnsiChar(UTF8String(cPluginId)), PAnsiChar(UTF8String(cSfxCommand)),
+      @CmdMakeSfx, nil);
+    if Assigned(AHostApi.RegisterMenuItem) then
+      AHostApi.RegisterMenuItem(PAnsiChar(UTF8String(cPluginId)), 'Plugins',
+        PAnsiChar(UTF8String(cSfxCommand)),
+        PAnsiChar(UTF8String(Tr('ui.menu.sfx', 'Make self-extracting archive (.exe)'))),
+        @CmdMakeSfx, nil, 73);
+{$ENDIF}
   end;
   Result := 0;
 end;

@@ -186,6 +186,9 @@ $7zCandidates = @($env:MTN2_7Z_DLL,
 $7zSrc = $7zCandidates | Where-Object { $_ -and (Test-Path $_) } | Select-Object -First 1
 if ($7zSrc) {
     Copy-Item $7zSrc $Dest7z -Force
+    # The SFX module for "Make self-extracting archive" sits next to 7z.dll.
+    $SfxSrc = Join-Path (Split-Path $7zSrc -Parent) '7z.sfx'
+    if (Test-Path $SfxSrc) { Copy-Item $SfxSrc (Join-Path (Split-Path $Dest7z -Parent) '7z.sfx') -Force }
     Write-Host "OK: staged 7z.dll from $7zSrc"
 } elseif (-not (Test-Path $Dest7z)) {
     Write-Host "WARN: 7z.dll not found; drop an x64 copy into $(Split-Path $Dest7z) for 7z:// to work"

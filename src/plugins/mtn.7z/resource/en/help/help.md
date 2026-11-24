@@ -10,4 +10,6 @@ Inside an archive:
 
 "Test archive (checksums)" in the Plugins menu (and File > Test archive for archives that are not ZIP) checks every file of the archive under the cursor against its stored checksums without unpacking it, in the background.
 
+"Make self-extracting archive (.exe)" in the Plugins menu (Windows only) turns the .7z archive under the cursor into a program next to it that unpacks the archive without 7-Zip. An existing file is never replaced. It needs the `7z.sfx` module in the plugin folder, the 7-Zip folder or Far ArcLite.
+
 On Windows `7z.dll` is taken from the plugin folder; on Linux the `7zz` or `7z` program must be in PATH.
