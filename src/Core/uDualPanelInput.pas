@@ -149,6 +149,7 @@ type
     ClearConsoleBuffer: TKeymapProc;
     OpenMarkdownColorsDialog: TKeymapProc;
     BeginChecksums: TKeymapProc;
+    BeginSplitCombine: TKeymapProc;
     BeginMultiRename: TKeymapProc;
     NavigateToRecycleBin: TKeymapProc;
     RestoreCursorItemFromRecycleBin: TKeymapProc;
@@ -1007,6 +1008,9 @@ begin
     kaChecksums:
       if Assigned(AHost.BeginChecksums) then
         AHost.BeginChecksums();
+    kaSplitCombine:
+      if Assigned(AHost.BeginSplitCombine) then
+        AHost.BeginSplitCombine();
     kaMultiRename:
       if Assigned(AHost.BeginMultiRename) then
         AHost.BeginMultiRename();

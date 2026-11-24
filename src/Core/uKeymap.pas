@@ -125,6 +125,7 @@ type
     kaExternalView,   // Alt+F3 -- external viewer
     kaExternalEdit,   // Alt+F4 -- external editor
     kaChecksums,      // Ctrl+Alt+H -- calculate / verify checksums
+    kaSplitCombine,   // unbound by default -- split a file into parts / join the parts
     kaMultiRename,    // Ctrl+Alt+N -- rename the selected items by rules
     kaCopyItemName,   // Ctrl+Shift+Ins -- copy item name(s) only (no path)
     kaExportList,     // unbound by default -- save the marked items as a text list
@@ -1048,6 +1049,7 @@ const
     'ExternalView',          // kaExternalView
     'ExternalEdit',          // kaExternalEdit
     'Checksums',             // kaChecksums
+    'SplitCombine',          // kaSplitCombine
     'MultiRename',           // kaMultiRename
     'CopyItemName',          // kaCopyItemName
     'ExportList',            // kaExportList

@@ -108,6 +108,8 @@ function BuildWorkspaceLibraryDialog(const AItems: TArray<string>;
   const ATitle: string = ''): TDialogDeclaration;
 function BuildCreateLinkDialog(const ALinkName, ATarget: string;
   ALinkTypeIndex: Integer = 0): TDialogDeclaration;
+function BuildSplitFileDialog(const ADestDir, APartSize: string): TDialogDeclaration;
+function BuildCombineFilesDialog(const ADestFile: string): TDialogDeclaration;
 /// <summary>ACreated / AModified / AAccessed: date text for the three time
 /// fields ('' = differs between the items / unknown).</summary>
 function BuildSetAttributesDialog(const ASummary, AOwnerNow, AOwnerEdit: string;
@@ -816,6 +818,19 @@ begin
   DialogSetInputValue(Result, 'link_name', ALinkName);
   DialogSetInputValue(Result, 'target', ATarget);
   DialogSetDropDownSelected(Result, 'link_type', ALinkTypeIndex);
+end;
+
+function BuildSplitFileDialog(const ADestDir, APartSize: string): TDialogDeclaration;
+begin
+  RequireDialogResource(cResDialogSplitFile, Result);
+  DialogSetInputValue(Result, 'dest', ADestDir);
+  DialogSetInputValue(Result, 'size', APartSize);
+end;
+
+function BuildCombineFilesDialog(const ADestFile: string): TDialogDeclaration;
+begin
+  RequireDialogResource(cResDialogCombineFiles, Result);
+  DialogSetInputValue(Result, 'dest', ADestFile);
 end;
 
 function BuildSetAttributesDialog(const ASummary, AOwnerNow, AOwnerEdit: string;

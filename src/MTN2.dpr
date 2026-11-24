@@ -53,6 +53,7 @@ uses
   uDialogHistory in 'Core\uDialogHistory.pas',
   uHistoryPopup in 'Core\uHistoryPopup.pas',
   uChecksums in 'Core\uChecksums.pas',
+  uFileSplit in 'Core\uFileSplit.pas',
   uThemeTypes in 'Core\uThemeTypes.pas',
   uMessageBus in 'Core\uMessageBus.pas',
   uDualPanelInput in 'Core\uDualPanelInput.pas',

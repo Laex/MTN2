@@ -79,6 +79,8 @@ begin
       Result := 'fileops.md#attributes';
     hdkChecksumOptions, hdkChecksumResult:
       Result := 'fileops.md#checksums';
+    hdkSplitFile, hdkCombineFiles:
+      Result := 'fileops.md#split-and-combine';
     hdkCompareOptions:
       Result := 'sync.md#compare-folders';
     hdkMultiRename:
@@ -198,7 +200,7 @@ type
 const
   // The first rule whose prefix starts the name wins, so the specific
   // prefixes come before the general ones.
-  cRules: array[0..78] of TTopicRule = (
+  cRules: array[0..79] of TTopicRule = (
     (Prefix: 'tmaFileSelect'; Topic: 'selection.md'),
     (Prefix: 'tmaFileUnselect'; Topic: 'selection.md'),
     (Prefix: 'tmaFileInvertSelect'; Topic: 'selection.md'),
@@ -215,6 +217,7 @@ const
     (Prefix: 'tmaFileRunInNewTab'; Topic: 'terminals.md'),
     (Prefix: 'tmaFileSetAttributes'; Topic: 'fileops.md#attributes'),
     (Prefix: 'tmaFileChecksums'; Topic: 'fileops.md#checksums'),
+    (Prefix: 'tmaFileSplitCombine'; Topic: 'fileops.md#split-and-combine'),
     (Prefix: 'tmaFileMultiRename'; Topic: 'fileops.md#multi-rename'),
     (Prefix: 'tmaFileExportList'; Topic: 'fileops.md#export-list'),
     (Prefix: 'tmaFile'; Topic: 'fileops.md'),

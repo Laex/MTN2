@@ -1,0 +1,55 @@
+{
+  "type": "dialog",
+  "version": "2.0",
+  "title": "Combine files",
+  "width": 70,
+  "height": 9,
+  "children": [
+    {
+      "type": "label",
+      "text": "Result file:",
+      "id": "lbl_dest",
+      "col": 1,
+      "row": 0,
+      "width": 66,
+      "height": 1
+    },
+    {
+      "type": "input",
+      "id": "dest",
+      "value": "",
+      "col": 1,
+      "row": 1,
+      "width": 66,
+      "height": 1,
+      "history": "combinedest"
+    },
+    {
+      "type": "separator",
+      "col": 0,
+      "row": 3,
+      "width": 68,
+      "height": 1
+    },
+    {
+      "type": "button",
+      "id": "ok",
+      "text": "Combine",
+      "default": true,
+      "col": 19,
+      "row": 5,
+      "width": 14,
+      "height": 1
+    },
+    {
+      "type": "button",
+      "id": "cancel",
+      "text": "Cancel",
+      "cancel": true,
+      "col": 35,
+      "row": 5,
+      "width": 14,
+      "height": 1
+    }
+  ]
+}

@@ -58,6 +58,8 @@ Only for files and folders on disk: archives, SFTP, the Recycle Bin and search r
 
 <!--checksums-->**Checksums.** They are calculated in the background (Esc – cancel). In the result list: **Copy** – to the clipboard, **Save** – to `<file>.sha256` (one file) or `checksums.sha256` in the panel folder. Verification marks every line `OK`, `FAILED` or `MISSING`. Lines `hash *name`, `hash  name` and `SHA256 (name) = hash` are understood.
 
+<!--split-and-combine-->**Split / combine.** File > Split / combine... works on the file under the cursor (a file on disk). On an ordinary file it asks for the folder (the other panel's folder by default) and the part size (`700M`, `1.44M`, `4G` or bytes) and writes `name.001`, `name.002`, ... On any part (`name.001`...) it joins all parts back into one file. Existing files are never overwritten; Esc cancels and removes the unfinished result. The command has no default key; it can be bound in the keymap dialog.
+
 <!--multi-rename-->**Multi-rename.** The name and extension masks understand:
 - `[N]` – the old name without extension;
 - `[E]` – the old extension;

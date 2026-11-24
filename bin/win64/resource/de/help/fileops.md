@@ -58,6 +58,8 @@ Nur für Dateien und Ordner auf der Festplatte: Archive, SFTP, Papierkorb und Su
 
 <!--checksums-->**Prüfsummen.** Sie werden im Hintergrund berechnet (Esc – abbrechen). In der Ergebnisliste: **Kopieren** – in die Zwischenablage, **Speichern** – nach `<Datei>.sha256` (eine Datei) oder `checksums.sha256` im Panelordner. Die Prüfung markiert jede Zeile mit `OK`, `FAILED` oder `MISSING`. Zeilen der Form `Hash *Name`, `Hash  Name` und `SHA256 (Name) = Hash` werden verstanden.
 
+<!--split-and-combine-->**Teilen / Zusammenfügen.** Datei > Teilen / Zusammenfügen... arbeitet mit der Datei unter dem Cursor (auf dem Datenträger). Bei einer normalen Datei werden Ordner (standardmäßig der der anderen Leiste) und Teilgröße (`700M`, `1.44M`, `4G` oder Bytes) abgefragt und `name.001`, `name.002`, ... geschrieben. Auf einem Teil (`name.001`...) werden alle Teile wieder zu einer Datei zusammengefügt. Vorhandene Dateien werden nie überschrieben; Esc bricht ab und entfernt das unfertige Ergebnis. Der Befehl hat keine Standardtaste; sie lässt sich im Tastaturdialog zuweisen.
+
 <!--multi-rename-->**Mehrfach umbenennen.** Die Masken für Name und Erweiterung kennen:
 - `[N]` – alter Name ohne Erweiterung;
 - `[E]` – alte Erweiterung;

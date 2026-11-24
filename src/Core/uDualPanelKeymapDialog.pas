@@ -220,6 +220,7 @@ const
     'External viewer',
     'External editor',
     'Checksums',
+    'Split / combine files',
     'Multi-rename',
     'Copy name',
     'Save list to a file',

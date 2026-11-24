@@ -160,7 +160,7 @@ begin
         Exit(fbcDialogList);
       hdkMkDir, hdkNewFile, hdkRename, hdkCopyInPlace, hdkHelp,
       hdkSelectMask, hdkUnselectMask, hdkDirSync, hdkCreateLink,
-      hdkSetAttributes, hdkDescribe,
+      hdkSetAttributes, hdkDescribe, hdkSplitFile, hdkCombineFiles,
       hdkCompareResult, hdkArchivePassword, hdkFolderHotlistAdd,
       hdkFolderHotlistRename, hdkWorkspaceSave, hdkWorkspaceRename,
       hdkWorkspaceTabRename, hdkWorkspaceConfirm, hdkKeymapEdit,
@@ -331,6 +331,10 @@ begin
       Result := TArray<string>.Create(S('Export list'), H('Enter', 'Save', '='), H('Esc', 'Cancel', '='));
     hdkChecksumOptions:
       Result := TArray<string>.Create(S('Checksums'), H('Enter', 'OK', '='), H('Esc', 'Cancel', '='));
+    hdkSplitFile:
+      Result := TArray<string>.Create(S('Split file'), H('Enter', 'Split', '='), H('Esc', 'Cancel', '='));
+    hdkCombineFiles:
+      Result := TArray<string>.Create(S('Combine files'), H('Enter', 'Combine', '='), H('Esc', 'Cancel', '='));
     hdkDatePicker:
       Result := TArray<string>.Create(S('Date'), S('^v select'), H('Enter', 'OK', '='), H('Esc', 'Cancel', '='));
     hdkFindPipeline:
