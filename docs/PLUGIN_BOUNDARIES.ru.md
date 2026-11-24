@@ -133,7 +133,7 @@
 |---|---|---|---|
 | **Ядро** | Dual Panel, Editor/Viewer, Theme Engine, Keymap, Jobs, VFS Core+схемы `file/zip/sys/recycle/find/ws/sftp`, Dialog Host, Overlay Renderer, ConPTY, Event Bus, Plugin Manager сам по себе | `src/Core`, `src/Forms`, `src/Themes` | Реализовано |
 | **Системные плагины (готово)** | `mtn.7z` (7z-архивы), `mtn.ws` (workspace-меню), `mtn.tmp` | `src/plugins/mtn.7z`, `src/plugins/mtn.ws`, `src/plugins/mtn.tmp` | Сделано, покрыто тестами |
-| **Системные плагины (запланировано)** | SFTP как отдельный плагин, Far API Wrapper, TC Plugin Bridge | – | Не начато («Far API Wrapper» – «Total Commander plugin bridge» «отложено»; SFTP-вынос не начат) |
+| **Системные плагины (запланировано)** | SFTP как отдельный плагин, Far API Wrapper, TC Plugin Bridge | – | Не начато («Far API Wrapper» – «Total Commander plugin bridge» «отложено»; вынос SFTP заблокирован до переноса сохранённых SSH-соединений, см. строку про SFTP в §3) |
 | **Пользовательские плагины (доступно)** | VFS-схема + панель (идентификация) + пункты меню + rebind хоткеев + pub/sub + invalidate | Host API (`uPluginHostAbi.pas`) | Работает уже сейчас, тем же путём что `mtn.7z` |
 | **Пользовательские плагины (запланировано)** | Полный Pull для панели, диалоги, F-bar/status/overlay/text-area как плагин-контент | `PANEL_PLUGIN.md` и другие `*_PLUGIN.md` | Контракт описан, cdecl не экспортирован: Pull для самой панели, overlay и text area (см. §6) |
 | **Не ABI-плагин (отдельный механизм)** | Макросы/скриптинг пользователя | – | Не путать с DLL/WASM-плагинами |

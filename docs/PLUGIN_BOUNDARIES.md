@@ -133,7 +133,7 @@ Source: [UI_PRIMITIVES.md](UI_PRIMITIVES.md) – the table of 7 primitives.
 |---|---|---|---|
 | **Core** | Dual Panel, Editor/Viewer, Theme Engine, Keymap, Jobs, VFS Core + schemes `file/zip/sys/recycle/find/ws/sftp`, Dialog Host, Overlay Renderer, ConPTY, Event Bus, the Plugin Manager itself | `src/Core`, `src/Forms`, `src/Themes` | Implemented |
 | **System plugins (ready)** | `mtn.7z` (7z archives), `mtn.ws` (workspace menu), `mtn.tmp` | `src/plugins/mtn.7z`, `src/plugins/mtn.ws`, `src/plugins/mtn.tmp` | Done, covered by tests |
-| **System plugins (planned)** | SFTP as a separate plugin, Far API Wrapper, TC Plugin Bridge | – | Not started ("Far API Wrapper" – "Total Commander plugin bridge" "deferred"; moving SFTP out is not started) |
+| **System plugins (planned)** | SFTP as a separate plugin, Far API Wrapper, TC Plugin Bridge | – | Not started ("Far API Wrapper" – "Total Commander plugin bridge" "deferred"; moving SFTP out is blocked until the saved SSH connections are migrated, see the SFTP row in §3) |
 | **User plugins (available)** | VFS scheme + panel (identification) + menu items + hotkey rebind + pub/sub + invalidate | Host API (`uPluginHostAbi.pas`) | Works now, the same way as `mtn.7z` |
 | **User plugins (planned)** | Full Pull for the panel, dialogs, F-bar/status/overlay/text-area as plugin content | `PANEL_PLUGIN.md` and other `*_PLUGIN.md` | Contract described, cdecl not exported: Pull for the panel itself, overlay and text area (see §6) |
 | **Not an ABI plugin (separate mechanism)** | User macros/scripting | – | Do not confuse with DLL/WASM plugins |
