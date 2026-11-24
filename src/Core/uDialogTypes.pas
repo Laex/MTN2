@@ -191,6 +191,8 @@ const
   cDlgCmdOverwriteDiffSize = 'diffsize';
   /// <summary>Overwrite prompt: keep both, the new file under a free name.</summary>
   cDlgCmdAutoRename = 'autorename';
+  /// <summary>Overwrite prompt: open both files in the diff viewer.</summary>
+  cDlgCmdCompare = 'compare';
   cDlgCmdDelete = 'delete';
   cDlgCmdRetry = 'retry';
   /// <summary>Error prompt: repeat the rest of the job with administrator rights.</summary>

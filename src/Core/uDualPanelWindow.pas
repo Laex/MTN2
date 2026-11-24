@@ -320,6 +320,9 @@ type
     FDirSync: TDirSyncDialogController;
     FMultiRename: TMultiRenameController;
     FDiffView: TDiffViewer;
+    /// <summary>The diff viewer was opened from the overwrite prompt; the
+    /// prompt stays pending and reopens when the viewer closes.</summary>
+    FAskCompareActive: Boolean;
     FKeymapHost: TDualPanelKeymapHost;
     FShiftSelect: TShiftSelectGesture;
     FClickHost: TDualPanelClickHost;
@@ -863,6 +866,7 @@ type
     procedure ReturnToCompareGroup;
     procedure LeaveRemovedFolder(ASide: TPanelSide);
     procedure DiffViewerClosed(Sender: TObject);
+    function TryCompareOverwriteAsk: Boolean;
     procedure OpenPairCompare(const ALeftRow, ARightRow: TPanelRow;
       const ALeftName, ARightName, ATitle: string);
     procedure RunPlainCompare(const ALeftRow, ARightRow: TPanelRow;
@@ -3096,6 +3100,8 @@ end;
 procedure TDualPanelWindow.HostOpenOverwriteAsk(const APath, ANewLine,
   AExistingLine: string);
 begin
+  if FAskCompareActive then
+    Exit;
   if not JobUiPrepareAsk(FDialog, FDialogKind, FJobProgressRes, FJobAskDeferred) then
     Exit;
   FDialogKind := hdkOverwriteAsk;
@@ -7041,6 +7047,13 @@ begin
     begin
       NotifyChanged;
     end;
+  if (Kind = hdkOverwriteAsk) and Assigned(FJobs) and
+     DialogCmdIs(AControlId, cDlgCmdCompare) then
+  begin
+    if TryCompareOverwriteAsk then
+      NotifyChanged;
+    Exit;
+  end;
   Ops.AfterStopConfirm :=
     procedure
     begin
@@ -8070,7 +8083,79 @@ end;
 
 procedure TDualPanelWindow.DiffViewerClosed(Sender: TObject);
 begin
+  if FAskCompareActive then
+  begin
+    FAskCompareActive := False;
+    if Assigned(FJobs) then
+      FJobs.ReplayCurrentAsk;
+    Exit;
+  end;
   ReturnToCompareGroup;
+end;
+
+function TDualPanelWindow.TryCompareOverwriteAsk: Boolean;
+var
+  St: TPanelJobState;
+  Life: ILifeFlag;
+  Token: IJobCancelToken;
+  SrcUri, DstUri: string;
+begin
+  St := FJobs.State;
+  if St.PendingBothDirs or (St.PendingSrcURI = '') or (St.PendingDstURI = '') then
+  begin
+    FToast.Show(T('ui.job.compareFoldersWarn',
+      'Only files can be compared.'), '', tkWarning);
+    Exit(False);
+  end;
+  if not Assigned(FDiffView) then
+  begin
+    FDiffView := TDiffViewer.Create(Theme);
+    FDiffView.OnChanged := HelpChanged;
+    FDiffView.OnClosed := DiffViewerClosed;
+  end;
+  Life := FLife;
+  Token := TJobCancelToken.Create;
+  SrcUri := St.PendingSrcURI;
+  DstUri := St.PendingDstURI;
+  FDialogKind := hdkNone;
+  FDialog.Close;
+  FAskCompareActive := True;
+  CloseTransientUiBeforeDialog;
+  // Files the viewer cannot show (binary, equal, too large) get a one-line
+  // verdict instead, then the prompt comes back.
+  FDiffView.Open(SrcUri, DstUri, T('ui.job.compareNew', 'New'),
+    T('ui.job.compareExisting', 'Existing'), FVfs,
+    procedure
+    begin
+      if not Life.Alive then
+        Exit;
+      CompareFilesAsync(SrcUri, DstUri, FVfs, Token,
+        procedure(AResult: TCompareResult; ADiffOffset: Int64;
+          const AError: TVfsError)
+        var
+          Msg: string;
+        begin
+          if not Life.Alive then
+            Exit;
+          case AResult of
+            crEqual:
+              Msg := T('ui.compareFiles.identical', 'Files are identical.');
+            crDifferSize:
+              Msg := T('ui.compareFiles.sizeBinary', 'Files differ in size.');
+            crDifferAtOffset:
+              Msg := T('ui.compareFiles.offsetBinary',
+                'Files differ at byte offset %d.', [ADiffOffset]);
+          else
+            Msg := T('ui.compareFiles.failed', 'Compare failed: %s',
+              [AError.Message]);
+          end;
+          FToast.Show(Msg, '', tkInfo);
+          FAskCompareActive := False;
+          if Assigned(FJobs) then
+            FJobs.ReplayCurrentAsk;
+        end);
+    end);
+  Result := True;
 end;
 
 procedure TDualPanelWindow.RunPlainCompare(const ALeftRow, ARightRow: TPanelRow;

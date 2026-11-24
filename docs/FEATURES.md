@@ -40,7 +40,7 @@ A short overview of the features; details are in the help (F1), the other docume
 - **Far-style selection** – `Ins`, `Space`, Gray `+` / `-` / `*`, `Shift+Gray +`, selection by extension; folders are included with the "Select folders too" option.
 - **Shift movement** – arrows, `Home`, `End`, `PgUp`, `PgDn` with `Shift` mark or unmark based on the row where the movement started.
 - **Restore selection** – `Ctrl+M` brings back the selection cleared after a copy or delete.
-- **Mask groups** – `@Name` in any mask (selection, filter, search, color highlighting); Images, Audio, Video, Documents, Archives, Sources are built in, custom groups are created in the dialogs and with `Ctrl+G` in a mask field.
+- **Mask groups** – `@Name` in any mask (selection, filter, search, color highlighting); Images, Audio, Video, Documents, Archives, Sources are built in, custom groups are created in the dialogs and with `Ctrl+G` in a mask field. The list that drops down from a mask field shows the groups too and ends with a "Mask groups..." row that opens the groups editor.
 - **Fast selection in large lists** – invert and mask selection in folders with tens of thousands of files are instant.
 
 ## File operations and background jobs
@@ -52,7 +52,7 @@ A short overview of the features; details are in the help (F1), the other docume
 - **Error resilience** – automatic read retries, per-file "Skip" and "Skip all", confirmation before aborting an operation.
 - **Administrator helper** – on "Access denied" the "Admin" button repeats the copy, move, delete, folder creation or extraction with a single UAC prompt.
 - **Folder sizes** – `F3` on a folder (or the selected folders) calculates the size into the Size column, `F3` on the `..` row does it for all folders of the panel; the sizes are kept while a folder is unchanged.
-- **Folder merge** – copying or moving a folder onto an existing one merges the contents; the "File already exists" prompt offers overwrite, skip, rename, append, overwrite if newer, overwrite if the size differs and automatic rename (`name (2).ext`); the same rules can be picked in the copy dialog in advance.
+- **Folder merge** – copying or moving a folder onto an existing one merges the contents; the "File already exists" prompt offers overwrite, skip, rename, append, overwrite if newer, overwrite if the size differs and automatic rename (`name (2).ext`), and a Compare button that opens both files in the comparison view; the same rules can be picked in the copy dialog in advance.
 - **Verified copy** – the "Verify after copying" option compares every copied file with its source before it is kept; a difference is an error of that file with the usual retry / skip.
 - **Far-style delete** – `F8` / `Del` to the Recycle Bin, `Shift+Del` permanently, `Shift+F8` only the item under the cursor; if the Recycle Bin fails, permanent deletion is offered.
 - **Multi-rename** – `Ctrl+Alt+N`: `[N]`, `[E]`, `[C]` masks, date, parent, size and metadata tags, text replacement and regular expressions, case changes, preview with conflict checks; "In editor" types the new names by hand, "Undo last" takes the previous batch back.
@@ -85,7 +85,7 @@ A short overview of the features; details are in the help (F1), the other docume
 - **File compare and merge** – `Ctrl+Alt+C`: a full-screen window, lines aligned by similarity, jumps between differences, copying differences both ways, undo and save.
 - **Group comparison** – with several files marked, files with the same names are compared in pairs, and a summary list leads to the differences.
 - **Folder comparison** – `Ctrl+Shift+C` by time, size or contents; contents are compared in the background.
-- **Folder synchronization** – `Ctrl+Alt+S`: an action per file (`->`, `<-`, `--`), conflict resolution, counts of copies and skips; the Mirror mode also deletes files that exist only on the target, after a dry run and a confirmation. A dialog before the comparison picks the mode and leaves out junctions, `.gitignore`-style files, a robocopy `exclude.rcj` and Obsidian ignore filters; the comparison shows its progress and can run in the background.
+- **Folder synchronization** – `Ctrl+Alt+S`: an action per file (`->`, `<-`, `--`), conflict resolution, counts of copies and skips; the Mirror mode also deletes files that exist only on the target, after a dry run and a confirmation. A dialog before the comparison picks the mode and leaves out junctions, `.gitignore`-style files, a robocopy `exclude.rcj` and Obsidian ignore filters, adds extra patterns to skip and can limit the run to files matching masks (`*.md;*.txt`, groups such as `@Video`); the comparison shows its progress and can run in the background.
 
 ## Archives
 

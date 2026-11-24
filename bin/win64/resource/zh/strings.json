@@ -637,6 +637,7 @@
       "newer": "较新时(&N)",
       "diffsize": "大小不同(&Z)",
       "autorename": "自动命名(&U)",
+      "compare": "比较(&M)",
       "cancel": "取消"
     },
     "DIALOG_PLUGINLIST": {

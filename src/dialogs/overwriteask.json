@@ -135,9 +135,18 @@
       "type": "button",
       "id": "autorename",
       "text": "Rename a&uto",
-      "col": 40,
+      "col": 38,
       "row": 11,
       "width": 15,
+      "height": 1
+    },
+    {
+      "type": "button",
+      "id": "compare",
+      "text": "Co&mpare",
+      "col": 54,
+      "row": 11,
+      "width": 11,
       "height": 1
     },
     {

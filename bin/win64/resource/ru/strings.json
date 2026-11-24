@@ -636,6 +636,7 @@
       "newer": "Если &новее",
       "diffsize": "Если &размер другой",
       "autorename": "&Автоимя",
+      "compare": "&Сравнить",
       "cancel": "Отмена"
     },
     "DIALOG_PLUGINLIST": {

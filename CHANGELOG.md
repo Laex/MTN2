@@ -6,6 +6,10 @@ This file describes what changes for the user from version to version: new featu
 
 ## Unreleased
 
+### Added
+
+- The "File already exists" prompt has a "Compare" button: it opens both files in the comparison view (the new one on the left, the existing one on the right) and brings the prompt back when the view is closed. Files that cannot be shown as a text comparison (binary, identical) get a one-line verdict instead.
+
 ## Dev v0.5.12.4 – 2026-11-24
 
 ### Fixed

@@ -639,6 +639,7 @@
       "newer": "If &newer",
       "diffsize": "If si&ze differs",
       "autorename": "Rename a&uto",
+      "compare": "Co&mpare",
       "cancel": "Cancel"
     },
     "DIALOG_PLUGINLIST": {

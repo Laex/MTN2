@@ -33,6 +33,7 @@ type
     [Test] procedure TestConsumeJobListCancelAll;
     [Test] procedure TestConsumeStopConfirm;
     [Test] procedure TestKeepConfirmIfDialogStayed;
+    [Test] procedure TestOverwriteAskOffersCompare;
   end;
 
 implementation
@@ -897,6 +898,31 @@ end;
 procedure TTestDualPanelJobDialogs.TestConsumeStopConfirm;
 begin
   TestDualPanelJobDialogs.TestConsumeStopConfirm;
+end;
+
+procedure TestOverwriteAskOffersCompare;
+var
+  Decl: TDialogDeclaration;
+  I: Integer;
+  Found: Boolean;
+begin
+  Decl := BuildOverwriteAskDialog('p', 'n', 'e');
+  Found := False;
+  for I := 0 to High(Decl.Controls) do
+    if (Decl.Controls[I].Kind = dckButton) and
+       (Decl.Controls[I].Id = cDlgCmdCompare) then
+    begin
+      Found := True;
+      Assert.IsTrue(Decl.Controls[I].Row < Decl.Height, 'compare is inside the frame');
+      Assert.IsTrue(Decl.Controls[I].Col + Decl.Controls[I].BoxW < Decl.Width,
+        'compare fits the width');
+    end;
+  Assert.IsTrue(Found, 'the overwrite prompt has a compare button');
+end;
+
+procedure TTestDualPanelJobDialogs.TestOverwriteAskOffersCompare;
+begin
+  TestDualPanelJobDialogs.TestOverwriteAskOffersCompare;
 end;
 
 procedure TTestDualPanelJobDialogs.TestKeepConfirmIfDialogStayed;
