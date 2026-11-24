@@ -115,9 +115,9 @@ begin
         ARecompose();
     end;
   Result.EditText :=
-    function(const AText: string; const AOnDone: TProc<string>): Boolean
+    function(const APluginId, AText: string; const AOnDone: TProc<string>): Boolean
     begin
-      Result := Assigned(AWindow()) and AWindow().PluginEditText(AText, AOnDone);
+      Result := Assigned(AWindow()) and AWindow().PluginEditText(APluginId, AText, AOnDone);
       if Result then
         ARecompose();
     end;

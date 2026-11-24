@@ -8,6 +8,7 @@ uses
   System.SysUtils, System.Classes, System.IOUtils, System.JSON, System.Math,
   System.SyncObjs, System.Generics.Collections, System.Generics.Defaults,
   uPluginHostAbi in '..\..\Core\uPluginHostAbi.pas',
+  uPluginSdk in '..\..\Core\uPluginSdk.pas',
   uVfsTypes in '..\..\Core\uVfsTypes.pas',
   uImageInfo in '..\..\Core\uImageInfo.pas',
   uThumbsLayout,
@@ -26,6 +27,7 @@ type
     Files: TArray<string>;
     Times: TArray<TDateTime>;
     Sizes: TArray<Int64>;
+    StatsLoaded: Boolean;
     /// <summary>0 name, 1 date (newest first), 2 size (largest first), 3 extension.</summary>
     SortMode: Integer;
     Model: TThumbsModel;
@@ -43,13 +45,10 @@ type
   end;
 
 var
-  GHostApi: PHostApiTable;
   GContext: TThumbsContext;
   GDecoderReady: Boolean;
 
 constructor TThumbsContext.Create(const AFiles: TArray<string>);
-var
-  I: Integer;
 begin
   inherited Create;
   FRefs := 1;
@@ -59,16 +58,6 @@ begin
   SetLength(Images, Length(AFiles));
   SetLength(Times, Length(AFiles));
   SetLength(Sizes, Length(AFiles));
-  for I := 0 to High(AFiles) do
-  begin
-    try
-      Times[I] := TFile.GetLastWriteTime(AFiles[I]);
-      Sizes[I] := TFile.GetSize(AFiles[I]);
-    except
-      Times[I] := 0;
-      Sizes[I] := 0;
-    end;
-  end;
 end;
 
 destructor TThumbsContext.Destroy;
@@ -89,48 +78,25 @@ begin
     Free;
 end;
 
-function Tr(const AKey, ADefault: string): string;
+/// <summary>Reads the date and size of every picture; they are needed only when
+/// the sheet is sorted by date or size.</summary>
+procedure LoadStats(ACtx: TThumbsContext);
 var
-  Id, Key, Def: UTF8String;
-  Buf: array[0..511] of AnsiChar;
-  Len: Int64;
+  I: Integer;
 begin
-  Result := ADefault;
-  if (GHostApi = nil) or not Assigned(GHostApi.Translate) then
+  if ACtx.StatsLoaded then
     Exit;
-  Id := UTF8String(cPluginId);
-  Key := UTF8String(AKey);
-  Def := UTF8String(ADefault);
-  Len := GHostApi.Translate(PAnsiChar(Id), PAnsiChar(Key), PAnsiChar(Def), @Buf[0], SizeOf(Buf));
-  if (Len >= 0) and (Len < SizeOf(Buf)) then
-    Result := UTF8ToString(PAnsiChar(@Buf[0]));
-end;
-
-procedure ShowNotice(const AText: string; AKind: Int64);
-var
-  Text: UTF8String;
-begin
-  if (GHostApi = nil) or not Assigned(GHostApi.ShowMessage) then
-    Exit;
-  Text := UTF8String(AText);
-  GHostApi.ShowMessage(PAnsiChar(Text), AKind);
-end;
-
-function ReadPanelInfo: string;
-var
-  Buf: UTF8String;
-  Len: Int64;
-begin
-  Result := '';
-  if (GHostApi = nil) or not Assigned(GHostApi.PanelInfo) then
-    Exit;
-  Len := GHostApi.PanelInfo(nil, 0);
-  if Len <= 0 then
-    Exit;
-  SetLength(Buf, Len + 1);
-  Len := GHostApi.PanelInfo(PAnsiChar(Buf), Length(Buf));
-  if (Len > 0) and (Len < Length(Buf)) then
-    Result := UTF8ToString(PAnsiChar(Buf));
+  for I := 0 to High(ACtx.Files) do
+  begin
+    try
+      ACtx.Times[I] := TFile.GetLastWriteTime(ACtx.Files[I]);
+      ACtx.Sizes[I] := TFile.GetSize(ACtx.Files[I]);
+    except
+      ACtx.Times[I] := 0;
+      ACtx.Sizes[I] := 0;
+    end;
+  end;
+  ACtx.StatsLoaded := True;
 end;
 
 /// <summary>The folder (a file: URI) and the file under the cursor of the
@@ -144,7 +110,7 @@ var
 begin
   AFolderUri := '';
   ACursorUri := '';
-  Json := ReadPanelInfo;
+  Json := HostText(GHostApi.PanelInfo);
   if Json = '' then
     Exit;
   Root := TJSONObject.ParseJSONValue(Json);
@@ -217,6 +183,8 @@ var
   Mode: Integer;
 begin
   Mode := (ACtx.SortMode + 1) mod 4;
+  if Mode in [1, 2] then
+    LoadStats(ACtx);
   SetLength(Order, Length(ACtx.Files));
   for I := 0 to High(Order) do
     Order[I] := I;
@@ -270,7 +238,7 @@ var
   Snapshot: TArray<TThumbImage>;
   Title, Status: UTF8String;
 begin
-  if (ACtx.Handle = 0) or (GHostApi = nil) then
+  if (ACtx.Handle = 0) or GShutdown then
     Exit;
   ACtx.Lock.Enter;
   try
@@ -307,16 +275,13 @@ begin
 end;
 
 procedure RequestRepaint(ACtx: TThumbsContext);
-var
-  Api: PHostApiTable;
 begin
-  Api := GHostApi;
-  if Api = nil then
+  if GShutdown then
     Exit;
   if TInterlocked.Exchange(ACtx.Repaint, 1) <> 0 then
     Exit;
   ACtx.AddRef;
-  if Api.PostToMain(PAnsiChar(UTF8String(cPluginId)), MainRepaint, ACtx) <> 0 then
+  if not SdkPostToMain(MainRepaint, ACtx) then
   begin
     TInterlocked.Exchange(ACtx.Repaint, 0);
     ACtx.Release;
@@ -386,7 +351,7 @@ begin
   if Last < First then
     Exit;
   ACtx.AddRef;
-  TThread.CreateAnonymousThread(
+  SdkRunWorker(
     procedure
     begin
       try
@@ -394,7 +359,7 @@ begin
       finally
         ACtx.Release;
       end;
-    end).Start;
+    end);
 end;
 
 procedure OpenSelected(ACtx: TThumbsContext; AEdit: Boolean = False);
@@ -554,7 +519,7 @@ var
 begin
   if not GDecoderReady then
   begin
-    ShowNotice(Tr('msg.noDecoder', 'Pictures cannot be decoded here.'), 1);
+    Notice(Tr('msg.noDecoder', 'Pictures cannot be decoded here.'), 1);
     Exit;
   end;
   ReadActivePanel(FolderUri, CursorUri);
@@ -563,7 +528,7 @@ begin
     Folder := FileUriToPath(FolderUri);
   if (Folder = '') or not TDirectory.Exists(Folder) then
   begin
-    ShowNotice(Tr('msg.noFolder', 'Open a folder on disk in the active panel.'), 1);
+    Notice(Tr('msg.noFolder', 'Open a folder on disk in the active panel.'), 1);
     Exit;
   end;
   try
@@ -571,13 +536,13 @@ begin
   except
     on E: Exception do
     begin
-      ShowNotice(E.Message, 2);
+      Notice(E.Message, 2);
       Exit;
     end;
   end;
   if Length(Files) = 0 then
   begin
-    ShowNotice(Tr('msg.noPictures', 'There are no pictures in this folder.'), 1);
+    Notice(Tr('msg.noPictures', 'There are no pictures in this folder.'), 1);
     Exit;
   end;
   CloseCurrent;
@@ -621,7 +586,7 @@ begin
           Assigned(AHostApi.SurfaceSetFrame) and Assigned(AHostApi.SurfaceClose) and
           Assigned(AHostApi.PanelInfo) and Assigned(AHostApi.PostToMain)) then
     Exit(-2);
-  GHostApi := AHostApi;
+  SdkAttach(AHostApi, cPluginId);
   GDecoderReady := ThumbsDecodeInit;
   AHostApi.RegisterCommand(PAnsiChar(UTF8String(cPluginId)), PAnsiChar(UTF8String(cCommand)),
     @CmdOpenThumbs, nil);
@@ -640,7 +605,7 @@ begin
     TInterlocked.Exchange(GContext.Closed, 1);
     GContext := nil;
   end;
-  GHostApi := nil;
+  SdkDetach;
 end;
 
 exports

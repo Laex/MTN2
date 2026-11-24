@@ -9,6 +9,7 @@ library MultiRenamePlugin;
 uses
   System.SysUtils, System.Classes, System.JSON, System.Math, System.StrUtils,
   uPluginHostAbi in '..\..\Core\uPluginHostAbi.pas',
+  uPluginSdk in '..\..\Core\uPluginSdk.pas',
   uVfsTypes in '..\..\Core\uVfsTypes.pas',
   uMultiRename in 'uMultiRename.pas';
 
@@ -22,8 +23,6 @@ const
   cNoteCols = 20;
 
 var
-  GHostApi: THostApiTable;
-  GShutdown: Boolean;
   GSources: TArray<string>;
   GNames: TArray<string>;
   GIsDir: TArray<Boolean>;
@@ -35,68 +34,9 @@ var
   GNameCols: Integer;
   GPendingStatus: string;
   GReply: UTF8String;
-  GEditing: Boolean;
-
-function Tr(const AKey, ADefault: string): string;
-var
-  Id, Key, Def: UTF8String;
-  Buf: array[0..255] of AnsiChar;
-  Len: Int64;
-begin
-  Result := ADefault;
-  if not Assigned(GHostApi.Translate) then
-    Exit;
-  Id := UTF8String(cPluginId);
-  Key := UTF8String(AKey);
-  Def := UTF8String(ADefault);
-  Len := GHostApi.Translate(PAnsiChar(Id), PAnsiChar(Key), PAnsiChar(Def), @Buf[0], SizeOf(Buf));
-  if (Len >= 0) and (Len < SizeOf(Buf)) then
-    Result := UTF8ToString(PAnsiChar(@Buf[0]));
-end;
-
-procedure Notice(const AText: string; AKind: Int64);
-var
-  Text: UTF8String;
-begin
-  if not Assigned(GHostApi.ShowMessage) then
-    Exit;
-  Text := UTF8String(AText);
-  GHostApi.ShowMessage(PAnsiChar(Text), AKind);
-end;
-
-function HostText(AFn: THostTextOutFn): string;
-var
-  Buf: UTF8String;
-  Len: Int64;
-begin
-  Result := '';
-  if not Assigned(AFn) then
-    Exit;
-  Len := AFn(nil, 0);
-  if Len <= 0 then
-    Exit;
-  SetLength(Buf, Len + 1);
-  Len := AFn(PAnsiChar(Buf), Length(Buf));
-  if (Len > 0) and (Len < Length(Buf)) then
-    Result := UTF8ToString(PAnsiChar(Buf));
-end;
-
-function HostPanelListText: string;
-var
-  Buf: UTF8String;
-  Len: Int64;
-begin
-  Result := '';
-  if not Assigned(GHostApi.PanelList) then
-    Exit;
-  Len := GHostApi.PanelList(-1, nil, 0);
-  if Len <= 0 then
-    Exit;
-  SetLength(Buf, Len + 1);
-  Len := GHostApi.PanelList(-1, PAnsiChar(Buf), Length(Buf));
-  if (Len > 0) and (Len < Length(Buf)) then
-    Result := UTF8ToString(PAnsiChar(Buf));
-end;
+  // Identifies the pending editor request: an answer carrying an older token
+  // belongs to a run that a newer one replaced and is dropped.
+  GEditToken: NativeInt;
 
 { ---- dialog ------------------------------------------------------------- }
 
@@ -124,61 +64,6 @@ begin
     Cell(Tr('dlg.colNew', 'New name'), GNameCols) + ' | ' + Tr('dlg.colNote', 'Note');
 end;
 
-procedure AddItem(AChildren: TJSONArray; const AType, AId, AText: string;
-  ACol, ARow, AWidth, AHeight: Integer; ADefault: Boolean = False; ACancel: Boolean = False);
-var
-  O: TJSONObject;
-begin
-  O := TJSONObject.Create;
-  O.AddPair('type', AType);
-  if AId <> '' then
-    O.AddPair('id', AId);
-  if AText <> '' then
-    O.AddPair('text', AText);
-  if ADefault then
-    O.AddPair('default', TJSONBool.Create(True));
-  if ACancel then
-    O.AddPair('cancel', TJSONBool.Create(True));
-  O.AddPair('col', TJSONNumber.Create(ACol));
-  O.AddPair('row', TJSONNumber.Create(ARow));
-  O.AddPair('width', TJSONNumber.Create(AWidth));
-  O.AddPair('height', TJSONNumber.Create(AHeight));
-  AChildren.AddElement(O);
-end;
-
-procedure AddField(AChildren: TJSONArray; const AId, AValue: string;
-  ACol, ARow, AWidth: Integer);
-var
-  O: TJSONObject;
-begin
-  O := TJSONObject.Create;
-  O.AddPair('type', 'input');
-  O.AddPair('id', AId);
-  O.AddPair('value', AValue);
-  O.AddPair('col', TJSONNumber.Create(ACol));
-  O.AddPair('row', TJSONNumber.Create(ARow));
-  O.AddPair('width', TJSONNumber.Create(AWidth));
-  O.AddPair('height', TJSONNumber.Create(1));
-  AChildren.AddElement(O);
-end;
-
-procedure AddCheck(AChildren: TJSONArray; const AId, AText: string; AChecked: Boolean;
-  ACol, ARow, AWidth: Integer);
-var
-  O: TJSONObject;
-begin
-  O := TJSONObject.Create;
-  O.AddPair('type', 'checkbox');
-  O.AddPair('id', AId);
-  O.AddPair('text', AText);
-  O.AddPair('checked', TJSONBool.Create(AChecked));
-  O.AddPair('col', TJSONNumber.Create(ACol));
-  O.AddPair('row', TJSONNumber.Create(ARow));
-  O.AddPair('width', TJSONNumber.Create(AWidth));
-  O.AddPair('height', TJSONNumber.Create(1));
-  AChildren.AddElement(O);
-end;
-
 function BuildDeclaration: TJSONObject;
 const
   cHalf = (cDialogWidth - 4) div 2;
@@ -197,23 +82,23 @@ begin
   Result.AddPair('height', TJSONNumber.Create(29));
   Kids := TJSONArray.Create;
   Result.AddPair('children', Kids);
-  AddItem(Kids, 'label', 'lbl_name_mask', Tr('dlg.nameMask', 'Name mask:'), 1, 1, 14, 1);
+  AddControl(Kids, 'label', 'lbl_name_mask', Tr('dlg.nameMask', 'Name mask:'), 1, 1, 14, 1);
   AddField(Kids, 'name_mask', GRules.NameMask, 16, 1, cHalf - 17);
-  AddItem(Kids, 'label', 'lbl_ext_mask', Tr('dlg.extMask', 'Extension:'), cRightLabel, 1, 11, 1);
+  AddControl(Kids, 'label', 'lbl_ext_mask', Tr('dlg.extMask', 'Extension:'), cRightLabel, 1, 11, 1);
   AddField(Kids, 'ext_mask', GRules.ExtMask, cRightInput, 1, cDialogWidth - 2 - cRightInput);
-  AddItem(Kids, 'label', 'lbl_search', Tr('dlg.search', 'Search:'), 1, 3, 14, 1);
+  AddControl(Kids, 'label', 'lbl_search', Tr('dlg.search', 'Search:'), 1, 3, 14, 1);
   AddField(Kids, 'search', GRules.Search, 16, 3, cHalf - 17);
-  AddItem(Kids, 'label', 'lbl_replace', Tr('dlg.replace', 'Replace:'), cRightLabel, 3, 11, 1);
+  AddControl(Kids, 'label', 'lbl_replace', Tr('dlg.replace', 'Replace:'), cRightLabel, 3, 11, 1);
   AddField(Kids, 'replace', GRules.Replace, cRightInput, 3, cDialogWidth - 2 - cRightInput);
-  AddItem(Kids, 'label', 'lbl_counter', Tr('dlg.counter', 'Counter from:'), 1, 5, 14, 1);
+  AddControl(Kids, 'label', 'lbl_counter', Tr('dlg.counter', 'Counter from:'), 1, 5, 14, 1);
   AddField(Kids, 'c_start', IntToStr(GRules.CounterStart), 16, 5, 6);
-  AddItem(Kids, 'label', 'lbl_step', Tr('dlg.step', 'step:'), 24, 5, 6, 1);
+  AddControl(Kids, 'label', 'lbl_step', Tr('dlg.step', 'step:'), 24, 5, 6, 1);
   AddField(Kids, 'c_step', IntToStr(GRules.CounterStep), 31, 5, 5);
-  AddItem(Kids, 'label', 'lbl_digits', Tr('dlg.digits', 'digits:'), 38, 5, 7, 1);
+  AddControl(Kids, 'label', 'lbl_digits', Tr('dlg.digits', 'digits:'), 38, 5, 7, 1);
   AddField(Kids, 'c_digits', IntToStr(GRules.CounterDigits), 46, 5, 4);
   AddCheck(Kids, 'match_case', Tr('dlg.matchCase', 'Match &case'), GRules.MatchCase,
     cRightLabel, 5, cDialogWidth - 2 - cRightLabel);
-  AddItem(Kids, 'label', 'lbl_case', Tr('dlg.letterCase', 'Letter case:'), 1, 7, 14, 1);
+  AddControl(Kids, 'label', 'lbl_case', Tr('dlg.letterCase', 'Letter case:'), 1, 7, 14, 1);
   Drop := TJSONObject.Create;
   Drop.AddPair('type', 'dropdown');
   Drop.AddPair('id', 'case_mode');
@@ -229,11 +114,11 @@ begin
   Kids.AddElement(Drop);
   AddCheck(Kids, 'use_regex', Tr('dlg.regex', 'Regular e&xpression'), GRules.UseRegex,
     cRightLabel, 7, cDialogWidth - 2 - cRightLabel);
-  AddItem(Kids, 'label', 'lbl_tokens', Tr('dlg.tokens',
+  AddControl(Kids, 'label', 'lbl_tokens', Tr('dlg.tokens',
     'Tokens: [N] [E] [C] [Date] [Time] [Year] [Month] [Day] [Parent] [Size] [Dim] [Camera] [Artist] [Title]'),
     1, 8, cDialogWidth - 4, 1);
-  AddItem(Kids, 'label', 'status', GPendingStatus, 1, 9, cDialogWidth - 4, 1);
-  AddItem(Kids, 'label', 'columns', ColumnsText, 1, 10, cDialogWidth - 4, 1);
+  AddControl(Kids, 'label', 'status', GPendingStatus, 1, 9, cDialogWidth - 4, 1);
+  AddControl(Kids, 'label', 'columns', ColumnsText, 1, 10, cDialogWidth - 4, 1);
   List := TJSONObject.Create;
   List.AddPair('type', 'list');
   List.AddPair('id', 'preview');
@@ -246,11 +131,11 @@ begin
   List.AddPair('width', TJSONNumber.Create(cDialogWidth - 4));
   List.AddPair('height', TJSONNumber.Create(11));
   Kids.AddElement(List);
-  AddItem(Kids, 'separator', '', '', 0, 23, cDialogWidth - 2, 1);
-  AddItem(Kids, 'button', 'undo', Tr('dlg.undo', '&Undo last'), 1, 25, 17, 1);
-  AddItem(Kids, 'button', 'editor', Tr('dlg.editor', 'In &editor'), 20, 25, 17, 1);
-  AddItem(Kids, 'button', 'ok', Tr('dlg.ok', 'Rename'), cDialogWidth div 2 - 12, 25, 12, 1, True);
-  AddItem(Kids, 'button', 'cancel', Tr('dlg.cancel', 'Cancel'), cDialogWidth div 2 + 2, 25, 12, 1,
+  AddControl(Kids, 'separator', '', '', 0, 23, cDialogWidth - 2, 1);
+  AddControl(Kids, 'button', 'undo', Tr('dlg.undo', '&Undo last'), 1, 25, 17, 1);
+  AddControl(Kids, 'button', 'editor', Tr('dlg.editor', 'In &editor'), 20, 25, 17, 1);
+  AddControl(Kids, 'button', 'ok', Tr('dlg.ok', 'Rename'), cDialogWidth div 2 - 12, 25, 12, 1, True);
+  AddControl(Kids, 'button', 'cancel', Tr('dlg.cancel', 'Cancel'), cDialogWidth div 2 + 2, 25, 12, 1,
     False, True);
 end;
 
@@ -449,8 +334,7 @@ var
   Names: TArray<string>;
 begin
   try
-    GEditing := False;
-    if GShutdown then
+    if GShutdown or (NativeInt(AUserData) <> GEditToken) then
       Exit;
     if (AText <> nil) and ParseRenameLines(UTF8ToString(AText), Length(GNames), Names) then
       GManualNames := Names
@@ -475,11 +359,12 @@ begin
   for I := 0 to High(Plan) do
     Names[I] := Plan[I].NewName;
   Text := UTF8String(RenameLinesText(Names));
-  GEditing := True;
+  Inc(GEditToken);
   if not Assigned(GHostApi.EditText) or
-     (GHostApi.EditText(PAnsiChar(UTF8String(cPluginId)), PAnsiChar(Text), @OnNamesEdited, nil) <> 0) then
+     (GHostApi.EditText(PAnsiChar(UTF8String(cPluginId)), PAnsiChar(Text), @OnNamesEdited,
+       Pointer(GEditToken)) <> 0) then
   begin
-    GEditing := False;
+    Inc(GEditToken);
     ShowDialogNow;
   end;
 end;
@@ -704,8 +589,7 @@ end;
 procedure CmdRun(AUserData: Pointer); cdecl;
 begin
   try
-    if GEditing then
-      Exit;
+    Inc(GEditToken);
     if not CollectBatch then
       Exit;
     GRules := DefaultMultiRenameRules;
@@ -729,9 +613,8 @@ begin
      not Assigned(AHostApi.PanelList) or not Assigned(AHostApi.ShowDialogLive) or
      not Assigned(AHostApi.RegisterCommand) then
     Exit(-1);
-  GHostApi := AHostApi^;
-  GShutdown := False;
-  GEditing := False;
+  SdkAttach(AHostApi, cPluginId);
+  Inc(GEditToken);
   PluginId := UTF8String(cPluginId);
   CommandId := UTF8String(cCommandId);
   Chord := UTF8String(cKeyChord);
@@ -746,8 +629,8 @@ end;
 
 procedure mtn_plugin_shutdown; cdecl;
 begin
-  GShutdown := True;
-  FillChar(GHostApi, SizeOf(GHostApi), 0);
+  Inc(GEditToken);
+  SdkDetach;
 end;
 
 exports

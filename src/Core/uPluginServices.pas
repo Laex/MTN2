@@ -53,7 +53,7 @@ type
   TPluginRenameBatch = reference to function(const ASources, ADests: TArray<string>): Boolean;
   /// <summary>Opens AText in the editor; AOnDone gets the saved text when the
   /// editor tab is closed.</summary>
-  TPluginEditText = reference to function(const AText: string;
+  TPluginEditText = reference to function(const APluginId, AText: string;
     const AOnDone: TProc<string>): Boolean;
 
   TPluginHostServices = record
@@ -107,7 +107,7 @@ function PluginOpenDocument(const AURI: string; AEdit: Boolean): Boolean;
 
 function PluginRenameBatch(const ASources, ADests: TArray<string>): Boolean;
 function PluginRenameUndo: Boolean;
-function PluginEditText(const AText: string; const AOnDone: TProc<string>): Boolean;
+function PluginEditText(const APluginId, AText: string; const AOnDone: TProc<string>): Boolean;
 
 function PluginSendKey(const AChord: string): Boolean;
 function PluginSendText(const AText: string): Boolean;
@@ -123,6 +123,9 @@ function PluginAppState(out AJson: string): Boolean;
 /// plugin subscribes to it.</summary>
 const
   cKeyEventTopic = 'input.key';
+  /// <summary>Appended to a plugin id to name the host's subscription for that
+  /// plugin's pending text edit; unloading the plugin removes it.</summary>
+  cPluginEditSubscriberSuffix = '#edit';
 
 /// <summary>Plain text on the system clipboard; False when it holds none.</summary>
 function PluginClipboardGet(out AText: string): Boolean;
@@ -345,10 +348,10 @@ begin
   Result := Assigned(GServices.RenameUndo) and GServices.RenameUndo();
 end;
 
-function PluginEditText(const AText: string; const AOnDone: TProc<string>): Boolean;
+function PluginEditText(const APluginId, AText: string; const AOnDone: TProc<string>): Boolean;
 begin
-  Result := Assigned(GServices.EditText) and Assigned(AOnDone) and
-    GServices.EditText(AText, AOnDone);
+  Result := Assigned(GServices.EditText) and Assigned(AOnDone) and (APluginId <> '') and
+    GServices.EditText(APluginId, AText, AOnDone);
 end;
 
 function PluginSendKey(const AChord: string): Boolean;
@@ -833,7 +836,8 @@ begin
     GGenerationLock.Leave;
   end;
   for I := GSubscriptions.Count - 1 downto 0 do
-    if GSubscriptions[I].PluginId = Key then
+    if (GSubscriptions[I].PluginId = Key) or
+       (GSubscriptions[I].PluginId = Key + cPluginEditSubscriberSuffix) then
       GSubscriptions.Delete(I);
 end;
 

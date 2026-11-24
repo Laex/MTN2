@@ -26,6 +26,16 @@ This file describes what changes for the user from version to version: new featu
 - Multi-rename moved out of the program core into the `mtn.multirename` plugin. The dialog, its live preview, regular expressions, counter, letter case, "In editor" and "Undo last" work as before, and the Ctrl+Alt+N key stays, but the item is now at the end of the Files menu and turning the plugin off in Plugins... removes it. The plugin interface (version 13) gained dialogs that follow their fields, a batch rename with undo and editing text in the built-in editor for it.
 - Export list moved out of the program core into the `mtn.exportlist` plugin. The dialog, layouts (text, Markdown, CSV) and fields work as before and the choice is remembered, but the item sits in the Files menu after a line, it handles only items of local folders, and turning the plugin off in Plugins... removes it. Describe (Ctrl+Alt+Z, `Descript.ion`) moved the same way into the `mtn.describe` plugin; the description in the status line stays in the program.
 
+### Fixed
+
+- Both panels refresh after a plugin job (checksums, split, test archive, pack each item, multi-rename) instead of one.
+- Multi-rename "In editor": starting the command again no longer stays blocked after the editor was closed, and unloading the plugin drops the pending edit.
+- Plugin jobs and thumbnail decoding stop cleanly when the plugin is unloaded or the program closes.
+- "(none)" in the checksums dialog is translated.
+- The thumbnail sheet no longer reads the date and size of every picture on opening; it does so only when sorted by date or size.
+- A folder without plugin cells no longer costs extra time per row when a plugin reads the panel list.
+- The Lua macros plugin messages about failed, stopped and unfit macros are translated into Russian.
+
 ## Dev v0.5.12.4 – 2026-11-24
 
 ### Fixed

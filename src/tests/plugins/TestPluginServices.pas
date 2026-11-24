@@ -16,6 +16,8 @@ type
     [Test] procedure TestEventsReachSubscribers;
     [Test] procedure TestSubscriptionIsReplacedPerTopic;
     [Test] procedure TestUnloadedPluginHearsNothing;
+    [Test] procedure TestUnloadingDropsTheTextEditSubscription;
+    [Test] procedure TestTextEditNeedsThePluginId;
     [Test] procedure TestFaultyHandlerDoesNotStopTheOthers;
     [Test] procedure TestHostInfoNamesTheVersion;
     [Test] procedure TestPanelServicesReachTheWindow;
@@ -160,6 +162,36 @@ begin
   PluginEventsUnregister('T.ONE');
   PluginPublishEvent('doc.opened', '{}');
   Assert.AreEqual(0, Calls);
+end;
+
+procedure TTestPluginServices.TestUnloadingDropsTheTextEditSubscription;
+var
+  Calls: Integer;
+begin
+  Calls := 0;
+  PluginSubscribe('t.one' + cPluginEditSubscriberSuffix, 'edit.done',
+    procedure(const ATopic, APayload: string) begin Inc(Calls); end);
+  PluginEventsUnregister('t.one');
+  PluginPublishEvent('edit.done', '{}');
+  Assert.AreEqual(0, Calls, 'the edit subscription goes with the plugin');
+end;
+
+procedure TTestPluginServices.TestTextEditNeedsThePluginId;
+var
+  Got: string;
+  S: TPluginHostServices;
+begin
+  S := Default(TPluginHostServices);
+  S.EditText := function(const APluginId, AText: string; const AOnDone: TProc<string>): Boolean
+    begin
+      Got := APluginId + '|' + AText;
+      Result := True;
+    end;
+  SetPluginHostServices(S);
+  Assert.IsFalse(PluginEditText('', 'a', procedure(S: string) begin end), 'no plugin id');
+  Assert.IsFalse(PluginEditText('t.one', 'a', nil), 'no callback');
+  Assert.IsTrue(PluginEditText('t.one', 'a', procedure(S: string) begin end));
+  Assert.AreEqual('t.one|a', Got);
 end;
 
 procedure TTestPluginServices.TestFaultyHandlerDoesNotStopTheOthers;

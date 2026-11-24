@@ -104,7 +104,7 @@ implementation
 
 uses
   System.SysUtils, System.Classes, System.IOUtils, System.Generics.Collections,
-  uConfigLocation, uStrings, uCharWidth;
+  uConfigLocation, uStrings, uCharWidth, uVfsUtils;
 
 const
   cThemesDir = 'themes';
@@ -305,16 +305,6 @@ begin
     Include(Result.Blockers, cbOverridden);
 end;
 
-function FormatSize(ABytes: Int64): string;
-begin
-  if ABytes < 1024 then
-    Result := Format('%d B', [ABytes])
-  else if ABytes < 1024 * 1024 then
-    Result := Format('%.1f KB', [ABytes / 1024])
-  else
-    Result := Format('%.1f MB', [ABytes / (1024 * 1024)]);
-end;
-
 // A path that does not fit keeps its beginning and its end.
 function ShortenPath(const APath: string; AMaxCells: Integer): string;
 var
@@ -349,7 +339,7 @@ begin
       Lines.Add(T('ui.configMode.nothing', 'There are no settings files to move.'))
     else
       Lines.Add(Format(T('ui.configMode.files', '%d files (%s) are moved; the old copies are deleted.'),
-        [APlan.FileCount, FormatSize(APlan.TotalBytes)]));
+        [APlan.FileCount, TVfsUtils.FormatFileSize(APlan.TotalBytes)]));
 
     if cbOverridden in APlan.Blockers then
       Lines.Add(T('ui.configMode.blockOverridden', 'The settings folder is fixed and cannot be changed.'));

@@ -235,7 +235,10 @@ begin
   Assert.IsTrue(Pos('ready', FormatPanelRowMeta(pcmCustom, DefaultCustomColumnsConfig, Own, 200, cScheme, 'file:///C:/Pics/')) = 0,
     'the listing value wins');
 
+  Assert.IsTrue(FolderHasCells('FILE:///c:/pics'), 'folder has cells');
+  Assert.IsFalse(FolderHasCells('file:///C:/Other/'), 'other folder has none');
   SetFolderCells('mtn.test', 'file:///C:/Pics/', '');
+  Assert.IsFalse(FolderHasCells('file:///C:/Pics/'), 'an empty call drops the cells');
   Assert.IsFalse(FolderCellText('file:///C:/Pics/', 'a.jpg', 'state', Text), 'an empty call drops the cells');
   SetFolderCells('mtn.test', 'file:///C:/Pics/', '{"a.jpg":{"state":"x"}}');
   RemovePluginColumns('mtn.test');

@@ -1010,9 +1010,9 @@ type
     function HandleConsoleSaveCommand(const AControlId: string;
       const AFields: TDialogCommandFields): Boolean;
     procedure OpenMarkdownColorsDialog;
-    procedure StartMultiRenameJob(const ASources, ADests: TArray<string>);
-    procedure HostUndoMultiRename;
-    procedure HostEditRenameNames(const AText: string; const AOnDone: TProc<string>);
+    procedure StartRenameBatchJob(const ASources, ADests: TArray<string>);
+    procedure HostUndoRenameBatch;
+    procedure HostEditPluginText(const APluginId, AText: string; const AOnDone: TProc<string>);
     /// <summary>Ctrl+Q: NC/NDN/FAR/TC convention - puts the opposite panel
     /// into pvkQuickView for any cursor row (file or directory), same toggle
     /// shape as ToggleAdjacentInfoPanel/pvkInfo. Image overlay vs placeholder
@@ -1299,7 +1299,7 @@ type
     /// new name, journalled so that it can be undone.</summary>
     function PluginRenameBatch(const ASources, ADests: TArray<string>): Boolean;
     function PluginRenameUndo: Boolean;
-    function PluginEditText(const AText: string; const AOnDone: TProc<string>): Boolean;
+    function PluginEditText(const APluginId, AText: string; const AOnDone: TProc<string>): Boolean;
     procedure PluginPanelRefresh;
     procedure PublishPanelEvents;
     procedure DrawSurfacePanel(const ABounds: TRectI; ABodyBg: TAlphaColor);
@@ -6964,8 +6964,7 @@ begin
           ListObj := Pair.JsonValue;
           if not (ListObj is TJSONObject) then
             Continue;
-          Items := TJSONObject(ListObj).GetValue('items') as TJSONArray;
-          if Items = nil then
+          if not TJSONObject(ListObj).TryGetValue<TJSONArray>('items', Items) then
             Continue;
           SetLength(Lines, Items.Count);
           for I := 0 to Items.Count - 1 do
@@ -10129,7 +10128,7 @@ end;
 
 // Conflicts are ruled out by the dialog, so the batch is a plain move of
 // each item to its new name in the same folder.
-procedure TDualPanelWindow.StartMultiRenameJob(const ASources, ADests: TArray<string>);
+procedure TDualPanelWindow.StartRenameBatchJob(const ASources, ADests: TArray<string>);
 var
   OldPaths, NewPaths: TArray<string>;
   I: Integer;
@@ -10161,16 +10160,17 @@ begin
     end);
 end;
 
-// The names go to a temporary file opened in the editor; closing the editor
+// The text goes to a temporary file opened in the editor; closing the editor
 // hands the file's text back, so saving first is what makes edits count.
-procedure TDualPanelWindow.HostEditRenameNames(const AText: string;
+// The subscription is keyed to the plugin, so unloading the plugin drops it
+// and a new request from the same plugin replaces a pending one.
+procedure TDualPanelWindow.HostEditPluginText(const APluginId, AText: string;
   const AOnDone: TProc<string>);
-const
-  cSubscriber = 'mtn.core.multirename';
 var
-  Path, Uri: string;
+  Path, Uri, Subscriber: string;
 begin
-  Path := TPath.Combine(TPath.GetTempPath, 'mtn2-rename-names.txt');
+  Subscriber := APluginId + cPluginEditSubscriberSuffix;
+  Path := TPath.Combine(TPath.GetTempPath, 'mtn2-plugin-edit.txt');
   try
     TFile.WriteAllText(Path, AText, TUTF8Encoding.Create(False));
   except
@@ -10178,14 +10178,14 @@ begin
     Exit;
   end;
   Uri := PathToFileUri(Path);
-  PluginSubscribe(cSubscriber, 'doc.closed',
+  PluginSubscribe(Subscriber, 'doc.closed',
     procedure(const ATopic, APayloadJson: string)
     var
       Text: string;
     begin
       if not SameText(APayloadJson, PluginUriPayload(Uri)) then
         Exit;
-      PluginEventsUnregister(cSubscriber);
+      PluginEventsUnregister(Subscriber);
       Text := AText;
       try
         Text := TFile.ReadAllText(Path, TEncoding.UTF8);
@@ -10198,7 +10198,7 @@ begin
   NotifyChanged;
 end;
 
-procedure TDualPanelWindow.HostUndoMultiRename;
+procedure TDualPanelWindow.HostUndoRenameBatch;
 var
   Olds, News, From, Back, FromUris, BackUris: TArray<string>;
   Skipped, I: Integer;
@@ -12746,6 +12746,7 @@ var
   I, N: Integer;
   ColsObj: TJSONObject;
   ColId, ColText: string;
+  HasCells: Boolean;
 
   function ColName(const ARowText: string): string;
   begin
@@ -12770,6 +12771,7 @@ begin
     Panel := Ws.State.RightPanel;
   Tab := ActiveTab(Panel);
   Rows := RowsForSide(Side);
+  HasCells := FolderHasCells(Tab.CurrentURI);
   Root := TJSONObject.Create;
   try
     Root.AddPair('uri', Tab.CurrentURI);
@@ -12802,13 +12804,15 @@ begin
       if Rows[I].Extension <> '' then
         RowObj.AddPair('ext', Rows[I].Extension);
       ColsObj := nil;
-      for ColId in ['dim', 'camera', 'artist', 'title'] do
-        if FolderCellText(Tab.CurrentURI, ColName(Rows[I].Text), ColId, ColText) and (ColText <> '') then
-        begin
-          if ColsObj = nil then
-            ColsObj := TJSONObject.Create;
-          ColsObj.AddPair(ColId, ColText);
-        end;
+      if HasCells then
+        for ColId in ['dim', 'camera', 'artist', 'title'] do
+          if FolderCellText(Tab.CurrentURI, ColName(Rows[I].Text), ColId, ColText) and
+             (ColText <> '') then
+          begin
+            if ColsObj = nil then
+              ColsObj := TJSONObject.Create;
+            ColsObj.AddPair(ColId, ColText);
+          end;
       if ColsObj <> nil then
         RowObj.AddPair('cols', ColsObj);
       RowsArr.Add(RowObj);
@@ -13001,21 +13005,23 @@ function TDualPanelWindow.PluginRenameBatch(const ASources, ADests: TArray<strin
 begin
   Result := CanBeginAnotherJob;
   if Result then
-    StartMultiRenameJob(ASources, ADests);
+    StartRenameBatchJob(ASources, ADests);
 end;
 
 function TDualPanelWindow.PluginRenameUndo: Boolean;
 begin
   Result := CanBeginAnotherJob;
   if Result then
-    HostUndoMultiRename;
+    HostUndoRenameBatch;
 end;
 
-function TDualPanelWindow.PluginEditText(const AText: string;
+function TDualPanelWindow.PluginEditText(const APluginId, AText: string;
   const AOnDone: TProc<string>): Boolean;
 begin
-  Result := True;
-  HostEditRenameNames(AText, AOnDone);
+  Result := (ActiveWorkspace.Kind in [wkPanels, wkDocument]) and
+    not (Assigned(FDialog) and FDialog.Visible);
+  if Result then
+    HostEditPluginText(APluginId, AText, AOnDone);
 end;
 
 function TDualPanelWindow.PluginOpenDocument(const AURI: string; AEdit: Boolean): Boolean;
@@ -13036,8 +13042,12 @@ begin
   // A plugin may have written Descript.ion: read it again on the next repaint.
   FDescCheckedAt := 0;
   FDescStamp := -1;
+  // A plugin job can write into either panel's folder, so both are read again.
   if ActiveWorkspace.Kind = wkPanels then
-    RefreshActive;
+  begin
+    LoadSide(psLeft);
+    LoadSide(psRight);
+  end;
 end;
 
 function TDualPanelWindow.TerminalForWorkspace(AIndex: Integer): TTerminalWorkspaceWindow;

@@ -86,6 +86,9 @@ procedure SetFolderCells(const APluginId, AFolderUri, AJson: string);
 procedure RemovePluginFolderCells(const APluginId: string);
 function FolderCellText(const AFolderUri, AName, AColumnId: string; out AText: string): Boolean;
 function FolderCell(const AFolderUri, AName, AColumnId: string; out ACell: TVfsExtraCell): Boolean;
+/// <summary>True when some plugin has reported cells for the folder; lets a loop
+/// over many rows skip the per-row lookups.</summary>
+function FolderHasCells(const AFolderUri: string): Boolean;
 
 implementation
 
@@ -554,6 +557,20 @@ begin
   for I := GCells.Count - 1 downto 0 do
     if (GCells[I].Key = Key) and GCells[I].Names.TryGetValue(CellName(AName), Cells) and
        Cells.TryGetValue(AColumnId, ACell) then
+      Exit(True);
+end;
+
+function FolderHasCells(const AFolderUri: string): Boolean;
+var
+  Key: string;
+  I: Integer;
+begin
+  Result := False;
+  if (GCells = nil) or (GCells.Count = 0) then
+    Exit;
+  Key := CellFolderKey(AFolderUri);
+  for I := GCells.Count - 1 downto 0 do
+    if GCells[I].Key = Key then
       Exit(True);
 end;
 

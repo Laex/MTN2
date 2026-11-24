@@ -580,11 +580,11 @@ var
   UserData: Pointer;
 begin
   try
-    if (AText = nil) or not Assigned(AOnDone) then
+    if (APluginId = nil) or (AText = nil) or not Assigned(AOnDone) then
       Exit(-1);
     Callback := AOnDone;
     UserData := AUserData;
-    if PluginEditText(UTF8ToString(AText),
+    if PluginEditText(UTF8ToString(APluginId), UTF8ToString(AText),
       procedure(AResult: string)
       var
         U: UTF8String;
