@@ -201,6 +201,13 @@ begin
   GCancel := True;
 end;
 
+{ Creates the folder; raises when it cannot exist, so a bad path is reported. }
+procedure EnsureFolder(const ADir: string);
+begin
+  if (ADir <> '') and not ForceDirectories(ADir) and not TDirectory.Exists(ADir) then
+    raise Exception.CreateFmt(Tr('msg.badDest', 'Cannot create the folder %s'), [ADir]);
+end;
+
 procedure RunJob(const ASrc, ADest: string; const AParts: TArray<string>;
   ACombine: Boolean; APartSize: Int64);
 var
@@ -221,13 +228,13 @@ begin
   try
     if ACombine then
     begin
-      ForceDirectories(ExtractFilePath(ADest));
+      EnsureFolder(ExtractFilePath(ADest));
       Done := CombineParts(AParts, ADest, Cancelled);
       Status := Format(Tr('msg.combineDone', 'Created %s'), [ExtractFileName(ADest)]);
     end
     else
     begin
-      ForceDirectories(ADest);
+      EnsureFolder(ADest);
       Done := SplitFile(ASrc, ADest, APartSize, Cancelled, Count);
       Status := Format(Tr('msg.splitDone', '%d parts created'), [Count]);
     end;
