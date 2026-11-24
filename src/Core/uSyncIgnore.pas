@@ -19,6 +19,10 @@ type
     UseRobocopyFile: Boolean;
     /// <summary>userIgnoreFilters of .obsidian/app.json in the compared roots.</summary>
     UseObsidian: Boolean;
+    /// <summary>File name masks separated by ";" (*.md;*.txt): when set, only
+    /// files whose name matches one of them are compared; folders are still
+    /// entered.</summary>
+    Only: string;
     /// <summary>More gitignore patterns, separated by ";" or line breaks.</summary>
     Extra: string;
   end;
@@ -67,7 +71,7 @@ function SyncFilterOptionsActive(const AOptions: TSyncFilterOptions): Boolean;
 begin
   Result := AOptions.SkipJunctions or AOptions.UseIgnoreFiles or
     AOptions.UseRobocopyFile or AOptions.UseObsidian or
-    (Trim(AOptions.Extra) <> '');
+    (Trim(AOptions.Only) <> '') or (Trim(AOptions.Extra) <> '');
 end;
 
 function ClassMatch(const P: string; var PI: Integer; ACh: Char;
@@ -409,6 +413,7 @@ type
   private
     FOptions: TSyncFilterOptions;
     FRules: TArray<TIgnoreRule>;
+    FOnlyMasks: TArray<string>;
     FSeenDirs: TDictionary<string, Boolean>;
     procedure LoadIgnoreFiles(const ADir, ABase: string);
   public
@@ -433,6 +438,13 @@ begin
   FOptions := AOptions;
   FSeenDirs := TDictionary<string, Boolean>.Create;
   SetLength(FRules, 0);
+  SetLength(FOnlyMasks, 0);
+  for Part in AOptions.Only.Replace(sLineBreak, ';').Split([';']) do
+    if Trim(Part) <> '' then
+    begin
+      SetLength(FOnlyMasks, Length(FOnlyMasks) + 1);
+      FOnlyMasks[High(FOnlyMasks)] := Trim(Part);
+    end;
   for Part in AOptions.Extra.Replace(sLineBreak, ';').Split([';']) do
     AddIgnoreText(FRules, Trim(Part), '');
   for I := 0 to High(ARoots) do
@@ -484,6 +496,19 @@ begin
     Exit(True);
   Result := False;
   Rel := ToSlashes(ARel);
+  if (Length(FOnlyMasks) > 0) and not AIsDir then
+  begin
+    Sub := Copy(Rel, LastDelimiter('/', Rel) + 1, MaxInt);
+    Result := True;
+    for I := 0 to High(FOnlyMasks) do
+      if SyncGlobMatch(FOnlyMasks[I], Sub) then
+      begin
+        Result := False;
+        Break;
+      end;
+    if Result then
+      Exit;
+  end;
   for I := 0 to High(FRules) do
   begin
     R := FRules[I];

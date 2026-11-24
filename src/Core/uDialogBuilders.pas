@@ -138,7 +138,7 @@ function BuildDirSyncDialog(const ASrcPath, ADstPath, AStatus: string;
 /// <summary>Folders and exclusion sources asked before a folder comparison.</summary>
 function BuildDirSyncOptionsDialog(const ASrcPath, ADstPath: string;
   ATwoWay, AByContent, ASkipJunctions, AUseIgnore, AUseRcj, AUseObsidian: Boolean;
-  const AExtra: string): TDialogDeclaration;
+  const AOnly, AExtra: string): TDialogDeclaration;
 function BuildFileDiffDialog(const ALeftName, ARightName, AStatus: string;
   const ASummary: TArray<string>; const ASwatches: TArray<TListSwatch>;
   const ALines: TArray<string>): TDialogDeclaration;
@@ -881,7 +881,7 @@ end;
 
 function BuildDirSyncOptionsDialog(const ASrcPath, ADstPath: string;
   ATwoWay, AByContent, ASkipJunctions, AUseIgnore, AUseRcj, AUseObsidian: Boolean;
-  const AExtra: string): TDialogDeclaration;
+  const AOnly, AExtra: string): TDialogDeclaration;
 begin
   RequireDialogResource(cResDialogDirSyncOpts, Result);
   DialogSetLabelText(Result, 'src_path', ASrcPath);
@@ -892,6 +892,7 @@ begin
   DialogSetCheckbox(Result, 'use_ignore', AUseIgnore);
   DialogSetCheckbox(Result, 'use_rcj', AUseRcj);
   DialogSetCheckbox(Result, 'use_obsidian', AUseObsidian);
+  DialogSetInputValue(Result, 'only', AOnly);
   DialogSetInputValue(Result, 'extra', AExtra);
 end;
 

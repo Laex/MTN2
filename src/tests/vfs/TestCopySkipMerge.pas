@@ -50,6 +50,7 @@ type
     [Test] procedure TestFailedZipReplaceKeepsEntries;
     [Test] procedure TestSkippedFileIsNotOpenedAtTheSource;
     [Test] procedure TestOnlyUncopiedSourcesStaySelected;
+    [Test] procedure TestSkipModeCountsSkippedTopLevelFiles;
   end;
 
 implementation
@@ -1221,6 +1222,68 @@ begin
   Assert.AreEqual(1, Calls, 'selection callback runs once');
   Assert.AreEqual(1, Integer(Length(Keep)), 'one source stays selected');
   Assert.AreEqual(PathToFileUri(Skipped), Keep[0], 'the skipped source stays selected');
+end;
+
+procedure TTestCopySkipMerge.TestSkipModeCountsSkippedTopLevelFiles;
+var
+  Jobs: TPanelJobController;
+  Done: Boolean;
+  Skipped: Integer;
+  Src, Dst, NewFile, Old1, Old2: string;
+  Tick: Cardinal;
+begin
+  Src := TPath.Combine(GRoot, 'cnt_src');
+  Dst := TPath.Combine(GRoot, 'cnt_dst');
+  TDirectory.CreateDirectory(Src);
+  TDirectory.CreateDirectory(Dst);
+  NewFile := TPath.Combine(Src, 'new.txt');
+  Old1 := TPath.Combine(Src, 'old1.txt');
+  Old2 := TPath.Combine(Src, 'old2.txt');
+  WriteTextFile(NewFile, 'new');
+  WriteTextFile(Old1, 'src');
+  WriteTextFile(Old2, 'src');
+  WriteTextFile(TPath.Combine(Dst, 'old1.txt'), 'dst');
+  WriteTextFile(TPath.Combine(Dst, 'old2.txt'), 'dst');
+
+  Done := False;
+  Skipped := 0;
+  Jobs := nil;
+  // The job state is cleared before the finished callback runs, so the count
+  // is read from the redraw requests made while the job runs.
+  Jobs := TPanelJobController.Create(nil, CreateDefaultVfs,
+    procedure
+    begin
+      if Assigned(Jobs) and (Jobs.State.FilesSkipped > Skipped) then
+        Skipped := Jobs.State.FilesSkipped;
+    end,
+    procedure(const ATitle, AMessage: string) begin end,
+    procedure(const APath, ANewLine, AExistingLine: string) begin end,
+    procedure(const APath, AHeadline, AQuestion, AErrorLine: string;
+      AOfferPermanent: Boolean) begin end,
+    procedure(const AHeadline, APath, AErrorLine: string) begin end,
+    procedure(ASucceeded: Boolean)
+    begin
+      Done := True;
+    end,
+    procedure(const AOriginSrc, AOriginDst: string) begin end,
+    procedure(const AOriginSrc: string; const AKeep: TArray<string>) begin end,
+    nil);
+  try
+    Jobs.BeginJob(TArray<string>.Create(PathToFileUri(NewFile),
+      PathToFileUri(Old1), PathToFileUri(Old2)), PathToFileUri(Dst), pjkCopy);
+    Jobs.ApplyCopyMoveOptions(PathToFileUri(Dst), jomSkip, False);
+    Jobs.ConfirmJob;
+    Tick := GetTickCount;
+    while not Done do
+    begin
+      CheckSynchronize(20);
+      if GetTickCount - Tick > 30000 then
+        Assert.Fail('job timed out');
+    end;
+  finally
+    Jobs.Free;
+  end;
+  Assert.AreEqual(2, Skipped, 'files left alone because they exist are counted');
 end;
 
 initialization

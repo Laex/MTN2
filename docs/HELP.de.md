@@ -1,13 +1,13 @@
 # MTN2 – Benutzerhandbuch
 
-[English](HELP.md) | [Русский](HELP.ru.md) | **Deutsch** | [中文](HELP.zh.md)
-
 Modern Terminal Navigator 2 ist ein Dateimanager mit zwei Panels im Stil von NDN / FAR Manager mit eingebauter Konsole, Terminals, Viewer und Editor.
 
 Die Tasten gelten für das eingebaute Profil; sie lassen sich ändern (siehe [Tastenbelegung](#tastenbelegung)).
 
 ## Inhalt
 
+- [Was MTN2 kann](#was-mtn2-kann)
+- [Rezepte](#rezepte)
 - [Programmoberfläche](#programmoberfläche)
 - [Panels und Navigation](#panels-und-navigation)
 - [Dateien auswählen](#dateien-auswählen)
@@ -69,7 +69,7 @@ Globale Befehle wirken in jedem Fenster – auf den Panels, in einem Dokument, i
 - F10 schließt ein Dokument und beendet das Programm nur auf den Panels (`Quit`);
 - Esc auf den Panels zeigt die Konsole (`ConsoleToggle`), wenn das Panel den Fokus hat; in der Befehlszeile löscht es zuerst die Zeile und gibt dann den Fokus an das Panel zurück.
 
-**Vollbildprogramm.** Läuft eines in einer Konsole oder einem Terminal (der Tastenmodus des Profils ist *auto* oder *Terminal*, siehe Terminals), bekommt die Konsole diese Tasten ebenfalls, außer denen, die sie verlassen: F11, Ctrl+O, Tabwechsel, Ctrl+Shift+N und Ctrl+Alt+O.
+**Vollbildprogramm.** Läuft eines in einer Konsole oder einem Terminal (der Tastenmodus des Profils ist *auto*, *während Programm läuft* oder *Terminal*, siehe Terminals), bekommt die Konsole diese Tasten ebenfalls, außer denen, die sie verlassen: F11, Ctrl+O, Tabwechsel, Ctrl+Shift+N und Ctrl+Alt+O.
 
 **Dialoge.** Solange ein Dialog offen ist, lösen die globalen Befehle nicht aus; `ZoomReset` und `ReloadKeymap` immer.
 
@@ -117,6 +117,105 @@ Im Repository liegen zwei Beispiel-`keymap.json`, [`keymap.far.json` und `keymap
 ### Reservierte Tasten
 
 Noch nicht belegt und für geplante Funktionen reserviert: **Shift+F3** (Archivbefehle), **F11** (das Plugin-Menü), **Ctrl+Alt+Ins** (Netzwerk-UNC-Pfade), **Ctrl+.** (Makroaufzeichnung). Eine automatische Prüfung verhindert, dass die eingebaute Tastenbelegung sie belegt.
+
+---
+
+[Inhalt](#inhalt)
+
+## Was MTN2 kann
+
+Eine Landkarte des Programms nach Aufgaben: was man drückt und wo man mehr liest. Die Tasten gelten für das eingebaute Profil (siehe [Tastenbelegung](#tastenbelegung)). Unklar, wo ein Befehl steht? **Shift+F9** durchsucht alle.
+
+### Einen Befehl oder eine Taste finden
+
+- **Shift+F9** – Suche über alle Menübefehle nach Name, Kategorie oder Taste; **Ctrl+K** darin ändert die Taste des Befehls. Siehe [Hauptmenü](#hauptmenü-f9).
+- **F1** – Hilfe zur aktuellen Stelle: Dialog, Menü, Konsole, Archiv, Betrachter.
+
+### Schnell navigieren
+
+- **Ctrl+D** – Ordner-Hotlist mit Gruppen und Schnellbuchstaben; **Ctrl+Shift+F12** – die am häufigsten besuchten Ordner; **Alt+F12** – Ordnerverlauf; **Alt+←** / **Alt+→** – zurück und vor. Siehe [Verlauf und Ordner-Hotlist](#verlauf-und-ordner-hotlist).
+- **Alt+Buchstabe** – Schnellsuche nach Namen im Panel; **Ctrl+I** – ein Filter, der nur passende Namen übrig lässt. Siehe [Suche und Filter](#suche-und-filter).
+- **Alt+F10** – Ordnerbaum; **Alt+F1** / **Alt+F2** – Laufwerke, Netzfreigaben, besondere Orte. Siehe [Laufwerke und besondere Orte](#laufwerke-und-besondere-orte).
+- **Ctrl+Alt+P** – gepaarte Ordner: Ein- oder Aufsteigen in einem Panel wird im anderen wiederholt. Siehe [Panels und Navigation](#panels-und-navigation).
+
+### Dateien auswählen und bearbeiten
+
+- **Ins**, **Leertaste**, graue **+** / **-** / **\***, **Ctrl+M** (die letzte Auswahl zurückholen). Siehe [Dateien auswählen](#dateien-auswählen).
+- **Ctrl+Alt+N** – viele Dateien nach Regeln umbenennen, mit Vorschau. Siehe [Dateioperationen](#multi-rename).
+- Kopieren, Verschieben und Löschen laufen im Hintergrund; **Ctrl+Shift+J** zeigt die Auftragsliste mit Pause, Warteschlange und Tempolimit. Siehe [Hintergrundaufträge](#hintergrundaufträge).
+- **Enter** oder **Ctrl+PgDn** auf einem Archiv öffnet es wie einen Ordner; **F5** kopiert daraus. Siehe [Archive](#archive).
+
+### Suchen und vergleichen
+
+- **Alt+F7** – Dateien nach Maske, Text, Größe, Datum suchen; Suchen können im Hintergrund laufen, die Treffer öffnen sich als Panel. Siehe [Suche und Filter](#suche-und-filter).
+- **Ctrl+Alt+C** – zwei Dateien vergleichen und zusammenführen; **Ctrl+Shift+C** – Ordner vergleichen; zwei Ordner synchronisieren. Siehe [Synchronisieren und Vergleichen](#synchronisieren-und-vergleichen).
+
+### Ansehen und bearbeiten
+
+- **F3** – ansehen, **F4** – bearbeiten, **F6** – dazwischen wechseln; **Ctrl+Q** – Schnellansicht im anderen Panel. Text, Hex, Markdown und Bilder. Siehe [Dateien ansehen und bearbeiten](#dateien-ansehen-und-bearbeiten).
+
+### Konsole, Terminals, entfernte Rechner
+
+- Einen Befehl eintippen und **Enter** drücken; **Ctrl+O** wechselt zwischen Panels und Konsole. Siehe [Befehlszeile und Konsole](#befehlszeile-und-konsole).
+- **Ctrl+Shift+N** – ein Terminal im eigenen Tab: cmd, PowerShell, WSL, gespeicherte SSH-Verbindungen; Vollbildprogramme und die Maus funktionieren darin. Siehe [Terminals](#terminals).
+- **Ctrl+Alt+Shift+N** – SSH- und SFTP-Verbindungen: ein entfernter Ordner als Panel. Siehe [Netzwerk: SSH und SFTP](#netzwerk-ssh-und-sftp).
+
+### Die Arbeit organisieren
+
+- **Ctrl+T** / **Ctrl+W** – Panel-Tabs; **Ctrl+Shift+W** – ein neuer Arbeitsbereich (eigene Panels, Terminals und Dokumente); **Ctrl+Shift+D** – gespeicherte Arbeitsbereiche. Siehe [Tabs und Arbeitsbereiche](#tabs-und-arbeitsbereiche).
+- **Ctrl+\`** – kurze oder breite Ansicht und Spaltensätze; **Ctrl+F12** – Sortierung; **Ctrl+Alt+G** – Zeilen nach Typ oder Datum gruppieren. Siehe [Panelansicht und Sortierung](#panelansicht-und-sortierung).
+- **F2** – ein eigenes Menü aus Befehlen. Siehe [Benutzermenü](#benutzermenü-f2).
+
+### Nach eigenem Geschmack einrichten
+
+- **Optionen → Farbschema...** – Farben und Rahmen; **Optionen → Tastenbelegung...** – jede Taste; **Optionen → Plugins...** – Erweiterungen. Siehe [Einstellungen](#einstellungen) und [Tastenbelegung](#tastenbelegung).
+- **Optionen → Einstellungen exportieren...** – alles in einer Zip-Datei, zum Mitnehmen auf einen anderen Rechner. Siehe [Einstellungsdateien](#einstellungsdateien).
+
+Häufige Aufgaben Schritt für Schritt: siehe [Rezepte](#rezepte).
+
+---
+
+[Inhalt](#inhalt)
+
+## Rezepte
+
+Kurze Antworten auf „wie mache ich...“: welche Tasten und was dabei herauskommt. Die Tasten gelten für das eingebaute Profil (siehe [Tastenbelegung](#tastenbelegung)); die ganze Landkarte steht unter [Was MTN2 kann](#was-mtn2-kann).
+
+### Dateien ins andere Panel kopieren
+
+Mit **Ins** oder **Leertaste** auswählen, **F5** drücken, bestätigen. Das Kopieren läuft im Hintergrund; **Ctrl+Shift+J** zeigt die Auftragsliste, in der man es pausieren, einreihen oder bremsen kann. Siehe [Dateioperationen](#dateioperationen) und [Hintergrundaufträge](#hintergrundaufträge).
+
+### Eine Datei finden und in ihren Ordner gehen
+
+**Alt+F7**, eine Maske (bei Bedarf auch Text oder Größe) eingeben, die Suche starten. Die Treffer öffnen sich als Panel: **Enter** auf einer Zeile geht in den Ordner der Datei. Siehe [Suche und Filter](#suche-und-filter).
+
+### Viele Dateien auf einmal umbenennen
+
+Dateien auswählen, **Ctrl+Alt+N** drücken, Regeln festlegen und vor dem Anwenden die Vorschau ansehen. Siehe [Dateioperationen](#multi-rename).
+
+### Zwei Ordner angleichen
+
+**Ctrl+Shift+C** wählt aus, was sich zwischen den Panels unterscheidet; **F5** kopiert die Auswahl. Für den Abgleich in beide Richtungen gibt es den Synchronisierungsdialog. Siehe [Synchronisieren und Vergleichen](#synchronisieren-und-vergleichen).
+
+### Ein Archiv entpacken
+
+**Enter** auf dem Archiv öffnet es wie einen Ordner; auswählen, was gebraucht wird, und mit **F5** ins andere Panel kopieren. Siehe [Archive](#archive).
+
+### Schnell in einen Ordner zurückkehren
+
+**Ctrl+D** öffnet die Ordner-Hotlist, **Ctrl+Shift+F12** die meistbesuchten Ordner, **Alt+F12** den Verlauf. **Alt+Buchstabe** springt zu einem Namen im aktuellen Ordner. Siehe [Verlauf und Ordner-Hotlist](#verlauf-und-ordner-hotlist).
+
+### Ein Programm im eigenen Tab starten
+
+**Ctrl+Shift+N** öffnet ein Terminal in einem neuen Tab (cmd, PowerShell, WSL oder eine gespeicherte SSH-Verbindung). Vollbildprogramme und die Maus funktionieren dort. Siehe [Terminals](#terminals).
+
+### Mit einem entfernten Server arbeiten
+
+**Ctrl+Alt+Shift+N** verbindet per SSH oder SFTP; der entfernte Ordner wird zum Panel, Kopieren funktioniert wie lokal. Siehe [Netzwerk: SSH und SFTP](#netzwerk-ssh-und-sftp).
+
+### Die Einrichtung auf einen anderen Rechner mitnehmen
+
+**Optionen → Einstellungen exportieren...** packt alles in eine Zip-Datei, die man auf dem anderen Rechner importiert. Siehe [Einstellungsdateien](#einstellungsdateien).
 
 ---
 
@@ -259,7 +358,7 @@ Im Dialog „Nach Maske auswählen“ wendet das Kontrollfeld „Ordner auswähl
 
 | Taste | Aktion |
 | --- | --- |
-| F3 | Datei ansehen; bei Ordnern – Größe der ausgewählten Ordner berechnen, auf der Zeile `..` – aller Ordner des Panels; die Größen bleiben in der Spalte Größe, solange der Ordner unverändert ist (Esc – abbrechen) |
+| F3 | Datei ansehen; bei Ordnern – Größe der ausgewählten Ordner berechnen (Esc – abbrechen) |
 | F4 | bearbeiten |
 | Shift+F4 | Datei erstellen |
 | F5 | kopieren |
@@ -311,7 +410,7 @@ Derselbe Dialog enthält die übrigen Dateiattribute: **Komprimiert**, **Verschl
 
 Nur für Dateien und Ordner auf der Festplatte: Archive, SFTP, Papierkorb und Suchergebnisse haben kein Windows-Menü.
 
-<!--copy-->Im Dialog Kopieren/Verschieben lassen sich alle Zeitstempel beibehalten, nur neuere Dateien kopieren, der Inhalt symbolischer Links kopieren, eine Ausschlussmaske festlegen und jede kopierte Datei vor dem Behalten mit der Quelle vergleichen (**Nach dem Kopieren verifizieren**: eine Abweichung gilt als Fehler dieser Datei). Die Liste „Bereits vorhandene Dateien“ legt die Antwort auf Namenskonflikte im Voraus fest: fragen, überschreiben, überspringen, überschreiben wenn neuer, überschreiben bei anderer Größe oder automatisch umbenennen (`name (2).ext`). Bei einem Namenskonflikt fragt das Programm, was zu tun ist (überschreiben, überspringen, umbenennen, anhängen, wenn neuer, wenn die Größe abweicht, automatisch umbenennen; mit **Auswahl merken** für alle weiteren Konflikte des Auftrags). Die Regeln „wenn neuer“ und „wenn die Größe abweicht“ werden Datei für Datei geprüft; ein Paar, das sie nicht beurteilen können (Ordner gegen Datei), wird erfragt.
+<!--copy-->Im Dialog Kopieren/Verschieben lassen sich alle Zeitstempel beibehalten, nur neuere Dateien kopieren, der Inhalt symbolischer Links kopieren und eine Ausschlussmaske festlegen. Bei einem Namenskonflikt fragt das Programm, was zu tun ist (überschreiben, überspringen, umbenennen, für alle…).
 
 <!--checksums-->**Prüfsummen.** Sie werden im Hintergrund berechnet (Esc – abbrechen). In der Ergebnisliste: **Kopieren** – in die Zwischenablage, **Speichern** – nach `<Datei>.sha256` (eine Datei) oder `checksums.sha256` im Panelordner. Die Prüfung markiert jede Zeile mit `OK`, `FAILED` oder `MISSING`. Zeilen der Form `Hash *Name`, `Hash  Name` und `SHA256 (Name) = Hash` werden verstanden.
 
@@ -329,10 +428,6 @@ Suchen und Ersetzen wirken auf den neuen Namen und die Erweiterung, die Groß-/K
 **Fehler.** Ein leerer, ungültiger, doppelter oder im Ordner bereits vergebener Name (auch von einem anderen Element der Auswahl) ist mit `!` markiert; solange einer übrig ist, tut **Umbenennen** nichts.
 
 Es lassen sich nur Elemente eines Ordners wählen. Das Umbenennen läuft wie ein Verschieben als Hintergrundauftrag.
-
-**Im Editor.** Die Schaltfläche **Im Editor** öffnet die neuen Namen im eingebauten Editor, einer pro Zeile, in der Reihenfolge der Liste. Bearbeiten, speichern und den Editor schließen: der Dialog kehrt mit diesen Namen zurück, die wie alle anderen geprüft werden. Die Zeilenzahl muss gleich bleiben; eine erneute Änderung der Regeln kehrt zu den aus den Regeln gebildeten Namen zurück.
-
-**Rückgängig.** Die Schaltfläche **Rückgängig** im Dialog nimmt den letzten Durchlauf zurück: Jedes Element, dessen neuer Name noch existiert und dessen alter Name frei ist, erhält als Hintergrundauftrag seinen alten Namen; die übrigen bleiben unverändert. Gemerkt wird nur der letzte Durchlauf auf lokalen Laufwerken; nach dem Zurücksetzen wird der Eintrag gelöscht.
 
 ---
 
@@ -400,12 +495,12 @@ Der Eintrag **..** in den Systemordnern und im Papierkorb führt dorthin zurück
 | Taste | Aktion |
 | --- | --- |
 | Ctrl+\` | Menü der Spaltenmodi |
-| Ctrl+Shift+F1 … F6 | Modus: kurz, Größe, Datum, voll, erstellt, Typen |
+| Ctrl+Shift+F1 … F6 | Modus: kurz oder eine breite Variante: Größe, Datum, voll, erstellt, Typen |
 | Ctrl+F12 | Sortiermenü |
 | Ctrl+F3 / F4 / F5 / F6 | nach Name / Erweiterung / Änderungsdatum / Größe sortieren |
 | Ctrl+F7 / F8 / F9 | unsortiert / nach Erstellungsdatum / nach Zugriffsdatum |
 
-Die erneute Wahl derselben Sortierung kehrt die Richtung um. Der Buchstabe in der linken oberen Ecke des Panels zeigt die Sortierung (Großbuchstabe – absteigend). Die Spalten des Modus „Eigene“ werden unter **Optionen → Spalten...** festgelegt. Zeilenfarben nach Maske – **Optionen → Farbgruppen...**.
+Die erneute Wahl derselben Sortierung kehrt die Richtung um. Der Buchstabe in der linken oberen Ecke des Panels zeigt die Sortierung (Großbuchstabe – absteigend). Das Panel hat zwei Ansichtsarten: **Kurz** (nur Namen, in mehreren Spalten; die Breite einer Spalte (10–50 Zeichen, standardmäßig 28; das Panel nimmt so viele Spalten auf, wie passen) wird unter **Optionen → Spalten...** festgelegt („Kurzansicht“, für alle Panels gleich), die Angaben zur Datei stehen in der Statuszeile) und **Breit** (eine Spalte mit Namen plus die gewählten Spalten; das Menü listet die eingebauten Varianten Größe, Datum, voll, erstellt und Typen, danach die eigenen Spaltensätze). Die Spalten einer breiten Variante, auch die von Plugins hinzugefügten (unter dem Namen des Plugins angezeigt), werden unter **Optionen → Spalten...** festgelegt; der Dialog speichert sie als benannten Satz. Zeilenfarben nach Maske – **Optionen → Farbgruppen...**.
 
 ---
 
@@ -483,6 +578,8 @@ Die Befehlszeile befindet sich immer unter den Panels: einfach losschreiben. Ein
 
 **In der Konsole:** **Ctrl+C** unterbricht den Befehl; **Esc** blendet die Konsole nur aus und beendet den Prozess nicht. Das Mausrad blättert durch die Ausgabe. Text wird mit der Maus ausgewählt (siehe [Arbeiten mit Text und Maus](#arbeiten-mit-text-und-maus)).
 
+**Maus im Programm.** Ein Programm, das Mauseingaben anfordert (Far Manager, `htop`, `mc`, `vim` mit `mouse=a`), erhält Klicks, Ziehen und das Mausrad über dem Konsolentext; das Fenster blättert und wählt dort nicht mehr aus. Mit gehaltener **Shift**-Taste wird Text wie gewohnt mit der Maus ausgewählt. Das Blättern im Verlauf und die Fensterschaltflächen funktionieren außerhalb des Textbereichs weiter.
+
 **Suche in der Ausgabe** (Konsole und Terminal):
 - **Ctrl+Shift+F** fragt nach dem Text; Treffer sind im ganzen Verlauf hervorgehoben, der aktuelle ist wie bei einer Mausauswahl markiert. Eine leere Zeile im Dialog hebt die Suche auf.
 - **F3** / **Shift+F3** springen zum nächsten / vorherigen Treffer (zyklisch), solange eine Suche gesetzt ist und im Fenster kein Vollbildprogramm läuft.
@@ -519,10 +616,22 @@ Die Befehlszeile befindet sich immer unter den Panels: einfach losschreiben. Ein
 
 Die Modi:
 - *auto* – das Programm bekommt die Tasten, solange eine Vollbildanwendung wie mc oder vim in der Konsole läuft;
-- *Terminal* – das Programm bekommt jede Taste, auch F1, F9 und Alt+Buchstabe;
+- *während Programm läuft* – wie *auto*, außerdem solange ein aus der Shell gestartetes Konsolenprogramm läuft, auch eines ohne alternativen Bildschirm wie Far Manager. Am leeren Prompt gelten die Tasten des Fensters; ein aus der Shell gestartetes GUI-Programm zählt nicht;
+- *Terminal* – das Programm bekommt jede Taste, auch F1, F9 und Alt+Buchstabe; dem Fenster bleiben nur die reinen Navigationstasten (Pfeile, Home, End, PgUp, PgDn, Insert, Delete, mit und ohne Shift) am leeren Prompt: damit blättert man durch die Ausgabe, wählt aus und ruft den Verlauf auf. Das ist der Modus für Shells, die selbst das Programm sind (bash in WSL, ssh, Git Bash) und eigene Tasten wie Ctrl+R und Ctrl+A brauchen;
 - *Host* – die Tasten des MTN2-Fensters haben Vorrang.
 
-Bei *auto* und *Terminal* behält das Fenster nur die Tasten, die die Konsole verlassen: F11, Ctrl+O, Tabwechsel, Ctrl+Shift+N und Ctrl+Alt+O.
+Wer die Tasten bekommt:
+
+| Modus | Am leeren Prompt | Gewöhnlicher Befehl (`ping`, `git`, ein Build) | Vollbildprogramm (`vim`, `htop`) | Konsolenprogramm ohne alternativen Bildschirm (Far Manager) |
+|---|---|---|---|---|
+| auto | Fenster | Fenster | Programm | Fenster |
+| während Programm läuft | Fenster | Programm | Programm | Programm |
+| Terminal | Programm | Programm | Programm | Programm |
+| Host | Fenster | Fenster | Fenster | Fenster |
+
+„Fenster“ meint hier die eigenen Tasten des MTN2-Fensters: Hilfe, Blättern und Auswählen der Ausgabe, Aufruf des Befehlsverlaufs. Bei *auto* behält das Fenster Blättern und Auswählen, solange ein gewöhnlicher Befehl läuft; ein Programm wie Far braucht *während Programm läuft* oder *Terminal*. *Während Programm läuft* erkennt ein Programm am Konsolenprozess, den die Shell gestartet hat, und passt daher nicht zu einer Shell, die selbst das Programm ist (WSL, ssh): dafür *Terminal*.
+
+Bei *auto*, *während Programm läuft* und *Terminal* behält das Fenster nur die Tasten, die die Konsole verlassen: F11, Ctrl+O, Tabwechsel, Ctrl+Shift+N und Ctrl+Alt+O.
 - **F6** – das Umgebungsprofil der gewählten Shell oder ihrer Kopie (siehe [Umgebungsprofile](#umgebungsprofile)).
 
 ---
@@ -795,10 +904,9 @@ Solange das Hauptmenü noch nie gespeichert wurde, zeigt es Beispiele. Menüdate
 
 <!--dir-sync-->- **Ctrl+Alt+S** – die Ordner des aktiven und des passiven Panels synchronisieren: einseitig oder zweiseitig; das Kontrollfeld „Probelauf“ zeigt, was getan würde, ohne etwas zu ändern.
 - Im Synchronisationsdialog ist jeder Unterschied eine Listenzeile mit ihrer Aktion: `->` kopiert nach rechts, `<-` nach links, `--` überspringt; Konflikte sind zunächst übersprungen. Die Schaltflächen **Nach rechts**, **Nach links** und **Überspringen** setzen die Aktion der gewählten Zeile (eine manuelle Wahl ist mit `*` markiert), **Zurücksetzen** stellt die automatische wieder her, **Nur übersprungene** zeigt die Zeilen, über die noch nicht entschieden ist. Übersprungene Unterschiede bleiben bis zur nächsten Synchronisation offen.
-- Das Kontrollfeld **Spiegeln** gleicht das Ziel an die Quelle an: Dateien, die nur im Ziel liegen, erhalten die Aktion `XX` (löschen); die Taste **X** setzt sie in einer Zeile von Hand. Der Modus startet mit eingeschaltetem Kontrollfeld „Probelauf“, der erste Lauf meldet also nur, wie viele Dateien gelöscht würden; zum Ausführen das Feld abschalten. Zuerst wird kopiert, gelöscht wird erst nach dem Erfolg; das Löschen fragt selbst mit der Anzahl nach. Standardmäßig landen die Dateien im Papierkorb; **Ohne Papierkorb löschen** entfernt sie dauerhaft. Abweichende und im Ziel neuere Dateien bleiben in diesem Modus unberührt. Die Schaltfläche **Überschüsse** legt die nur im Ziel vorhandenen Dateien stattdessen im temporären Panel ab, damit sie geprüft und gezielt gelöscht werden können.
-- Der Synchronisierungs- und der Suchdialog speichern benannte Vorgaben: Namen eingeben und **Speichern** drücken, um den aktuellen Modus und die Optionen zu sichern; ein Name aus der Liste lädt die Vorgabe (im Suchdialog mit **Laden**), **Löschen** entfernt sie. Die Vorgaben liegen in `syncpresets.json` und `searchpresets.json` im Konfigurationsordner.
-- Während der Synchronisierungsdialog die Ordner vergleicht, zeigt er, wie viele Dateien und Ordner durchsucht und danach wie viele Dateien verglichen wurden. **Esc** schickt den Vergleich in den Hintergrund: In der Tab-Leiste und in der Auftragsliste erscheint ein Chip mit dem Fortschritt, der am Ende zu **OK** wird (zusätzlich erscheint ein Hinweis). Ein Klick auf den Chip öffnet den fertigen Plan; die Statuszeile nennt die Uhrzeit des Vergleichs. Wird der Auftrag in der Liste abgebrochen, entfällt das Ergebnis.
-- Vor dem Vergleich zeigt ein kleiner Dialog beide Ordner und fragt nach Modus, Vergleichsart und Ausnahmen: Junctions und symbolische Links (standardmäßig übersprungen), die Muster von **.gitignore**, **.geminiignore** und **.obsidianignore** (verschachtelte Dateien gelten für ihren Ordner), die **/XD**- und **/XF**-Listen einer robocopy-Datei **exclude.rcj**, die Ignorefilter eines Obsidian-Tresors und zusätzliche Muster, getrennt durch **;**. Ausgenommene Dateien erscheinen weder im Plan noch bei den Überschüssen des Spiegelmodus.
+- Vor dem Vergleich zeigt ein kleiner Dialog beide Ordner und fragt nach Modus (einseitig oder zweiseitig), Vergleichsart (Datum und Größe oder Inhalt) und Ausnahmen: Junctions und symbolische Links (standardmäßig übersprungen), die Muster von `.gitignore`, `.geminiignore` und `.obsidianignore` (eine verschachtelte Datei gilt für ihren Ordner), die `/XD`- und `/XF`-Listen einer robocopy-Datei `exclude.rcj`, die Ignorefilter eines Obsidian-Tresors (`.obsidian/app.json`) und zusätzliche Muster, getrennt durch `;`. Die Muster folgen den gitignore-Regeln: `*`, `?`, `**`, `[a-z]`, `/` am Ende für Ordner, `/` am Anfang für die Wurzel, `!` zum Wiedereinschließen. Ausgenommene Dateien erscheinen weder im Plan noch bei den Überschüssen des Spiegelmodus. Um nur bestimmte Dateitypen abzugleichen, geben Sie im Feld „Nur Dateien mit Maske“ Namensmasken wie `*.md;*.txt` an: Andere Dateien werden genauso ausgenommen, Ordner werden weiterhin durchsucht.
+- Während die Ordner verglichen werden, zeigt der Dialog, wie viele Dateien und Ordner durchsucht und danach wie viele Dateien verglichen wurden, sowie den aktuellen Pfad. **Esc** schickt den Vergleich in den Hintergrund: Ein Chip mit dem Fortschritt bleibt in der Tab-Leiste und der Auftragsliste und wird am Ende zu **OK**; ein Klick öffnet den Plan.
+- Das Kontrollkästchen **Spiegeln** entfernt auch Dateien, die nur im Ziel liegen (der Probelauf ist dabei eingeschaltet, bis man ihn bewusst abschaltet); **Überschüsse** legt diese Dateien in das Temporäre Panel, damit man sie vor dem Löschen prüfen kann. Benannte Vorgaben speichern Modus, Vergleichsart und Kontrollkästchen.
 <!--compare-files-->- **Ctrl+Alt+C** – die Dateien unter den Cursorn beider Panels oder die zwei markierten Dateien des aktiven Panels vergleichen; das Fenster zeigt Größe, Änderungszeit und das Ergebnis des Inhaltsvergleichs. Bei zwei oder mehr markierten Dateien werden gleichnamige Dateien verglichen (Markierungen in beiden Panels: nur die markierten; in einem Panel: das andere wird nach Namen durchsucht); eine Liste zeigt jedes Paar als identisch oder unterschiedlich, Enter öffnet die Unterschiede. Ordner werden übersprungen.
   For text files a compare-and-merge window opens: two columns with line numbers and the differences marked in the middle (`~` changed, `<` only on the left, `>` only on the right). **Ctrl+Down** and **Ctrl+Up** move between differences, **Right** copies a difference from left to right, **Left** from right to left, **Ctrl+Z** undoes a copy, **Ctrl+S** writes the changed files with their original encoding and line breaks. Closing with unsaved changes asks for confirmation (a second close discards them). Binary, very large (over 16 MB or 60000 lines) and identical files are shown in the earlier summary window.
 <!--compare-folders-->- **Ctrl+Shift+C** – Ordner vergleichen: beide Panels wählen die auf der anderen Seite fehlenden Dateien und die neueren der gleichnamigen aus; bei gleicher Zeit, aber anderer Größe werden beide ausgewählt.
@@ -831,7 +939,6 @@ Dialogschaltflächen werden mit **Enter** und der **Leertaste** gedrückt: die S
 - **Pause** hält ein laufendes Kopieren beim nächsten Block an (Chip `||`, Status „pausiert“) oder verhindert den Start eines wartenden Auftrags; ein angehaltener Auftrag belegt sein Laufwerk, bis er fortgesetzt oder abgebrochen wird;
 - **Hoch** und **Runter** ändern die Startreihenfolge wartender Aufträge;
 - **Tempo** schaltet die Geschwindigkeitsbegrenzung durch: keine, 1, 5, 20 und 100 MB/s (in der Statusspalte). Die Begrenzung gilt beim Kopieren zwischen lokalen Ordnern.
-- **Wenn die Warteschlange endet** (die Liste unter den Aufträgen) legt eine Aktion für den Moment fest, in dem alle Aufträge ohne Fehler oder Abbruch fertig sind: Energiesparmodus, Herunterfahren oder Programm beenden. Das Programm fragt zuerst und führt die Aktion nach 30 Sekunden selbst aus, wenn nicht geantwortet wird; ein Fehler oder Abbruch hebt sie für diesen Durchlauf auf. Die Aktion läuft einmal und springt danach auf „Nichts tun“.
 
 <!--errors-->Hält ein Kopier-, Verschiebe- oder Löschvorgang mit einem Fehler an, bietet das Fehlerfenster **Wiederholen**, **Überspringen**, **Alle überspringen**, **Abbrechen** und, bei „Zugriff verweigert“ auf einem lokalen Pfad, **Admin** an: es wiederholt das Element und den Rest des Auftrags über den Administrator-Helfer (siehe [Dateioperationen](#dateioperationen)).
 
@@ -904,7 +1011,7 @@ Wird das Farbschema der gespeicherten Sitzung nicht gefunden, meldet das Program
 - **h** – übergeordneter Ordner; **l** – öffnen;
 - **g / G** – erste / letzte Zeile;
 - **/** – Schnellsuche; **:** – zur Befehlszeile.
-<!--columns-->- **Spalten...** – die Spalten des Modus „Eigene“.
+<!--columns-->- **Spalten...** – die Spaltenbreite der Kurzansicht und die Spalten der breiten Ansichten.
 <!--console-->- **Konsole...** – die Scrollback-Größe von Konsole und Terminals, Bestätigung beim mehrzeiligen Einfügen, Entfernen von Leerzeichen am Zeilenende beim Kopieren und Einfügen, Rückkehr zu den Panels, wenn ein Befehl aus der Befehlszeile endet (mehr in der Hilfe zur Befehlszeile).
 <!--save-settings-->- **Einstellungen speichern** – schreibt die Einstellungen, die Panels und die Tabs sofort in die Einstellungsdatei und nicht erst beim Beenden des Programms; ein Hinweis bestätigt es oder nennt das Problem. In Dialogen geänderte Optionen gelten sofort; dieser Punkt stellt sicher, dass sie auf dem Datenträger liegen, zum Beispiel bevor der Einstellungsordner kopiert wird.
 <!--settings-file-->- **Einstellungen exportieren... / Einstellungen importieren...** – die Einstellungen als eine Zip-Datei.
@@ -937,7 +1044,7 @@ Wird das Farbschema der gespeicherten Sitzung nicht gefunden, meldet das Program
 
 **Bedienung**
 - **Leertaste** auf einer Zeile schaltet das Plugin aus oder ein (`[x]` ist ein, `[ ]` ist aus); die Wahl gilt mit **OK** und bleibt zwischen den Starts erhalten, **Abbrechen** verwirft sie.
-- **Berechtigungen...** öffnet einen Dialog: dem Plugin erlauben, eingebaute Handler zu ersetzen (`[replaces .zip: on]`) und was sein Manifest anfordert, zum Beispiel Dateien über das Programm zu lesen (`[needs vfs.read: on]`).
+- **Berechtigungen...** öffnet einen Dialog: dem Plugin erlauben, eingebaute Handler zu ersetzen (`[replaces .zip: on]`) und was sein Manifest anfordert, zum Beispiel Dateien über das Programm zu lesen (`[needs vfs.read: on]`) oder, bei einem WebAssembly-Plugin, die Dienste anderer Plugins aufzurufen (`services.call`).
 - **Ctrl+Up** und **Ctrl+Down** ändern die Ladereihenfolge der Plugins (sie spielt zwischen Plugins gleicher Priorität eine Rolle und gilt ab dem nächsten Start).
 - **Info** zeigt, wofür das Plugin da ist und was es hinzugefügt hat (Befehle, Tasten, Dateitypen, Schemata), und öffnet seine Hilfeseite, wenn es eine hat.
 <!--external-tools-->- **Externer Viewer/Editor...** – die Befehle Alt+F3 / Alt+F4; `%1` ist der Dateipfad (ohne `%1` wird der Pfad am Ende angehängt), z. B. `"C:\Program Files\Notepad++\notepad++.exe" %1`.
@@ -1083,7 +1190,7 @@ Globale Befehle wirken in jedem Fenster – auf den Panels, in einem Dokument, i
 - F10 schließt ein Dokument und beendet das Programm nur auf den Panels (`Quit`);
 - Esc auf den Panels zeigt die Konsole (`ConsoleToggle`), wenn das Panel den Fokus hat; in der Befehlszeile löscht es zuerst die Zeile und gibt dann den Fokus an das Panel zurück.
 
-**Vollbildprogramm.** Läuft eines in einer Konsole oder einem Terminal (der Tastenmodus des Profils ist *auto* oder *Terminal*, siehe Terminals), bekommt die Konsole diese Tasten ebenfalls, außer denen, die sie verlassen: F11, Ctrl+O, Tabwechsel, Ctrl+Shift+N und Ctrl+Alt+O.
+**Vollbildprogramm.** Läuft eines in einer Konsole oder einem Terminal (der Tastenmodus des Profils ist *auto*, *während Programm läuft* oder *Terminal*, siehe Terminals), bekommt die Konsole diese Tasten ebenfalls, außer denen, die sie verlassen: F11, Ctrl+O, Tabwechsel, Ctrl+Shift+N und Ctrl+Alt+O.
 
 **Dialoge.** Solange ein Dialog offen ist, lösen die globalen Befehle nicht aus; `ZoomReset` und `ReloadKeymap` immer.
 

@@ -260,7 +260,8 @@
       "use_ignore": ".gitignore, .geminiignore und .obsidianignore &verwenden",
       "use_rcj": "Robocopy-Datei exclude.rcj &beachten (/XD und /XF)",
       "use_obsidian": "&Obsidian-Ignorefilter beachten (.obsidian)",
-      "lbl_extra": "Zusät&zliche Muster (getrennt durch ;):",
+      "lbl_only": "Nur Dateien mit Maske (getrennt durch ;):",
+      "lbl_extra": "Zusätzliche Muster (getrennt durch ;):",
       "ok": "Vergleichen",
       "cancel": "Abbrechen"
     },

@@ -875,7 +875,7 @@ begin
   FDialog.Open(BuildDirSyncOptionsDialog(FitSyncPath(FSrcRoot, 56),
     FitSyncPath(FDstRoot, 56), FTwoWay, FByContent, FFilterOpts.SkipJunctions,
     FFilterOpts.UseIgnoreFiles, FFilterOpts.UseRobocopyFile,
-    FFilterOpts.UseObsidian, FFilterOpts.Extra), FOnCommand);
+    FFilterOpts.UseObsidian, FFilterOpts.Only, FFilterOpts.Extra), FOnCommand);
   if Assigned(FOnNotify) then
     FOnNotify();
 end;
@@ -894,6 +894,7 @@ begin
     FFilterOpts.UseIgnoreFiles := FDialog.GetCheckbox('use_ignore');
     FFilterOpts.UseRobocopyFile := FDialog.GetCheckbox('use_rcj');
     FFilterOpts.UseObsidian := FDialog.GetCheckbox('use_obsidian');
+    FFilterOpts.Only := Trim(FDialog.GetInputValue('only'));
     FFilterOpts.Extra := Trim(FDialog.GetInputValue('extra'));
   end;
   FOptionsOpen := False;

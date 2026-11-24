@@ -258,7 +258,8 @@
       "use_ignore": "&Учитывать .gitignore, .geminiignore и .obsidianignore",
       "use_rcj": "Учитывать robocopy &exclude.rcj (/XD и /XF)",
       "use_obsidian": "Учитывать фильтры &Obsidian (.obsidian)",
-      "lbl_extra": "Д&ополнительные шаблоны (через ;):",
+      "lbl_only": "Только файлы по маске (через ;):",
+      "lbl_extra": "Дополнительные шаблоны (через ;):",
       "ok": "Сравнить",
       "cancel": "Отмена"
     },

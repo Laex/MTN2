@@ -3,7 +3,7 @@
   "version": "2.0",
   "title": "Folders to synchronize",
   "width": 72,
-  "height": 20,
+  "height": 22,
   "children": [
     {
       "type": "label",
@@ -127,10 +127,28 @@
     },
     {
       "type": "label",
-      "id": "lbl_extra",
-      "text": "E&xtra patterns (separated by ;):",
+      "id": "lbl_only",
+      "text": "Only files matching (masks separated by ;):",
       "col": 1,
       "row": 11,
+      "width": 68,
+      "height": 1
+    },
+    {
+      "type": "input",
+      "id": "only",
+      "value": "",
+      "col": 1,
+      "row": 12,
+      "width": 68,
+      "height": 1
+    },
+    {
+      "type": "label",
+      "id": "lbl_extra",
+      "text": "Extra patterns (separated by ;):",
+      "col": 1,
+      "row": 13,
       "width": 68,
       "height": 1
     },
@@ -139,14 +157,14 @@
       "id": "extra",
       "value": "",
       "col": 1,
-      "row": 12,
+      "row": 14,
       "width": 68,
       "height": 1
     },
     {
       "type": "separator",
       "col": 0,
-      "row": 14,
+      "row": 16,
       "width": 70,
       "height": 1
     },
@@ -156,7 +174,7 @@
       "text": "Compare",
       "default": true,
       "col": 18,
-      "row": 16,
+      "row": 18,
       "width": 16,
       "height": 1
     },
@@ -166,7 +184,7 @@
       "text": "Cancel",
       "cancel": true,
       "col": 36,
-      "row": 16,
+      "row": 18,
       "width": 16,
       "height": 1
     }

@@ -259,7 +259,8 @@
       "use_ignore": "使用 .gitignore、.geminiignore 和 .obsidianignore(&G)",
       "use_rcj": "使用 robocopy 的 exclude.rcj(&E,/XD 和 /XF)",
       "use_obsidian": "使用 Obsidian 忽略过滤器(&B,.obsidian)",
-      "lbl_extra": "附加规则(&X,用 ; 分隔):",
+      "lbl_only": "仅限匹配的文件(掩码,用 ; 分隔):",
+      "lbl_extra": "附加规则(用 ; 分隔):",
       "ok": "比较",
       "cancel": "取消"
     },

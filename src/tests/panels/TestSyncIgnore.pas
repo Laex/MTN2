@@ -23,6 +23,8 @@ type
     [Test] procedure TestJunctionsSkippedOnlyWhenAsked;
     [Test] procedure TestCompareLeavesIgnoredFilesOut;
     [Test] procedure TestNoOptionsMeansNoFilter;
+    [Test] procedure TestOnlyMasksKeepMatchingFilesAndEnterFolders;
+    [Test] procedure TestCompareWithOnlyMaskLeavesOtherTypesOut;
   end;
 
 implementation
@@ -230,6 +232,57 @@ begin
   O := Default(TSyncFilterOptions);
   O.Extra := '  ';
   Assert.IsFalse(SyncFilterOptionsActive(O), 'blank extra patterns do not count');
+end;
+
+procedure TTestSyncIgnore.TestOnlyMasksKeepMatchingFilesAndEnterFolders;
+var
+  O: TSyncFilterOptions;
+  F: ISyncFilter;
+begin
+  O := Default(TSyncFilterOptions);
+  O.Only := ' *.MD ; *.txt ';
+  Assert.IsTrue(SyncFilterOptionsActive(O), 'the masks make the filter active');
+  F := NewSyncFilter(O, []);
+  Assert.IsFalse(F.Skip('note.md', False, False), 'matching name, any case');
+  Assert.IsFalse(F.Skip('sub' + PathDelim + 'a.txt', False, False), 'matched by name in a subfolder');
+  Assert.IsTrue(F.Skip('pic.png', False, False), 'other types are left out');
+  Assert.IsTrue(F.Skip('sub' + PathDelim + 'x.dat', False, False));
+  Assert.IsFalse(F.Skip('sub', True, False), 'folders are still entered');
+  O.Only := '  ;  ';
+  Assert.IsFalse(SyncFilterOptionsActive(O) and NewSyncFilter(O, []).Skip('pic.png', False, False),
+    'blank masks filter nothing');
+end;
+
+procedure TTestSyncIgnore.TestCompareWithOnlyMaskLeavesOtherTypesOut;
+var
+  Root, Src, Dst: string;
+  Items: TArray<TSyncItem>;
+  Empty: TArray<TSyncSnapshotEntry>;
+  O: TSyncFilterOptions;
+  I: Integer;
+  SawMd: Boolean;
+begin
+  Root := NewRoot('only');
+  Src := TPath.Combine(Root, 'src');
+  Dst := TPath.Combine(Root, 'dst');
+  ForceDirectories(Dst);
+  PutFile(Src, 'a.md', 'a');
+  PutFile(Src, 'b.png', 'b');
+  PutFile(Src, 'sub' + PathDelim + 'c.md', 'c');
+  PutFile(Dst, 'extra.png', 'only on the target');
+  SetLength(Empty, 0);
+  O := Default(TSyncFilterOptions);
+  O.Only := '*.md';
+  Items := CompareDirsTwoWay(Src, Dst, Empty, False, nil, NewSyncFilter(O, [Src, Dst]));
+  SawMd := False;
+  for I := 0 to High(Items) do
+  begin
+    Assert.IsTrue(SameText(ExtractFileExt(Items[I].RelPath), '.md'),
+      'only .md files are listed: ' + Items[I].RelPath);
+    SawMd := True;
+  end;
+  Assert.IsTrue(SawMd, 'the .md files are still compared');
+  Assert.AreEqual(2, Integer(Length(Items)), 'a.md and sub\c.md');
 end;
 
 initialization

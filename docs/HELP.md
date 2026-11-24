@@ -1,7 +1,5 @@
 # MTN2 – User Guide
 
-**English** | [Русский](HELP.ru.md) | [Deutsch](HELP.de.md) | [中文](HELP.zh.md)
-
 Modern Terminal Navigator 2 is a dual-panel file manager in the spirit of NDN / FAR Manager with a built-in console, terminals, viewer and editor.
 
 Keys are given for the built-in profile; you can redefine them (see [Key bindings](#key-bindings)).
@@ -144,7 +142,7 @@ A map of the program by task: what to press and where to read more. Keys are for
 ### Select and work with files
 
 - **Ins**, **Space**, Gray **+** / **-** / **\***, **Ctrl+M** (bring back the last selection). See [Selecting files](#selecting-files).
-- **Ctrl+Alt+N** – rename many files by rules, with a preview. See [File operations](#file-operations).
+- **Ctrl+Alt+N** – rename many files by rules, with a preview. See [File operations](#multi-rename).
 - Copy, move and delete run in the background; **Ctrl+Shift+J** shows the job list with pause, queue and speed limit. See [Background jobs](#background-jobs).
 - **Enter** or **Ctrl+PgDn** on an archive opens it like a folder; **F5** copies out of it. See [Archives](#archives).
 
@@ -174,6 +172,8 @@ A map of the program by task: what to press and where to read more. Keys are for
 - **Options → Theme...** – colors and frames; **Options → Keymap...** – any key; **Options → Plugins...** – extensions. See [Settings](#settings) and [Key bindings](#key-bindings).
 - **Options → Export settings...** – everything in one zip file, to move to another computer. See [Settings files](#settings-files).
 
+Common tasks, step by step: see [Recipes](#recipes).
+
 ---
 
 [Contents](#contents)
@@ -192,7 +192,7 @@ Select with **Ins** or **Space**, press **F5**, confirm. The copy runs in the ba
 
 ### Rename many files at once
 
-Select the files, press **Ctrl+Alt+N**, set the rules and look at the preview before applying. See [File operations](#file-operations).
+Select the files, press **Ctrl+Alt+N**, set the rules and look at the preview before applying. See [File operations](#multi-rename).
 
 ### Make two folders the same
 
@@ -369,7 +369,7 @@ The column modes menu lists the named column sets after the preset modes. Choosi
 
 | Key | Action |
 | --- | --- |
-| F3 | view a file; on folders – calculate the size of the selected folders, on the `..` row – of all folders of the panel; the sizes stay in the Size column while the folder is unchanged (Esc – cancel) |
+| F3 | view a file; on folders – calculate the size of the selected folders (Esc – cancel) |
 | F4 | edit |
 | Shift+F4 | create a file |
 | F5 | copy |
@@ -421,7 +421,7 @@ The same dialog has the other file flags: **Compressed**, **Encrypted**, **Not i
 
 Only for files and folders on disk: archives, SFTP, the Recycle Bin and search results have no Windows menu.
 
-<!--copy-->The copy/move dialog lets you keep all timestamps, copy only newer files, copy the contents of symbolic links, set an exclusion mask and compare every copied file with its source before it is kept (**Verify after copying**: a difference is reported as an error of that file). The "Already existing files" list sets the answer for name conflicts in advance: ask, overwrite, skip, overwrite if newer, overwrite if the size differs, or rename automatically (`name (2).ext`). On a name conflict the program asks what to do (overwrite, skip, rename, append, overwrite if newer, overwrite if the size differs, automatic rename; with **Remember choice** for all the following conflicts of the job). The rules "if newer" and "if size differs" are checked file by file; a pair they cannot judge (a folder against a file) is asked about.
+<!--copy-->The copy/move dialog lets you keep all timestamps, copy only newer files, copy the contents of symbolic links and set an exclusion mask. On a name conflict the program asks what to do (overwrite, skip, rename, for all…).
 
 <!--checksums-->**Checksums.** They are calculated in the background (Esc – cancel). In the result list: **Copy** – to the clipboard, **Save** – to `<file>.sha256` (one file) or `checksums.sha256` in the panel folder. Verification marks every line `OK`, `FAILED` or `MISSING`. Lines `hash *name`, `hash  name` and `SHA256 (name) = hash` are understood.
 
@@ -439,12 +439,6 @@ Search and Replace work on the new name and extension, and the letter case comes
 **Errors.** A name that is empty, invalid, used twice or already taken in the folder (also by another item of the batch) is marked with `!`, and **Rename** does nothing while any is left.
 
 Only items of one folder can be chosen. The renaming runs as a background job, like a move.
-
-**In editor.** The **In editor** button opens the new names in the built-in editor, one per line, in the order of the list. Edit them, save and close the editor: the dialog returns with these names, checked like any others. The number of lines must stay the same; changing the rules again goes back to names made from the rules.
-
-**Undo.** The dialog's **Undo last** button takes the previous batch back: every item whose new name still exists and whose old name is free goes back to its old name, as a background job; the rest are left as they are. Only the last batch on local disks is remembered, and undoing it clears the record.
-
-**Undo.** The dialog's **Undo last** button takes the previous batch back: every item whose new name still exists and whose old name is free goes back to its old name, as a background job; the rest are left as they are. Only the last batch on local disks is remembered, and undoing it clears the record.
 
 ---
 
@@ -531,6 +525,10 @@ Choosing the same sort order again reverses the direction. The letter in the top
 | Ctrl+I | panel filter: a dialog with a list of ready-made filters and a line for your own mask; Enter or a double click on the list applies the filter, Clear removes it |
 | Ctrl+B | flat view: all files of the subtree in one list |
 | Alt+letter | quick search by name |
+
+### Search through plugins
+
+The Everything plugin answers name searches in local folders from its index, the ripgrep plugin (`rg` in the PATH or next to the plugin) searches file text, and the Document viewer plugin lets a text search look inside `.docx`, `.xlsx`, `.pptx`, `.pdf`, `.svg` and SQLite files. Searches inside archives, by hex bytes or by attributes use the built-in search. A text search with a selective mask runs as a pipeline: the first stage lists the files by name (Everything or the built-in walk) and the second looks for the text in them (ripgrep or the built-in check). The **Pipeline** button of the Find dialog opens a dialog with one list per stage: **Auto** picks the best plugin, **Built-in** uses the built-in code, or choose one plugin by name; the built-in code runs when that plugin cannot serve the stage.
 
 ### Quick search
 
@@ -933,10 +931,9 @@ Until the main menu has been saved even once, it shows examples. Menu files can 
 
 <!--dir-sync-->- **Ctrl+Alt+S** – synchronize the folders of the active and passive panels: one-way or two-way; the dry-run check box shows what would be done without changing anything.
 - In the synchronization dialog every difference is a list row with its action: `->` copies to the right, `<-` to the left, `--` skips; conflicts start as skipped. The **Right**, **Left** and **Skip** buttons set the action of the selected row (a manual choice is marked `*`), **Reset** returns the automatic one, and **Only skipped** shows the rows that still need a decision. Differences left skipped stay open for the next synchronization.
-- The **Mirror** check box makes the target match the source: files that exist only on the target get the action `XX` (delete) and the **X** key sets it by hand on a row. The mode starts with the dry-run check box on, so the first run only reports how many files would be deleted; clear the box to apply. A copy runs first and the deletion follows only after it succeeds; the deletion asks its own confirmation with the count. By default the files go to the Recycle Bin; **Delete extras for good** removes them permanently. Differing files and files newer on the target are not touched in this mode. The **Extras to panel** button puts the target-only files into the Temporary panel instead, so they can be reviewed and deleted selectively.
-- Both the synchronization and the search dialog keep named presets: type a name and press **Save preset** (**Save** in the search dialog) to store the current mode and options, pick a name from the list to load it (the search dialog has a **Load** button), **Delete preset** removes it. The presets live in `syncpresets.json` and `searchpresets.json` in the configuration folder.
-- While the synchronization dialog compares the folders, it shows how many files and folders were scanned and then how many files were compared. **Esc** sends the comparison to the background: a chip appears in the tab bar and in the job list, shows the progress and turns to **OK** when the comparison is done (a notice appears too). Clicking the chip opens the finished plan, with the time of the comparison in the status line; cancelling the job from the job list drops the result.
-- Before the comparison starts, a small dialog shows both folders and asks for the mode, the comparison kind and what to leave out: junctions and symbolic links (skipped by default), the patterns of **.gitignore**, **.geminiignore** and **.obsidianignore** (nested files apply to their own folder), the **/XD** and **/XF** lists of a robocopy **exclude.rcj**, the ignore filters of an Obsidian vault and extra patterns separated by **;**. Left-out files appear neither in the plan nor among the extras of the mirror mode.
+- Before the comparison a small dialog shows both folders and asks for the mode (one-way or two-way), the comparison kind (date and size, or content) and what to leave out: junctions and symbolic links (skipped by default), the patterns of `.gitignore`, `.geminiignore` and `.obsidianignore` (a nested file applies to its own folder), the `/XD` and `/XF` lists of a robocopy `exclude.rcj`, the ignore filters of an Obsidian vault (`.obsidian/app.json`) and extra patterns separated by `;`. Patterns follow the gitignore rules: `*`, `?`, `**`, `[a-z]`, a trailing `/` for folders, a leading `/` for the root, `!` to re-include. Left-out files appear neither in the plan nor among the extras of the Mirror mode. To synchronize only some file types, give name masks such as `*.md;*.txt` in the "Only files matching" field: other files are left out the same way, while folders are still entered.
+- While the folders are compared, the dialog shows how many files and folders were scanned, then how many files were compared, and the current path. **Esc** sends the comparison to the background: a chip with the progress stays in the tab bar and the job list and turns to **OK** when done; clicking it opens the plan.
+- The **Mirror** check box also removes files that exist only on the target (its dry run is on until cleared on purpose); **Extras to panel** puts those files into the Temporary panel to review them before deleting. Named presets keep the mode, the comparison kind and the check boxes.
 <!--compare-files-->- **Ctrl+Alt+C** – compare the files under the cursors of both panels, or the two marked files of the active panel; the dialog shows size, modified time and a content verdict. With two or more files marked, the same-named files are compared (marks on both panels: only the marked ones; marks on one panel: the other panel is searched by name) and a list shows each pair as identical or different; Enter on a pair opens the differences. Folders are skipped.
   For text files a full-screen compare-and-merge window opens: two columns with line numbers, the differences marked in the middle and the changed part of a line highlighted (`~` changed, `<` only on the left, `>` only on the right). **Ctrl+Down** and **Ctrl+Up** (or **Tab** and **Shift+Tab**) move between differences, **Ctrl+Left** and **Ctrl+Right** scroll long lines, **Right** copies a difference from left to right, **Left** from right to left, **Ctrl+Z** undoes a copy, **Ctrl+S** writes the changed files with their original encoding and line breaks. **Esc** closes the window; with unsaved changes press it again to close without saving. Binary, very large (over 16 MB or 60000 lines) and identical files are shown in the earlier summary window.
 <!--compare-folders-->- **Ctrl+Shift+C** – compare folders: both panels select the files missing on the other side and the newer of same-named ones; same time but a different size selects both.
@@ -969,7 +966,6 @@ Dialog buttons are pressed with **Enter** and **Space**: the button looks presse
 - **Pause/Resume** holds a running copy at its next chunk (chip `||`, state "paused") or keeps a queued job from starting; a held job keeps its drive busy until it is resumed or cancelled;
 - **Up** and **Down** change the start order of queued jobs;
 - **Speed** steps the copy speed limit of the job through none, 1, 5, 20 and 100 MB/s (shown in the state column). The limit applies to copying between local folders.
-- **When the queue ends** (the list under the jobs) arms one action for the moment all jobs have finished without errors or cancels: sleep, shut down or close the program. The program first asks, and does it by itself after 30 seconds unless the question is answered; an error or cancel disarms it for that run. The action runs once and then returns to "Do nothing".
 
 <!--errors-->When a copy, move or delete stops with an error, the error window offers **Retry**, **Skip**, **Skip all**, **Cancel** and, for “Access denied” on a local path, **Admin**: it repeats the item and the rest of the job through the administrator helper (see [File operations](#file-operations)).
 
@@ -1020,12 +1016,12 @@ If the theme of the saved session is not found, the program says so and uses the
 **Shadows and marked files**
 - Window and button **shadows**: Classic, Soft or None; the dimming behind a dialog is lightened or dropped with them.
 - **Marked files:** “Text color” – only the letters change colour, as in Far; “Row background” – a background band across the whole row as well.
-<!--interface-->- **User interface...** – the interface language, notifications, the visibility of the window rows, dragging, the menu on Alt, auto-indent and a few more boxes; everything applies without a restart. The boxes are grouped on the tabs Window, Panels and Behavior; a tab opens with a click, Ctrl+PgUp / Ctrl+PgDn or Ctrl+Tab.
+<!--interface-->- **User interface...** – the interface language, notifications, the visibility of the window rows, dragging, the menu on Alt, auto-indent and a few more boxes; everything applies without a restart.
 
 **What it sets**
 - The **interface language** (English / Русский / Deutsch / 简体中文) and pop-up notifications.
 - The **window title bar, menu bar, F-key bar and status line.** A hidden row goes to the panels.
-- **Dragging files with the mouse** (can be switched off), the **menu on a single Alt press** (can be switched off), the cursor in the inactive panel, **vertical lines between columns** (Full and custom modes; Brief always has them, off by default), the **column headers** and the **sort mode letter** (both can be hidden; without the headers the letter moves to the top border), the **editor auto-indent on Enter** (can be switched off) and **filtering the panel while quick searching** (Alt+letter: besides moving the cursor, the files whose names do not begin with the typed text are hidden; the search box stays open after Alt is released and Esc or Enter removes the filter; the option **fuzzy filter** also keeps names that contain the typed letters in order, not necessarily next to each other; the option **keep the filter in other folders** carries it into a folder opened with Enter or a click, and then only Esc removes it; off by default).
+- **Dragging files with the mouse** (can be switched off), the **menu on a single Alt press** (can be switched off), the cursor in the inactive panel, **vertical lines between columns** (Full and custom modes; Brief always has them, off by default) the **editor auto-indent on Enter** (can be switched off) and **filtering the panel while quick searching** (Alt+letter: besides moving the cursor, the files whose names do not begin with the typed text are hidden; the search box stays open after Alt is released and Esc or Enter removes the filter; the option **fuzzy filter** also keeps names that contain the typed letters in order, not necessarily next to each other; the option **keep the filter in other folders** carries it into a folder opened with Enter or a click, and then only Esc removes it; off by default).
 
 **Hidden window rows**
 - With the menu bar hidden, F9 shows it over the top row while the menu is open.
@@ -1075,14 +1071,14 @@ If the theme of the saved session is not found, the program says so and uses the
 
 **Controls**
 - **Space** on a row switches the plugin off or on (`[x]` is on, `[ ]` is off); the choice applies on **OK** and is kept between runs, **Cancel** drops it.
-- **Permissions...** opens a dialog: allow the plugin to replace built-in handlers (`[replaces .zip: on]`) and what its manifest asks for, for example reading files through the program (`[needs vfs.read: on]`).
+- **Permissions...** opens a dialog: allow the plugin to replace built-in handlers (`[replaces .zip: on]`) and what its manifest asks for, for example reading files through the program (`[needs vfs.read: on]`) or, for a WebAssembly plugin, calling the services of other plugins (`services.call`).
 - **Ctrl+Up** and **Ctrl+Down** change the load order of the plugins (it matters between plugins of equal priority and applies from the next start).
 - **Info** shows what the plugin is for and what it added (commands, keys, file types, schemes) and opens its help page when it has one.
 - **Add...** installs a plugin from a folder or a `.zip` file (it must contain `plugin.json`; the folder is named after its `id`). An installed plugin is switched off: turn it on with Space and press **OK**. A plugin with the same `id` is replaced after a confirmation; a loaded plugin keeps its old version until the next start. An archive with paths outside the plugin folder is refused.
 - **Remove** deletes the folder of the selected plugin after a confirmation. If its files are in use (the plugin is loaded), switch it off, restart the program and try again.
 <!--external-tools-->- **External viewer/editor...** – the Alt+F3 / Alt+F4 commands; `%1` is the file path (without `%1` the path is added at the end), e.g. `"C:\Program Files\Notepad++\notepad++.exe" %1`.
 - **Environment profiles...** – variables laid over the environment of new shells; see [Environment profiles](#environment-profiles).
-<!--markdown-colors-->- **Markdown colors...** – colors of the Markdown view (F3 on a `.md` file): a foreground and a background (`#RRGGBB`) and a **text style** for every element. The elements are grouped on the tabs Text, Emphasis, Blocks and Links and tables (click, Ctrl+PgUp / Ctrl+PgDn or Ctrl+Tab).
+<!--markdown-colors-->- **Markdown colors...** – colors of the Markdown view (F3 on a `.md` file): a foreground and a background (`#RRGGBB`) and a **text style** for every element.
 
 **Elements and styles**
 - Elements: headings, bold, italic, strikethrough, code, quote, list markers, rules, links, tables.

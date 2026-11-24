@@ -107,6 +107,7 @@ type
     function MakeConflictResolver: TVfsConflictResolver;
     function MakeErrorResolver: TVfsErrorResolver;
     procedure NoteSkippedItem(const ASrcURI: string);
+    procedure NoteSkippedFile;
     procedure AskWorkerIOError(const AWait: IConflictWait; const AError: TVfsError);
     procedure ResolveWorkerIOError(AAction: TJobIOErrorAction);
     procedure AskWorkerDeleteError(const AWait: IConflictWait; const AError: TVfsError);
@@ -583,6 +584,13 @@ begin
   Path := FileUriToPath(ASrcURI);
   if (Path <> '') and TDirectory.Exists(WinApiPath(Path)) then
     Exit;
+  NoteSkippedFile;
+end;
+
+// For a skip decided from probe results, where the source is known to be a
+// file and no further disk access is wanted on the UI thread.
+procedure TPanelJobController.NoteSkippedFile;
+begin
   JobNoteSkipped(FJob.Cancel);
   FJob.FilesSkipped := JobSkippedCount(FJob.Cancel);
 end;
@@ -1657,6 +1665,8 @@ begin
   Result := False;
   if FJob.OverwriteMode = jomSkip then
   begin
+    if not AIsDirMerge then
+      NoteSkippedFile;
     AdvanceJobAfterItem(AIndex);
     Exit(True);
   end;
@@ -1669,7 +1679,11 @@ begin
   begin
     case FJob.RememberedAction of
       jcaSkip:
-        AdvanceJobAfterItem(AIndex);
+        begin
+          if not AIsDirMerge then
+            NoteSkippedFile;
+          AdvanceJobAfterItem(AIndex);
+        end;
       jcaAppend:
         StartTransferInvalidate(ASrcURI, ADstURI, AIndex, True, True);
     else
@@ -1700,6 +1714,7 @@ begin
   FJob.CurrentIsLink := ASrcIsLink;
   if ASkipNewer then
   begin
+    NoteSkippedFile;
     AdvanceJobAfterItem(AIndex);
     Exit;
   end;
@@ -2456,6 +2471,7 @@ begin
           ExecuteTransfer(SrcURI, DstURI, Idx, False, False);
           Exit;
         end;
+        NoteSkippedFile;
         AdvanceJobAfterItem(Idx);
         Exit;
       end;

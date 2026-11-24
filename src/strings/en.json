@@ -261,7 +261,8 @@
       "use_ignore": "&Use .gitignore, .geminiignore and .obsidianignore",
       "use_rcj": "Use robocopy &exclude.rcj (/XD and /XF)",
       "use_obsidian": "Use Obs&idian ignore filters (.obsidian)",
-      "lbl_extra": "E&xtra patterns (separated by ;):",
+      "lbl_only": "Only files matching (masks separated by ;):",
+      "lbl_extra": "Extra patterns (separated by ;):",
       "ok": "Compare",
       "cancel": "Cancel"
     },
