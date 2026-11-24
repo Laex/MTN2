@@ -154,7 +154,7 @@ begin
       hdkFolderHistory, hdkCmdHistory, hdkCommandPalette, hdkTheme,
       hdkColumnsConfig, hdkMaskGroups, hdkDisplay,
       hdkColorPicker, hdkHostColorPicker, hdkMarkdownPicker, hdkTmpSaveList, hdkExportList, hdkKeymap, hdkJobList,
-      hdkChecksumOptions, hdkChecksumResult, hdkPanelFilter, hdkMultiRename,
+      hdkPanelFilter, hdkMultiRename,
       hdkCompareOptions, hdkDatePicker, hdkFindPipeline,
       hdkThemeEditor, hdkThemeItems, hdkThemePicker:
         Exit(fbcDialogList);
@@ -329,8 +329,6 @@ begin
       Result := TArray<string>.Create(S('Save list'), H('Enter', 'Save', '='), H('Esc', 'Cancel', '='));
     hdkExportList:
       Result := TArray<string>.Create(S('Export list'), H('Enter', 'Save', '='), H('Esc', 'Cancel', '='));
-    hdkChecksumOptions:
-      Result := TArray<string>.Create(S('Checksums'), H('Enter', 'OK', '='), H('Esc', 'Cancel', '='));
     hdkSplitFile:
       Result := TArray<string>.Create(S('Split file'), H('Enter', 'Split', '='), H('Esc', 'Cancel', '='));
     hdkCombineFiles:
@@ -343,9 +341,6 @@ begin
       Result := TArray<string>.Create(S('Compare folders'), H('Enter', 'OK', '='), H('Esc', 'Cancel', '='));
     hdkMultiRename:
       Result := TArray<string>.Create(S('Multi-rename'), H('Enter', 'Rename', '='), H('Esc', 'Cancel', '='));
-    hdkChecksumResult:
-      Result := TArray<string>.Create(S('Checksums'), S('^v select'), H('Tab', 'Copy/Save', '='),
-        H('Esc', 'Close', '='));
   else
     Result := TArray<string>.Create(S('Code page'), S('^v select'), H('Enter', 'Apply', '='), H('Esc', 'Cancel', '='));
   end;

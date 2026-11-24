@@ -284,7 +284,7 @@ begin
   end
   else if Mods = [ssCtrl, ssAlt] then
     HintsFromKeymap([Hint(kaMultiRename, 'MRen'), Hint(kaCompareFiles, 'Cmp'),
-      Hint(kaChecksums, 'Sum'), Hint(kaDirSync, 'Sync'), Hint(kaRestore, 'Restore'),
+      Hint(kaDirSync, 'Sync'), Hint(kaRestore, 'Restore'),
       Hint(kaRunInNewTab, 'NewTab')], Mods, ALetters)
   else if Mods = [ssAlt, ssShift] then
     HintsFromKeymap([Hint(kaRunInBackground, 'Bkgnd')], Mods, ALetters)

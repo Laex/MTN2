@@ -232,7 +232,6 @@
         <DCCReference Include="Core\uMarkdownColors.pas"/>
         <DCCReference Include="Core\uDialogHistory.pas"/>
         <DCCReference Include="Core\uHistoryPopup.pas"/>
-        <DCCReference Include="Core\uChecksums.pas"/>
         <DCCReference Include="Core\uFileSplit.pas"/>
         <DCCReference Include="Core\uArchiveTest.pas"/>
         <DCCReference Include="Core\uPackEach.pas"/>

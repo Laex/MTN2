@@ -148,7 +148,6 @@ type
     OpenEnvironmentProfiles: TKeymapProc;
     ClearConsoleBuffer: TKeymapProc;
     OpenMarkdownColorsDialog: TKeymapProc;
-    BeginChecksums: TKeymapProc;
     BeginSplitCombine: TKeymapProc;
     BeginTestArchive: TKeymapProc;
     BeginPackEach: TKeymapProc;
@@ -1007,9 +1006,6 @@ begin
     kaCompareFolders:
       if Assigned(AHost.CompareFolders) then
         AHost.CompareFolders();
-    kaChecksums:
-      if Assigned(AHost.BeginChecksums) then
-        AHost.BeginChecksums();
     kaSplitCombine:
       if Assigned(AHost.BeginSplitCombine) then
         AHost.BeginSplitCombine();

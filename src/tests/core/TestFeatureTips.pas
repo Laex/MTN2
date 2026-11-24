@@ -202,7 +202,7 @@ begin
   // make a stored bit mean another tip.
   Assert.AreEqual(1, Ord(ftCommandPalette));
   Assert.AreEqual(2, Ord(ftMultiRename));
-  Assert.AreEqual(11, Ord(ftNewWorkspace));
+  Assert.AreEqual(10, Ord(ftNewWorkspace));
   Assert.IsTrue(Ord(High(TFeatureTip)) <= 30, 'the set fits an Integer');
 end;
 

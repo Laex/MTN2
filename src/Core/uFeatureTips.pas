@@ -21,7 +21,7 @@ type
   // appended, never inserted.
   TFeatureTip = (ftNone, ftCommandPalette, ftMultiRename, ftFolderHotlist,
     ftPairedFolders, ftCompareFolders, ftQuickView, ftNewTerminal, ftFolderTree,
-    ftGroupBy, ftChecksums, ftNewWorkspace);
+    ftGroupBy, ftNewWorkspace);
 
   TFeatureTipState = record
     Launches: Integer;
@@ -72,7 +72,7 @@ uses
 const
   cTipKey: array[TFeatureTip] of string = (
     '', 'palette', 'multirename', 'hotlist', 'paired', 'compare', 'quickview',
-    'terminal', 'tree', 'groupby', 'checksums', 'workspace');
+    'terminal', 'tree', 'groupby', 'workspace');
 
 function FeatureTipTemplate(ATip: TFeatureTip): string;
 begin
@@ -95,8 +95,6 @@ begin
       Result := 'Tip: {FolderTree} shows the folder tree over the panel';
     ftGroupBy:
       Result := 'Tip: {GroupBy} groups the rows by type or date';
-    ftChecksums:
-      Result := 'Tip: {Checksums} calculates and verifies checksums';
     ftNewWorkspace:
       Result := 'Tip: {NewWorkspace} opens a separate workspace with its own panels and terminals';
   else
@@ -116,7 +114,6 @@ begin
     kaNewTerminal: Result := ftNewTerminal;
     kaFolderTree: Result := ftFolderTree;
     kaGroupBy: Result := ftGroupBy;
-    kaChecksums: Result := ftChecksums;
     kaNewWorkspace: Result := ftNewWorkspace;
   else
     Result := ftNone;

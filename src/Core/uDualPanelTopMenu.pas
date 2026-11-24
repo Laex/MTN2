@@ -106,7 +106,6 @@ begin
     tmaFileProperties: CallProc(AHost.ShowProperties);
     tmaFileShellMenu: CallProc(AHost.ShellContextMenu);
     tmaFileCompare: CallProc(AHost.BeginCompareFiles);
-    tmaFileChecksums: CallProc(AHost.BeginChecksums);
     tmaFileSplitCombine: CallProc(AHost.BeginSplitCombine);
     tmaFileTestArchive: CallProc(AHost.BeginTestArchive);
     tmaFilePackEach: CallProc(AHost.BeginPackEach);

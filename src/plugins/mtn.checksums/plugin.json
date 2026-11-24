@@ -1,0 +1,19 @@
+{
+  "id": "mtn.checksums",
+  "name": "Checksums",
+  "version": "0.1.0",
+  "abi": 7,
+  "declarative": true,
+  "commands": [
+    {"id": "checksums.run", "key": "Ctrl+Alt+H"}
+  ],
+  "menuItems": [
+    {"id": "checksums.run", "parent": "Files", "caption": {"en": "&Checksums...", "ru": "&Контрольные суммы..."}, "priority": 50}
+  ],
+  "description": {
+    "en": "Ctrl+Alt+H: MD5, SHA-1, SHA-256 and SHA-512 of the selected files and folders on disk, calculated in the background; the lines can be copied or saved to a checksum file. On a .md5, .sha1, .sha256 or .sha512 file the command checks the files listed in it.",
+    "ru": "Ctrl+Alt+H: MD5, SHA-1, SHA-256 и SHA-512 выбранных файлов и папок на диске, расчёт идёт в фоне; строки можно скопировать или сохранить в файл сумм. На файле .md5, .sha1, .sha256 или .sha512 команда проверяет перечисленные в нём файлы."
+  },
+  "author": "MTN2",
+  "help": "help.md"
+}

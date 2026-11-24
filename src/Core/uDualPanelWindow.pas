@@ -80,11 +80,6 @@ type
     /// <summary>The folder and file names of the open Describe dialog.</summary>
     FDescribeDir: string;
     FDescribeNames: TArray<string>;
-    /// <summary>Checksums (Ctrl+Alt+H): the job's input, its cancel token
-    /// while it runs, and the last result (Copy / Save in the result dialog).</summary>
-    FChecksumPaths: TArray<string>;
-    FChecksumBaseDir: string;
-    FChecksumAlgoIndex: Integer;
     FCompareOptions: TPanelCompareOptions;
     FCompareToken: IJobCancelToken;
     /// <summary>The pairs listed by the open group-compare dialog; Enter
@@ -97,9 +92,6 @@ type
     /// <summary>A pair opened from the list is showing; closing it brings
     /// the list back.</summary>
     FGroupReturn: Boolean;
-    FChecksumToken: IJobCancelToken;
-    FChecksumLines: TArray<string>;
-    FChecksumSaveName: string;
     /// <summary>Split / combine: the file the open dialog works on, the parts
     /// found for a join, the last part size typed, and the cancel token while
     /// the job runs.</summary>
@@ -1030,7 +1022,6 @@ type
     function HandleExportListCommand(const AControlId: string;
       const AFields: TDialogCommandFields): Boolean;
     procedure OpenMarkdownColorsDialog;
-    procedure BeginChecksums;
     procedure BeginSplitCombine;
     procedure BeginTestArchive;
     procedure BeginPackEach;
@@ -1041,10 +1032,6 @@ type
     procedure StartMultiRenameJob(const ASources, ADests: TArray<string>);
     procedure HostUndoMultiRename;
     procedure HostEditRenameNames(const AText: string; const AOnDone: TProc<string>);
-    procedure StartChecksumJob(AAlgoIndex: Integer; AVerify: Boolean);
-    procedure ShowChecksumResult(const ATitle, AStatus: string;
-      const ALines: TArray<string>; AVerify: Boolean);
-    procedure DispatchChecksumCommand(AKind: THostDialogKind; const AControlId: string);
     /// <summary>Ctrl+Q: NC/NDN/FAR/TC convention - puts the opposite panel
     /// into pvkQuickView for any cursor row (file or directory), same toggle
     /// shape as ToggleAdjacentInfoPanel/pvkInfo. Image overlay vs placeholder
@@ -1708,7 +1695,7 @@ implementation
 uses
   uFindRouter,
   uPlatformInfo, uPlatformProcess, uPlatformFolders, uPlatformPaths, uImageInfo, uFileClip, uWinFileDragDrop, uStrings, uFileHistory, uChromeRows,
-  uExternalTools, uEnvProfiles, uDialogHistory, uChecksums, uFileSplit, uArchiveTest, uPackEach, uCloudFiles, uKeyChord, uConsoleSettings, uZipVfs,
+  uExternalTools, uEnvProfiles, uDialogHistory, uFileSplit, uArchiveTest, uPackEach, uCloudFiles, uKeyChord, uConsoleSettings, uZipVfs,
   uCharWidth, uConfigMode, uPluginChrome, uColorPickerControl, uRenameJournal, uConfigLocation;
 
 const
@@ -2131,8 +2118,6 @@ begin
   FreeAndNil(FKeyHints);
   FreeAndNil(FFeatureTips);
   FreeAndNil(FSaver);
-  if Assigned(FChecksumToken) then
-    FChecksumToken.Cancel;
   if Assigned(FSplitToken) then
     FSplitToken.Cancel;
   if Assigned(FCompareToken) then
@@ -2406,7 +2391,6 @@ begin
   FKeymapHost.OpenEnvironmentProfiles := OpenEnvironmentProfiles;
   FKeymapHost.ClearConsoleBuffer := ClearConsoleBuffer;
   FKeymapHost.OpenMarkdownColorsDialog := OpenMarkdownColorsDialog;
-  FKeymapHost.BeginChecksums := BeginChecksums;
   FKeymapHost.BeginSplitCombine := BeginSplitCombine;
   FKeymapHost.BeginTestArchive := BeginTestArchive;
   FKeymapHost.BeginPackEach := BeginPackEach;
@@ -3881,7 +3865,6 @@ procedure TDualPanelWindow.BindRuntimeControllers;
 begin
   FCmdLineMgr := TDualPanelCmdLineManager.Create(HostCmdLineSubmit, NotifyChanged);
   FCmdLineMgr.OnGetNames := HostCmdLineNames;
-  FChecksumAlgoIndex := Ord(caSHA256);
   FSplitSizeText := '100M';
   FCompareOptions := TPanelCompareOptions.Default;
   FCmdLineMgr.OnGetBaseDir := ActiveLocalPath;
@@ -6972,12 +6955,6 @@ begin
   // Only cancel an in-flight folder-size job; other stubs must not bump Gen.
   if Assigned(FFolderSizeMgr) and FFolderSizeMgr.IsActive then
     CancelFolderSize;
-  // The checksum progress stub: closing it (Esc) cancels the job.
-  if Assigned(FChecksumToken) then
-  begin
-    FChecksumToken.Cancel;
-    FChecksumToken := nil;
-  end;
   if Assigned(FSplitToken) then
   begin
     FSplitToken.Cancel;
@@ -7239,8 +7216,6 @@ begin
         if not DialogCmdIsReject(AControlId) then
           ApplyWorkspaceTabTitle(AFields.Name);
       end;
-    hdkChecksumOptions, hdkChecksumResult:
-      DispatchChecksumCommand(AKind, AControlId);
     hdkSplitFile, hdkCombineFiles:
       DispatchSplitCombineCommand(AKind, AControlId);
     hdkCompareOptions:
@@ -9628,7 +9603,7 @@ begin
   if Assigned(FFolderSizeMgr) then
   begin
     OpenStub(skShellInfo, FolderSizeStubTitle,
-      T('ui.checksum.working', 'Calculating... Esc=Cancel'));
+      T('ui.folderSize.working', 'Calculating... Esc=Cancel'));
     FFolderSizeMgr.StartCalculation(Side, Targets[0], Targets);
   end;
 end;
@@ -10377,198 +10352,6 @@ begin
       FJobs.BeginJobPairs(FromUris, BackUris, pjkMove, jomAsk);
       NotifyChanged;
     end);
-end;
-
-procedure TDualPanelWindow.BeginChecksums;
-var
-  Uris, Paths: TArray<string>;
-  Algo: TChecksumAlgo;
-begin
-  if not HostInPanelsWorkspace or not CanStartOperation or Assigned(FChecksumToken) then
-    Exit;
-  Uris := CollectActiveSources;
-  if Length(Uris) = 0 then
-    Exit; // ".." with nothing selected
-  Paths := FileUrisToLocalPaths(Uris);
-  if Length(Paths) = 0 then
-  begin
-    OpenStub(skShellInfo, T('ui.checksum.title', 'Checksums'),
-      T('ui.checksum.localOnly', 'Only for files and folders on disk'));
-    Exit;
-  end;
-  FChecksumPaths := Paths;
-  FChecksumBaseDir := ActiveLocalPath;
-  // A checksum file on its own: verify it instead of hashing it.
-  if (Length(Paths) = 1) and TFile.Exists(Paths[0]) and
-     ChecksumAlgoFromExt(Paths[0], Algo) then
-  begin
-    StartChecksumJob(Ord(Algo), True);
-    Exit;
-  end;
-  CloseTransientUiBeforeDialog;
-  FDialogKind := hdkChecksumOptions;
-  FDialog.Open(BuildChecksumOptionsDialog(FChecksumAlgoIndex), DialogCommand);
-  NotifyChanged;
-end;
-
-procedure TDualPanelWindow.StartChecksumJob(AAlgoIndex: Integer; AVerify: Boolean);
-var
-  Life: ILifeFlag;
-  Token: IJobCancelToken;
-  Paths: TArray<string>;
-  Base, Title: string;
-  Algo: TChecksumAlgo;
-begin
-  Life := FLife;
-  Algo := TChecksumAlgo(EnsureRange(AAlgoIndex, 0, Ord(High(TChecksumAlgo))));
-  Token := TJobCancelToken.Create;
-  FChecksumToken := Token;
-  Paths := Copy(FChecksumPaths);
-  Base := FChecksumBaseDir;
-  Title := T('ui.checksum.title', 'Checksums') + ' ' + cChecksumAlgoNames[Algo];
-  OpenStub(skShellInfo, Title, T('ui.checksum.working', 'Calculating... Esc=Cancel'));
-  TThread.CreateAnonymousThread(
-    procedure
-    var
-      Files: TArray<TChecksumFile>;
-      Items: TArray<TChecksumVerifyItem>;
-      Lines: TArray<string>;
-      I, Bad: Integer;
-      Hash, Err, SaveName, Status: string;
-      Done: Boolean;
-      Cancelled: TChecksumCancelled;
-    begin
-      Cancelled :=
-        function: Boolean
-        begin
-          Result := Token.IsCancellationRequested;
-        end;
-      SetLength(Lines, 0);
-      Err := '';
-      SaveName := '';
-      Bad := 0;
-      Done := True;
-      try
-        if AVerify then
-        begin
-          Done := VerifyChecksumFile(Paths[0], Algo, Items, Cancelled);
-          for I := 0 to High(Items) do
-          begin
-            Lines := Lines + [Format('%-8s %s',
-              [ChecksumVerifyStatusText(Items[I].Status), Items[I].RelName])];
-            if Items[I].Status <> cvsOk then
-              Inc(Bad);
-          end;
-          Status := Format(T('ui.checksum.verified', '%d checked, %d not OK: %s'),
-            [Length(Items), Bad, ExtractFileName(Paths[0])]);
-        end
-        else
-        begin
-          Files := CollectChecksumFiles(Paths, Base);
-          for I := 0 to High(Files) do
-          begin
-            if Cancelled() then
-            begin
-              Done := False;
-              Break;
-            end;
-            try
-              Hash := HashFileHex(Files[I].Path, Algo, Cancelled);
-            except
-              on E: Exception do
-              begin
-                Hash := 'ERROR: ' + E.Message;
-                Inc(Bad);
-              end;
-            end;
-            if (Hash = '') and Cancelled() then
-            begin
-              Done := False;
-              Break;
-            end;
-            Lines := Lines + [FormatChecksumLine(Hash, Files[I].RelName)];
-          end;
-          SaveName := ChecksumSaveFileName(Files, Base, Algo);
-          Status := Format(T('ui.checksum.done', '%d files'), [Length(Files)]);
-          if Bad > 0 then
-            Status := Status + Format(T('ui.checksum.errors', ', %d not read'), [Bad]);
-        end;
-      except
-        on E: Exception do
-          Err := E.Message;
-      end;
-      TThread.Queue(nil,
-        procedure
-        begin
-          // Cancelled (Esc on the stub, or the window is going away).
-          if Token.IsCancellationRequested or not Life.Alive then
-            Exit;
-          FChecksumToken := nil;
-          CloseStub;
-          if not Done then
-            Exit;
-          if Err <> '' then
-          begin
-            OpenStub(skShellInfo, Title, Err);
-            Exit;
-          end;
-          FChecksumSaveName := SaveName;
-          ShowChecksumResult(Title, Status, Lines, AVerify);
-        end);
-    end).Start;
-end;
-
-procedure TDualPanelWindow.ShowChecksumResult(const ATitle, AStatus: string;
-  const ALines: TArray<string>; AVerify: Boolean);
-begin
-  if Assigned(FDialog) and FDialog.Visible then
-    Exit;
-  FChecksumLines := Copy(ALines);
-  FDialogKind := hdkChecksumResult;
-  FDialog.Open(BuildChecksumResultDialog(ATitle, AStatus, ALines, AVerify), DialogCommand);
-  NotifyChanged;
-end;
-
-procedure TDualPanelWindow.DispatchChecksumCommand(AKind: THostDialogKind;
-  const AControlId: string);
-var
-  Idx: Integer;
-begin
-  if AKind = hdkChecksumOptions then
-  begin
-    Idx := FDialog.GetListSelectedIndex('algo');
-    FDialog.Close;
-    if DialogCmdIsAccept(AControlId) then
-    begin
-      FChecksumAlgoIndex := EnsureRange(Idx, 0, Ord(High(TChecksumAlgo)));
-      StartChecksumJob(FChecksumAlgoIndex, False);
-    end;
-    NotifyChanged;
-    Exit;
-  end;
-  // Result list: Copy and Save keep it open.
-  if SameText(AControlId, 'copy') then
-  begin
-    ClipboardSet(string.Join(sLineBreak, FChecksumLines));
-    FDialog.SetLabelText('status', T('ui.checksum.copied', 'Copied to the clipboard'));
-    Exit;
-  end;
-  if SameText(AControlId, 'save') then
-  begin
-    try
-      TFile.WriteAllText(FChecksumSaveName,
-        string.Join(sLineBreak, FChecksumLines) + sLineBreak, TEncoding.UTF8);
-      FDialog.SetLabelText('status', T('ui.checksum.saved', 'Saved: ') + FChecksumSaveName);
-      ReloadActiveRows;
-    except
-      on E: Exception do
-        FDialog.SetLabelText('status', E.Message);
-    end;
-    Exit;
-  end;
-  FDialog.Close;
-  SetLength(FChecksumLines, 0);
-  NotifyChanged;
 end;
 
 procedure TDualPanelWindow.BeginSplitCombine;

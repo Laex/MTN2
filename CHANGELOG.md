@@ -18,6 +18,10 @@ This file describes what changes for the user from version to version: new featu
 - A download from FTP, SFTP, WebDAV or S3 that was cut off by a lost connection continues from the partial file on the next attempt, as long as the file on the server has not changed.
 - Copying, moving or packing files that exist only in the cloud (OneDrive, Dropbox and similar placeholders) warns how many of them will be downloaded first.
 
+### Changed
+
+- Checksums moved out of the program core into the `mtn.checksums` plugin. The command, its Ctrl+Alt+H key and the dialogs work as before, but the item is now at the end of the Files menu after a line, the Ctrl+Alt+F3 key bar hint and the "Checksums" tip are gone, and turning the plugin off in Plugins... removes the command. A plugin menu item can now name `Files` or `Commands` as its parent to sit in that menu.
+
 ## Dev v0.5.12.4 – 2026-11-24
 
 ### Fixed

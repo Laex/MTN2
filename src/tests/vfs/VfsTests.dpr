@@ -10,7 +10,6 @@ program VfsTests;
 uses
   uTestRunner in '..\common\uTestRunner.pas',
   uElevatedHelper,
-  TestChecksums in 'TestChecksums.pas',
   TestCopyIntoSelf in 'TestCopyIntoSelf.pas',
   TestCopyLockedSource in 'TestCopyLockedSource.pas',
   TestCopyStaging in 'TestCopyStaging.pas',

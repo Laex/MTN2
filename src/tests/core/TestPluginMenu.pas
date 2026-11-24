@@ -17,7 +17,8 @@ type
     [Test] procedure PluginGroupsFollowThePluginListOrder;
     [Test] procedure ItemsAreGroupedByPluginWithNamedLines;
     [Test] procedure PluginWithoutNameIsShownById;
-    [Test] procedure ParentNameOfTheItemDoesNotMatter;
+    [Test] procedure UnknownParentNameLandsInThePluginsMenu;
+    [Test] procedure FilesParentAddsItemsToTheBuiltInMenu;
     [Test] procedure PluginsMenuIsTranslated;
   end;
 
@@ -28,6 +29,12 @@ uses
   uStrings, uTopMenuBar, uMenuRegistry;
 
 const
+  cFilesMenuJson =
+    '{"categories":[' +
+    '{"title":"Files","hotChar":"F","items":[{"caption":"Copy","action":"tmaFileCopy"}]},' +
+    '{"title":"Options","hotChar":"O","items":[]},' +
+    '{"title":"Right","hotChar":"R","items":[]}]}';
+
   cMenuJson =
     '{"categories":[' +
     '{"title":"Commands","hotChar":"C","items":[]},' +
@@ -276,7 +283,7 @@ begin
   end;
 end;
 
-procedure TTestPluginMenu.ParentNameOfTheItemDoesNotMatter;
+procedure TTestPluginMenu.UnknownParentNameLandsInThePluginsMenu;
 var
   C: TTopMenuController;
 begin
@@ -284,9 +291,29 @@ begin
   C := TTopMenuController.Create(nil, nil, nil);
   try
     Assert.IsTrue(C.LoadMenuFromJson(cMenuJson));
-    C.SetPluginMenuItems([Desc('a', 'Commands', 'A1', 10)]);
-    Assert.AreEqual('', Items(C, 0), 'nothing lands in the named category');
+    C.SetPluginMenuItems([Desc('a', 'Elsewhere', 'A1', 10)]);
+    Assert.AreEqual('', Items(C, 0), 'nothing lands in a category that is not a parent');
     Assert.AreEqual('Plugins...|-|A1|', Items(C, 1));
+  finally
+    C.Free;
+  end;
+end;
+
+procedure TTestPluginMenu.FilesParentAddsItemsToTheBuiltInMenu;
+var
+  C: TTopMenuController;
+begin
+  SetLocale('en');
+  C := TTopMenuController.Create(nil, nil, nil);
+  try
+    Assert.IsTrue(C.LoadMenuFromJson(cFilesMenuJson));
+    C.SetPluginMenuItems([Desc('a', 'Files', 'A1', 10), Desc('b', 'Plugins', 'B1', 10)]);
+    Assert.AreEqual('Copy|-|A1|', Items(C, 0), 'set apart by a line, after the built-in items');
+    Assert.AreEqual('Plugins...|-|B1|', Items(C, 1), 'the other plugin item stays in Plugins');
+    C.SetPluginMenuItems([Desc('a', 'Files', 'A1', 10)]);
+    Assert.AreEqual('Copy|-|A1|', Items(C, 0), 'repeated registration does not add rows');
+    C.SetPluginMenuItems(nil);
+    Assert.AreEqual('Copy|', Items(C, 0), 'the rows go with the plugin');
   finally
     C.Free;
   end;

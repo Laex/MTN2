@@ -52,7 +52,6 @@ uses
   uMarkdownColors in 'Core\uMarkdownColors.pas',
   uDialogHistory in 'Core\uDialogHistory.pas',
   uHistoryPopup in 'Core\uHistoryPopup.pas',
-  uChecksums in 'Core\uChecksums.pas',
   uFileSplit in 'Core\uFileSplit.pas',
   uArchiveTest in 'Core\uArchiveTest.pas',
   uPackEach in 'Core\uPackEach.pas',

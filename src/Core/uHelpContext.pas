@@ -77,8 +77,6 @@ begin
       Result := 'fileops.md#copy';
     hdkSetAttributes:
       Result := 'fileops.md#attributes';
-    hdkChecksumOptions, hdkChecksumResult:
-      Result := 'fileops.md#checksums';
     hdkSplitFile, hdkCombineFiles:
       Result := 'fileops.md#split-and-combine';
     hdkCompareOptions:
@@ -200,7 +198,7 @@ type
 const
   // The first rule whose prefix starts the name wins, so the specific
   // prefixes come before the general ones.
-  cRules: array[0..81] of TTopicRule = (
+  cRules: array[0..80] of TTopicRule = (
     (Prefix: 'tmaFileSelect'; Topic: 'selection.md'),
     (Prefix: 'tmaFileUnselect'; Topic: 'selection.md'),
     (Prefix: 'tmaFileInvertSelect'; Topic: 'selection.md'),
@@ -216,7 +214,6 @@ const
     (Prefix: 'tmaFileRunInBackground'; Topic: 'jobs.md'),
     (Prefix: 'tmaFileRunInNewTab'; Topic: 'terminals.md'),
     (Prefix: 'tmaFileSetAttributes'; Topic: 'fileops.md#attributes'),
-    (Prefix: 'tmaFileChecksums'; Topic: 'fileops.md#checksums'),
     (Prefix: 'tmaFileSplitCombine'; Topic: 'fileops.md#split-and-combine'),
     (Prefix: 'tmaFileTestArchive'; Topic: 'archives.md#test'),
     (Prefix: 'tmaFilePackEach'; Topic: 'archives.md#pack-each'),

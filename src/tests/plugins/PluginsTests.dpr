@@ -41,6 +41,7 @@ uses
   TestThumbsLayout in 'TestThumbsLayout.pas',
   TestTmpPanelPlugin in 'TestTmpPanelPlugin.pas',
   TestTmpPanelCollect in 'TestTmpPanelCollect.pas',
+  TestChecksums in 'TestChecksums.pas',
   TestLogFilter in 'TestLogFilter.pas',
   TestLuaMacros in 'TestLuaMacros.pas',
   TestCsvTable in 'TestCsvTable.pas',

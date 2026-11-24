@@ -219,7 +219,6 @@ const
     'Compare folders',
     'External viewer',
     'External editor',
-    'Checksums',
     'Split / combine files',
     'Test archive',
     'Pack each item',

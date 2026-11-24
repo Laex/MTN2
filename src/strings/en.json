@@ -352,12 +352,6 @@
       "ok": "OK",
       "cancel": "Cancel"
     },
-    "DIALOG_CHECKSUMOPTS": {
-      "$title": "Checksums",
-      "lbl_algo": "Algorithm:",
-      "ok": "OK",
-      "cancel": "Cancel"
-    },
     "DIALOG_SPLITFILE": {
       "$title": "Split file",
       "lbl_dest": "Parts go to folder:",
@@ -404,11 +398,6 @@
       "editor": "In &editor",
       "ok": "Rename",
       "cancel": "Cancel"
-    },
-    "DIALOG_CHECKSUM": {
-      "copy": "&Copy",
-      "save": "&Save",
-      "close": "Close"
     },
     "DIALOG_CONSOLEOPTIONS": {
       "$title": "Console",
@@ -1064,7 +1053,6 @@
     "keymap.action.CompareFolders": "Compare folders",
     "keymap.action.ExternalView": "External viewer",
     "keymap.action.ExternalEdit": "External editor",
-    "keymap.action.Checksums": "Checksums",
     "keymap.action.MultiRename": "Multi-rename",
     "keymap.action.CopyItemName": "Copy name",
     "keymap.action.SplitCombine": "Split or combine files",
@@ -1250,7 +1238,7 @@
     "hint.markdown": "Markdown: {MarkdownSource} shows the source, Tab links, {DocFind} finds, {DocClose} closes",
     "hint.editor": "Edit: {EditorSave} save, {EditorReplace} replace, {EditorBookmarkToggle} bookmark, {EditorDeleteLine} delete line",
     "hint.menu": "Tip: {CommandPalette} finds any command by name and shows its keys",
-    "hint.manyselected": "Several files: {MultiRename} rename by rules, {Checksums} checksums, {RestoreSelection} last selection",
+    "hint.manyselected": "Several files: {MultiRename} rename by rules, {RestoreSelection} last selection",
     "hint.archivefile": "Archive file: Enter or {FolderDown} opens it as a folder, {Unpack} unpacks it",
     "hint.longfolder": "Long folder: {LiveFilter} filters as you type, {ToggleHidden} hidden files, {SortMenu} sorting",
     "hint.travel": "Folders: {FolderHistory} history, {FolderHotlist} hotlist, {FolderTree} tree, {FolderHotlistAdd} adds this one",
@@ -1265,7 +1253,6 @@
     "tip.terminal": "Tip: {NewTerminal} opens a terminal tab: PowerShell, WSL, SSH",
     "tip.tree": "Tip: {FolderTree} shows the folder tree over the panel",
     "tip.groupby": "Tip: {GroupBy} groups the rows by type or date",
-    "tip.checksums": "Tip: {Checksums} calculates and verifies checksums",
     "tip.workspace": "Tip: {NewWorkspace} opens a separate workspace with its own panels and terminals",
     "palette.keysCategory": "Keys",
     "toast.refreshed": "Panel refreshed",
@@ -1596,9 +1583,7 @@
     "properties.title": "Properties",
     "properties.unavailable": "Only for files and folders on disk",
     "compareFolders.title": "Compare folders",
-    "checksum.title": "Checksums",
-    "checksum.localOnly": "Only for files and folders on disk",
-    "checksum.working": "Calculating... Esc=Cancel",
+    "folderSize.working": "Calculating... Esc=Cancel",
     "split.title": "Split / combine",
     "split.oneFile": "Select one file on disk",
     "split.noDest": "Enter where the result goes",
@@ -1617,11 +1602,6 @@
     "packeach.done": "%d archives created",
     "folderSize.title": "Folder size",
     "folderSize.titleN": "Folder size (%d/%d)",
-    "checksum.verified": "%d checked, %d not OK: %s",
-    "checksum.done": "%d files",
-    "checksum.errors": ", %d not read",
-    "checksum.copied": "Copied to the clipboard",
-    "checksum.saved": "Saved: ",
     "compareFolders.needPanels": "Both panels must show file lists.",
     "compareFolders.same": "The folders are identical.",
     "compareFolders.working": "Comparing... Esc=Cancel",
@@ -2108,7 +2088,6 @@
     "tmaFileProperties": "Properties...",
     "tmaFileShellMenu": "Windows context menu",
     "tmaFileCompare": "Compare files...",
-    "tmaFileChecksums": "Checksums...",
     "tmaFileMultiRename": "Multi-rename...",
     "tmaFileRestore": "Restore from Recycle Bin",
     "tmaFileDelete": "Delete",

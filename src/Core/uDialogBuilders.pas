@@ -206,9 +206,6 @@ function BuildMarkdownColorsDialog: TDialogDeclaration;
 /// <summary>Import of an Obsidian theme into the Markdown colors: path of
 /// theme.css and the palette (0 = dark, 1 = light).</summary>
 function BuildMarkdownImportDialog(const APath: string; APaletteIndex: Integer): TDialogDeclaration;
-/// <summary>Files > Checksums...: algorithm dropdown (index into
-/// uChecksums.TChecksumAlgo order: MD5, SHA-1, SHA-256, SHA-512).</summary>
-function BuildChecksumOptionsDialog(AAlgoIndex: Integer): TDialogDeclaration;
 /// <summary>Commands > Compare folders: what counts as a difference.</summary>
 function BuildCompareOptionsDialog(AByTime, ABySize, AByContent: Boolean): TDialogDeclaration;
 /// <summary>Files > Multi-rename...: the rule fields filled from ARules, the
@@ -216,10 +213,6 @@ function BuildCompareOptionsDialog(AByTime, ABySize, AByContent: Boolean): TDial
 /// preview list is filled by the caller.</summary>
 function BuildMultiRenameDialog(const ARules: TMultiRenameRules;
   AWidth: Integer): TDialogDeclaration;
-/// <summary>Checksum result list; AVerify drops the Save button (the
-/// lines are OK / FAILED marks, not a checksum file).</summary>
-function BuildChecksumResultDialog(const ATitle, AStatus: string;
-  const ALines: TArray<string>; AVerify: Boolean): TDialogDeclaration;
 /// <summary>AAccents: the quick-launch key cells of the rows.</summary>
 /// <summary>The list that picks the environment profile (uEnvProfiles) of a
 /// shell profile: AItems with the "none" row first, ASelectedIndex the current
@@ -1078,12 +1071,6 @@ begin
   DialogSetDropDownSelected(Result, 'obs_palette', APaletteIndex);
 end;
 
-function BuildChecksumOptionsDialog(AAlgoIndex: Integer): TDialogDeclaration;
-begin
-  RequireDialogResource(cResDialogChecksumOpts, Result);
-  DialogSetDropDownSelected(Result, 'algo', AAlgoIndex);
-end;
-
 function BuildCompareOptionsDialog(AByTime, ABySize, AByContent: Boolean): TDialogDeclaration;
 begin
   RequireDialogResource(cResDialogCompareOpts, Result);
@@ -1146,26 +1133,6 @@ begin
   DialogSetCheckbox(Result, 'match_case', ARules.MatchCase);
   DialogSetCheckbox(Result, 'use_regex', ARules.UseRegex);
   DialogSetDropDownSelected(Result, 'case_mode', Ord(ARules.CaseMode));
-end;
-
-function BuildChecksumResultDialog(const ATitle, AStatus: string;
-  const ALines: TArray<string>; AVerify: Boolean): TDialogDeclaration;
-var
-  I: Integer;
-begin
-  RequireDialogResource(cResDialogChecksum, Result);
-  DialogSetTitle(Result, ATitle);
-  // Padded: the label keeps the width of its first text, and Copy / Save
-  // write longer messages into it later.
-  DialogSetLabelText(Result, 'status', AStatus + StringOfChar(' ', Max(74 - Length(AStatus), 0)));
-  if Length(ALines) = 0 then
-    DialogSetListItems(Result, 'lines', ['(none)'], 0)
-  else
-    DialogSetListItems(Result, 'lines', ALines, 0);
-  if AVerify then
-    for I := High(Result.Controls) downto 0 do
-      if Result.Controls[I].Id = 'save' then
-        Delete(Result.Controls, I, 1);
 end;
 
 function BuildConsoleOptionsDialog(AScrollbackIndex: Integer; AConfirmPaste,

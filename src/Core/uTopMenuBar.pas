@@ -50,7 +50,6 @@ type
     tmaFileProperties,
     tmaFileShellMenu,
     tmaFileCompare,
-    tmaFileChecksums,
     tmaFileSplitCombine,
     tmaFileTestArchive,
     tmaFilePackEach,
@@ -403,6 +402,12 @@ function SubmenuHotCharCol(AItemX: Integer; const ACaption: string;
 /// <summary>True when a plugin menu item belongs under the Macros category.</summary>
 function IsMacrosMenuParent(const AParentTitle: string): Boolean;
 
+/// <summary>Index of the built-in category (Files, Commands) a plugin item
+/// with parent AParentTitle is placed in; -1 when the item goes to the Plugins
+/// menu.</summary>
+function PluginParentCategoryIndex(const ACategories: TArray<TTopMenuCategory>;
+  const AParentTitle: string): Integer;
+
 /// <summary>True when the Plugins category needs a new per-plugin separator
 /// before Desc of APluginId (AGroup is 0 before the first group).</summary>
 function ShouldOpenPluginGroup(AGroup: Integer; const ALastPluginId,
@@ -500,8 +505,6 @@ begin
       Result := kaShellContextMenu;
     tmaFileCompare:
       Result := kaCompareFiles;
-    tmaFileChecksums:
-      Result := kaChecksums;
     tmaFileSplitCombine:
       Result := kaSplitCombine;
     tmaFileTestArchive:
@@ -941,6 +944,21 @@ begin
   Result := SameText(AParentTitle, cMacrosMenuPath);
 end;
 
+function PluginParentCategoryIndex(const ACategories: TArray<TTopMenuCategory>;
+  const AParentTitle: string): Integer;
+var
+  J: Integer;
+begin
+  Result := -1;
+  if not (SameText(AParentTitle, 'Files') or SameText(AParentTitle, 'Commands')) then
+    Exit;
+  for J := 0 to High(ACategories) do
+    if not ACategories[J].IsPluginsMenu and
+       (SameText(ACategories[J].Key, AParentTitle) or
+        (ACategories[J].Key = '') and SameText(ACategories[J].Title, AParentTitle)) then
+      Exit(J);
+end;
+
 function ShouldOpenPluginGroup(AGroup: Integer; const ALastPluginId,
   APluginId: string): Boolean;
 begin
@@ -1375,19 +1393,50 @@ end;
 
 procedure TTopMenuController.ApplyPluginItemsToCategories;
 var
-  I, At, Group: Integer;
+  I, J, At, Group: Integer;
   Desc: TPluginMenuItemDesc;
   NewItem: TSubmenuItem;
   Cat, MacroCat: TTopMenuCategory;
   LastPlugin, Title: string;
   HotC: Char;
   PosIdx: Integer;
+  Removed: Boolean;
 begin
   // Strip what was added earlier first, so this is safe to call repeatedly
   // (after every SetPluginMenuItems / menu reload).
   for I := High(FCategories) downto 0 do
     if FCategories[I].IsPluginsMenu then
-      Delete(FCategories, I, 1);
+      Delete(FCategories, I, 1)
+    else
+    begin
+      Removed := False;
+      for J := High(FCategories[I].Items) downto 0 do
+        if FCategories[I].Items[J].IsPluginItem then
+        begin
+          Delete(FCategories[I].Items, J, 1);
+          Removed := True;
+        end;
+      // The line that set the plugin items apart goes with them.
+      if Removed and (Length(FCategories[I].Items) > 0) and
+         FCategories[I].Items[High(FCategories[I].Items)].IsSeparator then
+        SetLength(FCategories[I].Items, Length(FCategories[I].Items) - 1);
+    end;
+  // Items whose parent is a built-in menu go to the end of that menu, after a line.
+  for Desc in FPluginItems do
+  begin
+    J := PluginParentCategoryIndex(FCategories, Desc.ParentTitle);
+    if J < 0 then
+      Continue;
+    if (Length(FCategories[J].Items) > 0) and
+       not FCategories[J].Items[High(FCategories[J].Items)].IsPluginItem and
+       not FCategories[J].Items[High(FCategories[J].Items)].IsSeparator then
+    begin
+      SetLength(FCategories[J].Items, Length(FCategories[J].Items) + 1);
+      FCategories[J].Items[High(FCategories[J].Items)] := MakeSubmenuSeparatorItem;
+    end;
+    SetLength(FCategories[J].Items, Length(FCategories[J].Items) + 1);
+    FCategories[J].Items[High(FCategories[J].Items)] := MakeMacroActionItem(Desc);
+  end;
   // The plugin manager comes first; then one group per plugin, each opened by
   // a line carrying the plugin's name (FPluginItems is pre-sorted by
   // (plugin order, Priority) in SetPluginMenuItems).
@@ -1416,7 +1465,8 @@ begin
   Group := 0;
   for Desc in FPluginItems do
   begin
-    if IsMacrosMenuParent(Desc.ParentTitle) then
+    if IsMacrosMenuParent(Desc.ParentTitle) or
+       (PluginParentCategoryIndex(FCategories, Desc.ParentTitle) >= 0) then
       Continue;
     if ShouldOpenPluginGroup(Group, LastPlugin, Desc.PluginId) then
     begin

@@ -124,7 +124,6 @@ type
     kaCompareFolders, // Ctrl+Shift+C -- select what differs between panels
     kaExternalView,   // Alt+F3 -- external viewer
     kaExternalEdit,   // Alt+F4 -- external editor
-    kaChecksums,      // Ctrl+Alt+H -- calculate / verify checksums
     kaSplitCombine,   // unbound by default -- split a file into parts / join the parts
     kaTestArchive,    // unbound by default -- test the integrity of the archive under the cursor
     kaPackEach,       // unbound by default -- pack every selected item into its own ZIP
@@ -585,7 +584,6 @@ begin
   AddBinding(Result, kaCompareFolders, KeyBinding(Ord('C'), True, False, True));
   AddBinding(Result, kaExternalView, KeyBinding(vkF3, False, True, False));
   AddBinding(Result, kaExternalEdit, KeyBinding(vkF4, False, True, False));
-  AddBinding(Result, kaChecksums, KeyBinding(Ord('H'), False, True, True));
   AddBinding(Result, kaMultiRename, KeyBinding(Ord('N'), False, True, True));
   AddBinding(Result, kaRecycleBin, KeyBinding(vkF8, False, True, True));
   AddBinding(Result, kaRestore, KeyBinding(Ord('R'), False, True, True));
@@ -1050,7 +1048,6 @@ const
     'CompareFolders',        // kaCompareFolders
     'ExternalView',          // kaExternalView
     'ExternalEdit',          // kaExternalEdit
-    'Checksums',             // kaChecksums
     'SplitCombine',          // kaSplitCombine
     'TestArchive',           // kaTestArchive
     'PackEach',              // kaPackEach

@@ -73,12 +73,10 @@ const
   cResDialogConfigLocation = 'DIALOG_CONFIGLOCATION';
   cResDialogMarkdownColors = 'DIALOG_MARKDOWNCOLORS';
   cResDialogMarkdownImport = 'DIALOG_MARKDOWNIMPORT';
-  cResDialogChecksumOpts = 'DIALOG_CHECKSUMOPTS';
   cResDialogSplitFile = 'DIALOG_SPLITFILE';
   cResDialogCombineFiles = 'DIALOG_COMBINEFILES';
   cResDialogCompareOpts = 'DIALOG_COMPAREOPTS';
   cResDialogMultiRename = 'DIALOG_MULTIRENAME';
-  cResDialogChecksum = 'DIALOG_CHECKSUM';
   cResDialogArchivePassword = 'DIALOG_ARCHIVEPASSWORD';
   cResDialogSetAttr = 'DIALOG_SETATTR';
   cResDialogSetMode = 'DIALOG_SETMODE';
