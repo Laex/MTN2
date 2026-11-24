@@ -26,6 +26,9 @@ begin
   Assert.IsTrue(IsSevenZipFileName('pack.7z'), '.7z is seven-zip');
   Assert.IsTrue(IsSevenZipFileName('Proxifier4.rar'), '.rar is handled by 7z.dll plugin');
   Assert.IsTrue(not IsSevenZipFileName('pack.zip'), '.zip is not seven-zip');
+  Assert.IsTrue(IsSevenZipFileName('pack.7z.001'), 'first volume of a 7z');
+  Assert.IsTrue(IsSevenZipFileName('pack.zip.001'), 'first volume of a zip');
+  Assert.IsTrue(not IsSevenZipFileName('movie.001'), 'a plain numbered part is not an archive');
   Assert.IsTrue(IsSevenZipUri('7z:///C:/a.7z!/'), '7z:/// is seven-zip URI');
   Assert.IsTrue(not IsSevenZipUri('file:///C:/a.7z!/'), 'file:// is not seven-zip URI');
   Assert.IsTrue(IsZipArchiveUri('file:///C:/a.zip!/x'), 'zip chain is core zip');

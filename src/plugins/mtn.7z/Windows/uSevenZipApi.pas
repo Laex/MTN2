@@ -103,6 +103,7 @@ const
   kHandlerClassID = 1;
   kHandlerExtension = 2;
 
+  kpidName = 4;
   kpidPath = 3;
   kpidIsDir = 6;
   kpidSize = 7;
@@ -159,6 +160,14 @@ type
     ['{23170F69-40C1-278A-0000-000600100000}']
     function SetTotal(files, bytes: PUInt64): HRESULT; stdcall;
     function SetCompleted(files, bytes: PUInt64): HRESULT; stdcall;
+  end;
+
+  /// <summary>Lets 7z.dll fetch the other volumes of a split archive
+  /// (name.7z.001, name.7z.002, ...) from the folder of the first one.</summary>
+  IArchiveOpenVolumeCallback = interface(IUnknown)
+    ['{23170F69-40C1-278A-0000-000600300000}']
+    function GetProperty(propID: UInt32; out value: TPropVariant): HRESULT; stdcall;
+    function GetStream(name: PWideChar; out inStream: IInStream): HRESULT; stdcall;
   end;
 
   ICryptoGetTextPassword = interface(IUnknown)
@@ -252,15 +261,19 @@ type
   /// archive with encrypted headers. Without a password the request aborts
   /// the open at once.</summary>
   T7zOpenCallback = class(TInterfacedObject, IArchiveOpenCallback,
-    ICryptoGetTextPassword, ICryptoGetTextPassword2)
+    IArchiveOpenVolumeCallback, ICryptoGetTextPassword, ICryptoGetTextPassword2)
   private
+    FArchivePath: string;
     FPassword: string;
     FHasPassword: Boolean;
     FAsked: Boolean;
   public
-    constructor Create(AHasPassword: Boolean; const APassword: string);
+    constructor Create(const AArchivePath: string; AHasPassword: Boolean;
+      const APassword: string);
     function SetTotal(files, bytes: PUInt64): HRESULT; stdcall;
     function SetCompleted(files, bytes: PUInt64): HRESULT; stdcall;
+    function GetProperty(propID: UInt32; out value: TPropVariant): HRESULT; stdcall;
+    function GetStream(name: PWideChar; out inStream: IInStream): HRESULT; stdcall;
     function CryptoGetTextPassword(out password: TBStr): HRESULT; stdcall;
     function CryptoGetTextPassword2(out passwordIsDefined: Int32;
       out password: TBStr): HRESULT; stdcall;
@@ -650,9 +663,11 @@ begin
   Result := S_OK;
 end;
 
-constructor T7zOpenCallback.Create(AHasPassword: Boolean; const APassword: string);
+constructor T7zOpenCallback.Create(const AArchivePath: string; AHasPassword: Boolean;
+  const APassword: string);
 begin
   inherited Create;
+  FArchivePath := AArchivePath;
   FHasPassword := AHasPassword;
   FPassword := APassword;
 end;
@@ -664,6 +679,36 @@ end;
 
 function T7zOpenCallback.SetCompleted(files, bytes: PUInt64): HRESULT;
 begin
+  Result := S_OK;
+end;
+
+function T7zOpenCallback.GetProperty(propID: UInt32; out value: TPropVariant): HRESULT;
+begin
+  FillChar(value, SizeOf(value), 0);
+  if propID = kpidName then
+  begin
+    value.vt := VT_BSTR;
+    value.bstrVal := SysAllocString(PWideChar(WideString(ExtractFileName(FArchivePath))));
+  end;
+  Result := S_OK;
+end;
+
+function T7zOpenCallback.GetStream(name: PWideChar; out inStream: IInStream): HRESULT;
+var
+  Path: string;
+begin
+  inStream := nil;
+  // Only a sibling of the archive: a volume name never carries a folder.
+  if (name = nil) or (ExtractFileName(string(name)) <> string(name)) then
+    Exit(S_FALSE);
+  Path := TPath.Combine(ExtractFilePath(FArchivePath), string(name));
+  if not FileExists(Path) then
+    Exit(S_FALSE);
+  try
+    inStream := T7zFileStream.Create(Path, fmOpenRead or fmShareDenyWrite);
+  except
+    Exit(S_FALSE);
+  end;
   Result := S_OK;
 end;
 
@@ -1197,7 +1242,7 @@ begin
   Ids := CollectClassIds(AArchivePath);
   MaxCheck := 1 shl 22;
   HasPassword := SevenZipTryGetPassword(AArchivePath, Password);
-  Cb := T7zOpenCallback.Create(HasPassword, Password);
+  Cb := T7zOpenCallback.Create(AArchivePath, HasPassword, Password);
   OpenCb := Cb;
   SawEncrypted := False;
   for I := 0 to High(Ids) do

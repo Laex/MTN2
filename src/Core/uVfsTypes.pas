@@ -1584,6 +1584,10 @@ var
   Ext: string;
 begin
   Ext := LowerCase(SafeExtension(AName));
+  // The first volume of a split archive: name.7z.001, name.zip.001, ...
+  if Ext = '.001' then
+    Exit(IsSevenZipFileName(Copy(AName, 1, Length(AName) - Length(Ext))) or
+      SameText(SafeExtension(Copy(AName, 1, Length(AName) - Length(Ext))), '.zip'));
   Result := (Ext = '.7z') or (Ext = '.rar') or (Ext = '.tar') or
     (Ext = '.gz') or (Ext = '.tgz') or (Ext = '.bz2') or (Ext = '.xz') or
     (Ext = '.iso') or (Ext = '.cab') or (Ext = '.wim') or (Ext = '.zst') or

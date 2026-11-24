@@ -33,13 +33,14 @@ type
     [Test] procedure TestPackCompressionLevel;
     [Test] procedure TestExtractFolderInOnePass;
     [Test] procedure TestArchiveIntegrity;
+    [Test] procedure TestSplitArchiveVolumes;
     [Test] procedure TestEncryptedArchiveIntegrity;
   end;
 
 implementation
 
 uses
-  System.SysUtils, System.Classes, System.IOUtils,
+  System.SysUtils, System.Classes, System.IOUtils, System.Math,
   uPlatformPaths, uPlatformProcess, uSevenZipApi, uSevenZipVfs;
 
 const
@@ -491,6 +492,56 @@ begin
       R := Default(T7zTestResult);
       Assert.IsTrue(SevenZipTestArchive(Arc, function: Boolean begin Result := True; end,
         R, Err), Tag + 'cancelled run');
+    finally
+      SevenZipSetCompressionLevel(Arc, -1);
+      SevenZipUnloadEngine;
+    end;
+  end;
+end;
+
+procedure TTestSevenZipOpen.TestSplitArchiveVolumes;
+var
+  Dll, Arc, Vol, SrcDir, Err, Tag, Names: string;
+  Bytes, Part: TBytes;
+  Items: TArray<T7zItem>;
+  I, N: Integer;
+  R: T7zTestResult;
+begin
+  if Length(Engines) = 0 then
+    Assert.Pass('SKIP: no 7-Zip engine found');
+  SrcDir := TPath.Combine(TPath.GetTempPath, 'mtn2-7z-vol-src');
+  if TDirectory.Exists(SrcDir) then
+    TDirectory.Delete(SrcDir, True);
+  TDirectory.CreateDirectory(SrcDir);
+  TFile.WriteAllText(TPath.Combine(SrcDir, 'inner.txt'), StringOfChar('v', 3000));
+  for Dll in Engines do
+  begin
+    Tag := Dll + ': ';
+    Arc := NewPackArchive('vol.7z');
+    Assert.IsTrue(SevenZipLoadEngine(Dll), Tag + 'load');
+    try
+      SevenZipSetCompressionLevel(Arc, 0);
+      Assert.IsTrue(SevenZipAddLocalPath(Arc, TPath.Combine(SrcDir, 'inner.txt'), 'inner.txt',
+        True, Err), Tag + 'pack: ' + Err);
+      Bytes := TFile.ReadAllBytes(Arc);
+      TFile.Delete(Arc);
+      // Three volumes cut where it suits: the archive is read across the cuts.
+      N := (Length(Bytes) + 2) div 3;
+      for I := 0 to 2 do
+      begin
+        Part := Copy(Bytes, I * N, Min(N, Length(Bytes) - I * N));
+        Vol := Arc + '.00' + IntToStr(I + 1);
+        TFile.WriteAllBytes(Vol, Part);
+      end;
+      Vol := Arc + '.001';
+      Assert.IsTrue(SevenZipListArchive(Vol, Items, Err), Tag + 'list the volumes: ' + Err);
+      Names := '';
+      for I := 0 to High(Items) do
+        Names := Names + Items[I].Path + ';';
+      Assert.IsTrue(Names.Contains('inner.txt') or Names.Contains('vol.7z'),
+        Tag + 'volumes list the archive or its content: ' + Names);
+      Assert.IsTrue(SevenZipTestArchive(Vol, nil, R, Err), Tag + 'test the volumes: ' + Err);
+      Assert.AreEqual(0, R.Failed, Tag + 'volumes are intact');
     finally
       SevenZipSetCompressionLevel(Arc, -1);
       SevenZipUnloadEngine;
