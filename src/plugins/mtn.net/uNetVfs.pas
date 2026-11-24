@@ -674,7 +674,7 @@ begin
     AOp.ErrorText := 'Already exists';
     Exit(nrAlreadyExists);
   end;
-  Result := AClient.Download(ARemote, ALocal, AOp, AKeepTime, AEntry.Size);
+  Result := AClient.Download(ARemote, ALocal, AOp, AKeepTime, AEntry.Size, AEntry.Modified);
   if Result = nrOk then
     Inc(AOp.Base, AEntry.Size);
 end;

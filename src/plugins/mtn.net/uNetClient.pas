@@ -16,6 +16,10 @@ uses
   System.SysUtils, System.Classes, System.Generics.Collections, System.SyncObjs,
   uNetTypes, uNetCurl, uNetCurlApi, uNetListParsers;
 
+/// <summary>Sidecar of a partial download: the identity of the remote file it came from.</summary>
+function DownloadPartInfoPath(const APart: string): string;
+function DownloadPartIdentity(ASize, AModified: Int64): string;
+
 type
   TNetClient = class
   private
@@ -69,9 +73,12 @@ type
     procedure Retire;
     function ListDir(const APath: string; AOp: TNetOp; out AEntries: TNetEntries): TNetResult;
     function Stat(const APath: string; AOp: TNetOp; out AEntry: TNetEntry): TNetResult; virtual;
-    /// <summary>AKnownSize >= 0 spares the lookup of the size (the caller listed the folder).</summary>
+    /// <summary>AKnownSize >= 0 spares the lookup of the size (the caller listed the folder).
+    /// AKnownModified (listing time, 0 = unknown) identifies the remote file: a
+    /// download cut off by a lost connection continues from the partial file
+    /// only while size and time are unchanged.</summary>
     function Download(const ARemote, ALocal: string; AOp: TNetOp;
-      AKeepTime: Boolean; AKnownSize: Int64 = -1): TNetResult; virtual;
+      AKeepTime: Boolean; AKnownSize: Int64 = -1; AKnownModified: Int64 = 0): TNetResult; virtual;
     function Upload(const ALocal, ARemote: string; AOp: TNetOp;
       AOverwrite: Boolean): TNetResult; virtual;
     function ReadBytes(const ARemote: string; AMaxBytes: Int64; AOp: TNetOp;
@@ -469,21 +476,86 @@ begin
   Result := True;
 end;
 
-function TNetClient.Download(const ARemote, ALocal: string; AOp: TNetOp;
-  AKeepTime: Boolean; AKnownSize: Int64): TNetResult;
+function DownloadPartInfoPath(const APart: string): string;
+begin
+  Result := APart + '.inf';
+end;
+
+function DownloadPartIdentity(ASize, AModified: Int64): string;
+begin
+  Result := IntToStr(ASize) + '|' + IntToStr(AModified);
+end;
+
+// Bytes of an earlier, interrupted download of the same remote file that can
+// be continued; 0 starts afresh (and clears what is left over).
+function ResumableOffset(const APart, AIdentity: string): Int64;
 var
-  Part, PlaceError: string;
+  Info: string;
+begin
+  Result := 0;
+  Info := DownloadPartInfoPath(APart);
+  try
+    if FileExists(APart) and FileExists(Info) and
+       (TFile.ReadAllText(Info, TEncoding.UTF8) = AIdentity) then
+      Result := TFile.GetSize(APart);
+  except
+    Result := 0;
+  end;
+end;
+
+procedure DropPartFiles(const APart: string);
+begin
+  try
+    if FileExists(APart) then
+      TFile.Delete(APart);
+    if FileExists(DownloadPartInfoPath(APart)) then
+      TFile.Delete(DownloadPartInfoPath(APart));
+  except
+    // A leftover partial file is only clutter.
+  end;
+end;
+
+function TNetClient.Download(const ARemote, ALocal: string; AOp: TNetOp;
+  AKeepTime: Boolean; AKnownSize: Int64; AKnownModified: Int64): TNetResult;
+var
+  Part, PlaceError, Identity: string;
   Stream: TFileStream;
   Call: TCurlCall;
-  Total: Int64;
+  Total, Offset: Int64;
   Entry: TNetEntry;
+  Keep: Boolean;
 begin
   if not SafeName(ARemote, AOp) then
     Exit(nrInvalid);
+  Keep := False;
   Part := ALocal + '.mtnpart';
+  Total := AKnownSize;
+  Entry := Default(TNetEntry);
+  Entry.Modified := AKnownModified;
+  if (Total < 0) and (Stat(ARemote, nil, Entry) = nrOk) then
+    Total := Entry.Size;
+  // A partial file is continued only for a remote file known to be unchanged.
+  Offset := 0;
+  if Total > 0 then
+  begin
+    Identity := DownloadPartIdentity(Total, Entry.Modified);
+    Offset := ResumableOffset(Part, Identity);
+    if Offset >= Total then
+      Offset := 0;
+  end;
   try
     ForceDirectories(ExtractFilePath(ALocal));
-    Stream := TFileStream.Create(Part, fmCreate);
+    if Offset > 0 then
+    begin
+      Stream := TFileStream.Create(Part, fmOpenReadWrite);
+      Stream.Seek(0, soEnd);
+    end
+    else
+    begin
+      Stream := TFileStream.Create(Part, fmCreate);
+      if Total > 0 then
+        TFile.WriteAllText(DownloadPartInfoPath(Part), Identity, TEncoding.UTF8);
+    end;
   except
     on E: Exception do
     begin
@@ -492,17 +564,15 @@ begin
       Exit(nrAccessDenied);
     end;
   end;
-  Total := AKnownSize;
-  Entry := Default(TNetEntry);
-  if (Total < 0) and (Stat(ARemote, nil, Entry) = nrOk) then
-    Total := Entry.Size;
   try
     Call := NewCall(AOp, TransferUrl(ARemote));
     try
       Call.Body := Stream;
       Call.ProgressName := PosixLastSegment(ARemote);
       if Total > 0 then
-        Call.ProgressTotal := Total;
+        Call.ProgressTotal := Total - Offset;
+      if Offset > 0 then
+        Call.SetRange(Offset);
       if IsHttpLike then
         Call.SetLong(CURLOPT_FAILONERROR, 1);
       Result := Settle(Call, Call.Perform, AOp);
@@ -514,6 +584,17 @@ begin
     finally
       Call.Free;
     end;
+    // A continued download must end at the size announced by the server.
+    if (Result = nrOk) and (Offset > 0) and (Stream.Size <> Total) then
+    begin
+      Result := nrIO;
+      if AOp <> nil then
+        AOp.ErrorText := 'The continued download has the wrong size';
+    end;
+    // A cut-off connection that made progress leaves the partial file for
+    // the next attempt; anything else clears it.
+    Keep := (Result in [nrIO, nrTimeout]) and (Total > 0) and
+      (Stream.Size > Offset) and (Stream.Size < Total);
   finally
     Stream.Free;
   end;
@@ -536,14 +617,10 @@ begin
         Result := nrAccessDenied;
       end;
     end;
-  end;
-  if Result <> nrOk then
-    try
-      if FileExists(Part) then
-        TFile.Delete(Part);
-    except
-      // A leftover partial file is only clutter.
-    end;
+    DropPartFiles(Part);
+  end
+  else if not Keep then
+    DropPartFiles(Part);
 end;
 
 function TNetClient.Upload(const ALocal, ARemote: string; AOp: TNetOp;

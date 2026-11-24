@@ -12,6 +12,7 @@ This file describes what changes for the user from version to version: new featu
 - "Split / combine..." in the File menu cuts the file under the cursor into numbered parts (`name.001`, `name.002`, ...) of a chosen size (`700M`, `1.44M`, `4G`) and joins the parts back into one file when the cursor is on any part. Existing files are never overwritten; Esc cancels and removes the unfinished result.
 - "Test archive" in the File menu checks every file of the ZIP archive under the cursor against its stored checksum without unpacking it, and lists the damaged ones.
 - "Pack each item" in the File menu packs every selected file or folder into its own ZIP archive in the other panel's folder, without replacing existing archives.
+- A download from FTP, SFTP, WebDAV or S3 that was cut off by a lost connection continues from the partial file on the next attempt, as long as the file on the server has not changed.
 
 ## Dev v0.5.12.4 – 2026-11-24
 

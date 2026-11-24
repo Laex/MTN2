@@ -194,6 +194,40 @@ begin
   end;
 end;
 
+// A partial file of the same remote file (marked by its sidecar) is continued:
+// the marker bytes written in front of the tail show that the first bytes were
+// not fetched again. A sidecar of another remote state starts afresh.
+procedure CheckResume(AClient: TNetClient; const ABase, AWork: string; AOp: TNetOp);
+const
+  cMarker = 'XXXXX';
+var
+  E: TNetEntry;
+  Target, Part: string;
+begin
+  Assert.IsTrue(AClient.Stat(PosixJoin(ABase, 'hello.txt'), AOp, E) = nrOk, 'stat: ' + AOp.ErrorText);
+  Assert.IsTrue(E.Size > Length(cMarker), 'the fixture is longer than the marker');
+
+  Target := TPath.Combine(AWork, 'resume-hello.txt');
+  Part := Target + '.mtnpart';
+  TFile.WriteAllText(Part, cMarker, TEncoding.ASCII);
+  TFile.WriteAllText(DownloadPartInfoPath(Part), DownloadPartIdentity(E.Size, E.Modified), TEncoding.UTF8);
+  Assert.IsTrue(AClient.Download(PosixJoin(ABase, 'hello.txt'), Target, AOp, False, E.Size, E.Modified) = nrOk,
+    'resumed download: ' + AOp.ErrorText);
+  Assert.AreEqual(cMarker + Copy(TestFixtureText, Length(cMarker) + 1, MaxInt),
+    TFile.ReadAllText(Target, TEncoding.ASCII), 'only the tail was fetched');
+  Assert.IsFalse(FileExists(Part), 'no partial file stays');
+  Assert.IsFalse(FileExists(DownloadPartInfoPath(Part)), 'no sidecar stays');
+
+  TFile.Delete(Target);
+  TFile.WriteAllText(Part, cMarker, TEncoding.ASCII);
+  TFile.WriteAllText(DownloadPartInfoPath(Part), DownloadPartIdentity(E.Size + 1, E.Modified), TEncoding.UTF8);
+  Assert.IsTrue(AClient.Download(PosixJoin(ABase, 'hello.txt'), Target, AOp, False, E.Size, E.Modified) = nrOk,
+    'download after a changed file: ' + AOp.ErrorText);
+  Assert.AreEqual(TestFixtureText, TFile.ReadAllText(Target, TEncoding.ASCII),
+    'a partial file of another remote state is not continued');
+  Assert.IsFalse(FileExists(Part), 'no partial file stays');
+end;
+
 procedure CheckDownload(AClient: TNetClient; const ABase, AWork: string);
 var
   Op: TNetOp;
@@ -216,6 +250,7 @@ begin
     Assert.IsTrue(AClient.Download(PosixJoin(ABase, 'missing.bin'), TPath.Combine(AWork, 'x.bin'), Op, False) =
       nrNotFound, 'a missing file is not found');
     Assert.IsFalse(FileExists(TPath.Combine(AWork, 'x.bin')), 'nothing is left of a failed download');
+    CheckResume(AClient, ABase, AWork, Op);
   finally
     Op.Free;
   end;
