@@ -91,6 +91,15 @@ function PluginSurfaceSetFrame(AHandle, AWidth, AHeight: Integer; APixels: PByte
 /// <summary>Sets the tab title and the text of the status line.</summary>
 function PluginSurfaceSetInfo(AHandle: Integer; const ATitle, AStatus: string): Boolean;
 
+/// <summary>Sets the function-bar labels of the tab (the JSON of SurfaceSetKeyBar);
+/// an empty text removes them. False for an unknown handle or bad JSON.</summary>
+function PluginSurfaceSetKeyBar(AHandle: Integer; const AJson: string): Boolean;
+
+/// <summary>Applies the labels of surface AHandle to the bar items for the held
+/// modifiers: AItems are the ten F slots ("3View"), ALetters the letter hints.</summary>
+procedure SurfaceApplyKeyBar(AHandle: Integer; AMods: TShiftState;
+  var AItems, ALetters: TArray<string>);
+
 /// <summary>Calls the plugin's tick callback every AIntervalMs milliseconds while the
 /// tab is on screen; 0 stops it.</summary>
 function PluginSurfaceSetTimer(AHandle, AIntervalMs: Integer): Boolean;
@@ -153,7 +162,7 @@ function SurfaceDeliverKey(AHandle: Integer; AKey: Word; AShift: TShiftState;
 implementation
 
 uses
-  System.Diagnostics, uCoreTimer;
+  System.Diagnostics, System.JSON, System.Math, uCoreTimer;
 
 type
   TSurface = class
@@ -161,6 +170,8 @@ type
     Handle: Integer;
     PluginId: string;
     Title, Status: string;
+    KeyLabels: TDictionary<string, string>;
+    KeyHints: TArray<string>;
     OnKey: TSurfaceKeyCallback;
     OnTick: TProc;
     OnClosed: TProc;
@@ -206,6 +217,7 @@ end;
 
 destructor TSurface.Destroy;
 begin
+  KeyLabels.Free;
   FreeAndNil(Timer);
   inherited Destroy;
 end;
@@ -438,6 +450,75 @@ begin
   S.Status := AStatus;
   if Assigned(S.Repaint) then
     S.Repaint();
+end;
+
+function PluginSurfaceSetKeyBar(AHandle: Integer; const AJson: string): Boolean;
+var
+  S: TSurface;
+  Root, Keys, Hints: TJSONValue;
+  Pair: TJSONPair;
+  I: Integer;
+  Labels: TDictionary<string, string>;
+  Hint: TArray<string>;
+begin
+  S := Find(AHandle);
+  Result := S <> nil;
+  if not Result then
+    Exit;
+  Labels := TDictionary<string, string>.Create;
+  Hint := nil;
+  if Trim(AJson) <> '' then
+  begin
+    Root := TJSONObject.ParseJSONValue(AJson);
+    try
+      if not (Root is TJSONObject) then
+      begin
+        Labels.Free;
+        Exit(False);
+      end;
+      Keys := TJSONObject(Root).GetValue('keys');
+      if Keys is TJSONObject then
+        for Pair in TJSONObject(Keys) do
+          if Pair.JsonValue is TJSONString then
+            Labels.AddOrSetValue(UpperCase(Pair.JsonString.Value), Pair.JsonValue.Value);
+      Hints := TJSONObject(Root).GetValue('hints');
+      if Hints is TJSONArray then
+        for I := 0 to TJSONArray(Hints).Count - 1 do
+          if TJSONArray(Hints).Items[I] is TJSONString then
+            Hint := Hint + [TJSONArray(Hints).Items[I].Value];
+    finally
+      Root.Free;
+    end;
+  end;
+  S.KeyLabels.Free;
+  S.KeyLabels := Labels;
+  S.KeyHints := Hint;
+  if Assigned(S.Repaint) then
+    S.Repaint();
+end;
+
+procedure SurfaceApplyKeyBar(AHandle: Integer; AMods: TShiftState;
+  var AItems, ALetters: TArray<string>);
+var
+  S: TSurface;
+  Prefix, Lbl: string;
+  N: Integer;
+begin
+  S := Find(AHandle);
+  if (S = nil) or (S.KeyLabels = nil) then
+    Exit;
+  Prefix := '';
+  if ssCtrl in AMods then
+    Prefix := Prefix + 'CTRL+';
+  if ssAlt in AMods then
+    Prefix := Prefix + 'ALT+';
+  if ssShift in AMods then
+    Prefix := Prefix + 'SHIFT+';
+  for N := 1 to Min(Length(AItems), 10) do
+    if S.KeyLabels.TryGetValue(Prefix + 'F' + IntToStr(N), Lbl) then
+      AItems[N - 1] := IntToStr(N) + Copy(Lbl, 1, 7);
+  if AMods = [] then
+    ALetters := S.KeyHints + ALetters;
 end;
 
 function PluginSurfaceSetTimer(AHandle, AIntervalMs: Integer): Boolean;

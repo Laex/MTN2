@@ -1392,6 +1392,18 @@ begin
   end;
 end;
 
+function ThunkSurfaceSetKeyBar(AHandle: Int64; AJson: PAnsiChar): Int64; cdecl;
+begin
+  try
+    if PluginSurfaceSetKeyBar(AHandle, UTF8ToString(AJson)) then
+      Result := 0
+    else
+      Result := -1;
+  except
+    Result := -1;
+  end;
+end;
+
 function ThunkSurfaceSetTimer(AHandle, AIntervalMs: Int64): Int64; cdecl;
 begin
   try
@@ -1952,6 +1964,7 @@ begin
   Result.CallServiceAsync := @HostCallServiceAsync;
   Result.ServiceStatus := @HostServiceStatus;
   Result.CancelService := @HostCancelService;
+  Result.SurfaceSetKeyBar := @ThunkSurfaceSetKeyBar;
 end;
 
 function TPluginLoader.TryLoadOne(const AFileName, APluginId: string): Boolean;

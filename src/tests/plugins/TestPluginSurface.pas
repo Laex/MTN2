@@ -13,6 +13,7 @@ type
     [Test] procedure TestNoHostOpensNothing;
     [Test] procedure TestFrameIsCopiedAndChecked;
     [Test] procedure TestTitleAndStatusReachTheTab;
+    [Test] procedure TestKeyBarLabelsFillTheFSlots;
     [Test] procedure TestKeysAreNamedForThePlugin;
     [Test] procedure TestKeyReachesThePluginOnce;
     [Test] procedure TestUserClosingTheTabTellsThePlugin;
@@ -115,6 +116,39 @@ begin
   Assert.AreEqual('a.png', SurfaceTitle(H));
   Assert.AreEqual('10x20  1/3', SurfaceStatus(H));
   Assert.AreEqual(1, GRepaints, 'the tab repaints');
+  SurfaceTabClosed(H);
+end;
+
+procedure TTestPluginSurface.TestKeyBarLabelsFillTheFSlots;
+var
+  H: Integer;
+  Items, Letters: TArray<string>;
+begin
+  InstallHost(True);
+  H := PluginSurfaceOpen('t.surface', 'Pic', nil, nil, nil);
+  Items := ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10'];
+  Letters := ['Esc:Close'];
+  Assert.IsTrue(PluginSurfaceSetKeyBar(H,
+    '{"keys":{"F3":"View","f4":"Edit label","Shift+F5":"Copy"},"hints":["S:Sort"]}'), 'labels set');
+  SurfaceApplyKeyBar(H, [], Items, Letters);
+  Assert.IsTrue(Items[2] = '3View');
+  Assert.IsTrue(Items[3] = '4Edit la', 'a label is cut to 7 characters');
+  Assert.IsTrue(Items[4] = '5', 'a slot without a label stays empty');
+  Assert.IsTrue(Letters[0] = 'S:Sort');
+  Assert.IsTrue(Letters[1] = 'Esc:Close');
+  Items := ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10'];
+  Letters := ['Esc:Close'];
+  SurfaceApplyKeyBar(H, [ssShift], Items, Letters);
+  Assert.IsTrue(Items[4] = '5Copy', 'a label can be bound to a modifier');
+  Assert.IsTrue(Items[2] = '3');
+  Assert.IsTrue(Length(Letters) = 1, 'hints belong to the plain bar');
+  Assert.IsFalse(PluginSurfaceSetKeyBar(H, '[1]'), 'bad JSON is refused');
+  Assert.IsFalse(PluginSurfaceSetKeyBar(H + 100, '{}'), 'unknown handle');
+  Assert.IsTrue(PluginSurfaceSetKeyBar(H, ''), 'an empty text removes the labels');
+  Items := ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10'];
+  Letters := ['Esc:Close'];
+  SurfaceApplyKeyBar(H, [], Items, Letters);
+  Assert.IsTrue(Items[2] = '3');
   SurfaceTabClosed(H);
 end;
 

@@ -525,6 +525,32 @@ begin
   Ctx.Release;
 end;
 
+/// <summary>Labels the F3 / F4 slots and the sort hint on the function bar.</summary>
+procedure SetKeyBar(ACtx: TThumbsContext);
+
+  function JsonStr(const AText: string): string;
+  var
+    V: TJSONString;
+  begin
+    V := TJSONString.Create(AText);
+    try
+      Result := V.ToJSON;
+    finally
+      V.Free;
+    end;
+  end;
+
+var
+  Json: UTF8String;
+begin
+  if (GHostApi.AbiVersion < 12) or not Assigned(GHostApi.SurfaceSetKeyBar) then
+    Exit;
+  Json := UTF8String('{"keys":{"F3":' + JsonStr(Tr('ui.key.view', 'View')) +
+    ',"F4":' + JsonStr(Tr('ui.key.edit', 'Edit')) +
+    '},"hints":[' + JsonStr('S:' + Tr('ui.key.sort', 'Sort')) + ']}');
+  GHostApi.SurfaceSetKeyBar(ACtx.Handle, PAnsiChar(Json));
+end;
+
 procedure CmdOpenThumbs(AUserData: Pointer); cdecl;
 var
   FolderUri, CursorUri, Folder, Cursor: string;
@@ -585,6 +611,7 @@ begin
     Exit;
   end;
   GContext := Ctx;
+  SetKeyBar(Ctx);
   Redraw(Ctx, True);
 end;
 

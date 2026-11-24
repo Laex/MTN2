@@ -69,8 +69,9 @@ const
   /// 9: RegisterPanelColumns, SetPanelColumnValues.
   /// 10: RegisterSaver, SaverGetSettings, SaverSetSettings.
   /// 11: RegisterService, ServiceReply, ServiceNotify, CallService,
-  /// CallServiceAsync, ServiceStatus, CancelService.</summary>
-  cPluginAbiVersion: Int64 = 11;
+  /// CallServiceAsync, ServiceStatus, CancelService.
+  /// 12: SurfaceSetKeyBar.</summary>
+  cPluginAbiVersion: Int64 = 12;
   /// <summary>Oldest plugin ABI version the host still loads.</summary>
   cPluginMinAbiVersion: Int64 = 1;
 
@@ -490,6 +491,12 @@ type
   /// removes the labels of the scheme. 0 = set, -1 = refused. Main thread only.
   /// Unloading the plugin removes its labels.</summary>
   THostSetPanelFBarFn = function(APluginId, AScheme, AJson: PAnsiChar): Int64; cdecl;
+  /// <summary>Sets the function-bar labels of a surface tab. AJson: {"keys": {"F3":
+  /// "View", "Shift+F5": "Copy"}, "hints": ["S:Sort"]}; "keys" label the F1..F10
+  /// slots (a label is cut to 7 characters), "hints" are letter hints shown before
+  /// Esc:Close. nil or an empty text removes them. 0 = set, -1 = unknown handle
+  /// or bad JSON. Main thread only.</summary>
+  THostSurfaceSetKeyBarFn = function(AHandle: Int64; AJson: PAnsiChar): Int64; cdecl;
 
   /// <summary>Declares the extra columns the file panel can show in a folder of
   /// AScheme (Columns... dialog, custom column mode). AJson is an array:
@@ -762,6 +769,8 @@ type
     CallServiceAsync: THostCallServiceAsyncFn;
     ServiceStatus: THostServiceStatusFn;
     CancelService: THostCancelServiceFn;
+    // ABI 12
+    SurfaceSetKeyBar: THostSurfaceSetKeyBarFn;
   end;
   PHostApiTable = ^THostApiTable;
 

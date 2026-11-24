@@ -5192,6 +5192,8 @@ var
   Colors: TFunctionBarColors;
 begin
   FunctionBarGetItems(ChromeContext, KeyModifiers, Items, Letters);
+  if FSurfaceHandle <> 0 then
+    SurfaceApplyKeyBar(FSurfaceHandle, KeyModifiers, Items, Letters);
   Colors := FunctionBarDefaultColors;
   Colors.Bg := FThemeColors.BodyBg;
   DrawFunctionBar(Buffer, AY, AWidth, Items, Letters, KeyModifiers, Colors, Theme);
@@ -6033,6 +6035,8 @@ var
 begin
   Result := False;
   FunctionBarGetItems(ChromeContext, AShift, Items, Letters);
+  if FSurfaceHandle <> 0 then
+    SurfaceApplyKeyBar(FSurfaceHandle, AShift, Items, Letters);
   Hit := FunctionBarHitTest(ALocalCol, Area.Width, Items, Letters, AShift,
     Assigned(Theme));
   if not FunctionBarHitToInput(Hit, AShift, Key, KeyChar, Shift) then
