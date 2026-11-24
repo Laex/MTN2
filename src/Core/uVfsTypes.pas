@@ -448,10 +448,50 @@ function FormatVfsAttrText(AReadOnly, AHidden, ASystem, AArchive,
   ALink: Boolean): string; overload;
 function FormatVfsAttrText(const AEntry: TVfsEntry): string; overload;
 
+const
+  /// <summary>Granularity of a file system that keeps whole seconds only
+  /// (FAT stores even seconds): used when either time has no fraction.</summary>
+  cCoarseFileTimeToleranceMs = 2000;
+  /// <summary>Granularity of fine-grained file systems (exFAT keeps 10 ms
+  /// steps); NTFS and POSIX file systems are finer still.</summary>
+  cFineFileTimeToleranceMs = 20;
+
+/// <summary>Compares two modification times: 1 when A is newer than B, -1 when
+/// B is newer, 0 when they are the same or either is unknown (0). A time with
+/// no fraction of a second may come from a file system that rounds to whole
+/// seconds, so a pair containing one is compared with a two-second tolerance;
+/// when both times have fractions they are compared almost exactly.</summary>
+function CompareFileTimes(const A, B: TDateTime): Integer;
+
 implementation
 
 uses
   System.StrUtils, System.Math, uCharWidth, uPlatformPaths;
+
+function HasNoFraction(const ATime: TDateTime): Boolean;
+begin
+  Result := Round(ATime * MSecsPerDay) mod MSecsPerSec = 0;
+end;
+
+function CompareFileTimes(const A, B: TDateTime): Integer;
+var
+  ToleranceMs: Int64;
+begin
+  if (A = 0) or (B = 0) then
+    Exit(0);
+  if HasNoFraction(A) or HasNoFraction(B) then
+    ToleranceMs := cCoarseFileTimeToleranceMs
+  else
+    ToleranceMs := cFineFileTimeToleranceMs;
+  // Whole milliseconds: a TDateTime difference of exactly two seconds
+  // carries float noise that would put it just over the tolerance.
+  if Round(Abs(A - B) * MSecsPerDay) <= ToleranceMs then
+    Exit(0);
+  if A > B then
+    Result := 1
+  else
+    Result := -1;
+end;
 
 class function TVfsError.Ok: TVfsError;
 begin

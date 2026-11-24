@@ -8,6 +8,7 @@ This file describes what changes for the user from version to version: new featu
 
 ### Fixed
 
+- Copying only newer files, overwrite-newer, folder synchronization and Compare folders now share one rule for which file is newer: when both modification times carry fractions of a second they are compared almost exactly, and the two-second tolerance applies only when one of them is a whole-second time (FAT, some network shares). Files copied to such volumes are no longer reported as newer because of timestamp rounding.
 - After a copy, move, pack or unpack that ended early (cancelled, stopped by an error) or skipped some items, the items that did go through are deselected in the panel and the rest stay selected, so the selection shows what is still to be done. Ctrl+M brings the whole selection back.
 - A search by text in a folder on a network share found nothing when the Everything plugin was used to list the files: Everything does not index network shares. The names are now listed by the built-in walk in that case.
 

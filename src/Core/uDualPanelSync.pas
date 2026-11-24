@@ -675,8 +675,8 @@ begin
       DstPath := SafeCombinePath(Dst, Rel);
       if not TFile.Exists(DstPath) then
         AppendSyncItem(Result, MakeSyncItem(Rel, SrcPath, DstPath, srMissing))
-      else if TFile.GetLastWriteTimeUtc(SrcPath) >
-        TFile.GetLastWriteTimeUtc(DstPath) then
+      else if CompareFileTimes(TFile.GetLastWriteTimeUtc(SrcPath),
+        TFile.GetLastWriteTimeUtc(DstPath)) > 0 then
         AppendSyncItem(Result, MakeSyncItem(Rel, SrcPath, DstPath, srNewer))
       else if AByContent and not FilesContentEqual(SrcPath, DstPath) then
         AppendSyncItem(Result, MakeSyncItem(Rel, SrcPath, DstPath, srContentDiff));
@@ -771,12 +771,13 @@ begin
     Exit;
   end;
 
-  if TFile.GetLastWriteTimeUtc(ALeftPath) > TFile.GetLastWriteTimeUtc(ARightPath) then
-    AppendSyncItem(ACopies, MakeSyncItem(ARel, ALeftPath, ARightPath, srNewer))
-  else if TFile.GetLastWriteTimeUtc(ARightPath) > TFile.GetLastWriteTimeUtc(ALeftPath) then
-    AppendSyncItem(ACopies, MakeSyncItem(ARel, ARightPath, ALeftPath, srNewerOnDst))
+  case CompareFileTimes(TFile.GetLastWriteTimeUtc(ALeftPath),
+    TFile.GetLastWriteTimeUtc(ARightPath)) of
+    1: AppendSyncItem(ACopies, MakeSyncItem(ARel, ALeftPath, ARightPath, srNewer));
+    -1: AppendSyncItem(ACopies, MakeSyncItem(ARel, ARightPath, ALeftPath, srNewerOnDst));
   else
     MaybeContentDiff;
+  end;
 end;
 
 function CompareDirsTwoWay(const ASrcRoot, ADstRoot: string;

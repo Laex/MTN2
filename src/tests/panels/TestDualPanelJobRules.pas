@@ -26,6 +26,7 @@ type
     [Test] procedure TestThrottleLimitsSpeed;
     [Test] procedure TestPausedThrottleEndsOnCancel;
     [Test] procedure TestConflictRuleNewer;
+    [Test] procedure TestCompareFileTimesUsesSharedTolerance;
     [Test] procedure TestConflictRuleDifferentSize;
     [Test] procedure TestConflictRuleRenameAndPlainActions;
     [Test] procedure TestUniqueConflictPathSkipsTakenNames;
@@ -572,6 +573,23 @@ begin
   Assert.IsTrue(ConflictRuleDecision(jcaOverwriteNewer,
     FileInfo(1, 10 + 1 / SecsPerDay), FileInfo(1, 10)) = vcaSkip,
     'a one second difference is a FAT rounding, not a newer file');
+end;
+
+procedure TTestDualPanelJobRules.TestCompareFileTimesUsesSharedTolerance;
+begin
+  Assert.AreEqual(0, CompareFileTimes(10, 10), 'equal');
+  Assert.AreEqual(0, CompareFileTimes(10 + 2 / SecsPerDay, 10),
+    'two seconds is within the tolerance');
+  Assert.AreEqual(1, CompareFileTimes(10 + 3 / SecsPerDay, 10), 'A newer');
+  Assert.AreEqual(-1, CompareFileTimes(10, 10 + 3 / SecsPerDay), 'B newer');
+  Assert.AreEqual(1, CompareFileTimes(10 + 1.5 / SecsPerDay, 10 + 1.3 / SecsPerDay),
+    'both times have fractions: compared almost exactly');
+  Assert.AreEqual(0, CompareFileTimes(10 + 1.505 / SecsPerDay, 10 + 1.5 / SecsPerDay),
+    'exFAT 10 ms rounding is not a newer file');
+  Assert.AreEqual(0, CompareFileTimes(10 + 1.5 / SecsPerDay, 10 + 2 / SecsPerDay),
+    'a whole-second time on one side keeps the two-second tolerance');
+  Assert.AreEqual(0, CompareFileTimes(0, 10), 'unknown time never decides');
+  Assert.AreEqual(0, CompareFileTimes(10, 0), 'unknown time never decides');
 end;
 
 procedure TTestDualPanelJobRules.TestConflictRuleDifferentSize;

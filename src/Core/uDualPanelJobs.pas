@@ -1848,8 +1848,8 @@ begin
     Exit;
   if (ASrcPath <> '') and (ADstPath <> '') and TFile.Exists(WinApiPath(ASrcPath)) and
      (not TDirectory.Exists(WinApiPath(ASrcPath))) and TFile.Exists(WinApiPath(ADstPath)) then
-    Result := TFile.GetLastWriteTimeUtc(ADstPath) >=
-      TFile.GetLastWriteTimeUtc(ASrcPath);
+    Result := CompareFileTimes(TFile.GetLastWriteTimeUtc(ASrcPath),
+      TFile.GetLastWriteTimeUtc(ADstPath)) <= 0;
 end;
 
 // Probed here, off the UI thread: TDirectory.Exists on a network source

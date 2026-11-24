@@ -19,10 +19,6 @@ interface
 uses
   System.SysUtils, uDualPanelTypes;
 
-const
-  /// <summary>FAT stores modification time in 2-second steps.</summary>
-  cPanelCompareTimeToleranceSec = 2;
-
 type
   TPanelCompareOptions = record
     ByTime: Boolean;
@@ -262,8 +258,7 @@ begin
   SetLength(Result, 3);
   Result[0] := Pair(SizeLabel, FormatExactSize(ALeft.Size),
     FormatExactSize(ARight.Size), ALeft.Size = ARight.Size);
-  SameTime := Abs(ALeft.ModificationTime - ARight.ModificationTime) * SecsPerDay <=
-    cPanelCompareTimeToleranceSec;
+  SameTime := CompareFileTimes(ALeft.ModificationTime, ARight.ModificationTime) = 0;
   Result[1] := Pair(ModifiedLabel, FormatDateTime(cStampFormat, ALeft.ModificationTime),
     FormatDateTime(cStampFormat, ARight.ModificationTime), SameTime);
   if AContentEqual then
@@ -302,18 +297,9 @@ end;
 
 /// <summary>-1 A newer, 1 B newer, 0 same time.</summary>
 function CompareTimes(const A, B: TDateTime): Integer;
-var
-  Diff: Int64;
 begin
-  if (A = 0) or (B = 0) then
-    Exit(0); // VFS without times: only presence and size count
-  Diff := SecondsBetween(A, B);
-  if Diff <= cPanelCompareTimeToleranceSec then
-    Exit(0);
-  if A > B then
-    Result := -1
-  else
-    Result := 1;
+  // VFS without times (0): only presence and size count.
+  Result := -CompareFileTimes(A, B);
 end;
 
 procedure Add(var AList: TArray<string>; const AURI: string);

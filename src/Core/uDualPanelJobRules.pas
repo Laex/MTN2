@@ -205,11 +205,6 @@ begin
   AName := Open + AName + Close;
 end;
 
-// File systems store times with a granularity of up to two seconds (FAT), so a
-// source counts as newer only when it is later by more than that.
-const
-  cNewerToleranceDays = 2 / SecsPerDay;
-
 function ConflictActionIsRule(AAction: TJobConflictAction): Boolean;
 begin
   Result := AAction in [jcaOverwriteNewer, jcaOverwriteDiffSize, jcaAutoRename];
@@ -220,7 +215,7 @@ function ConflictRuleDecision(AAction: TJobConflictAction; const ASrc,
 begin
   case AAction of
     jcaOverwriteNewer:
-      if ASrc.WriteUtc - ADst.WriteUtc > cNewerToleranceDays then
+      if CompareFileTimes(ASrc.WriteUtc, ADst.WriteUtc) > 0 then
         Result := vcaOverwrite
       else
         Result := vcaSkip;
