@@ -3009,6 +3009,16 @@ begin
       if Result then
         Recompose;
     end);
+  SetPluginLiveDialogHost(
+    function(const ADecl: TDialogDeclaration; const AOnCommand: TProc<string, string>;
+      const AOnChange: TFunc<string, string>): Boolean
+    begin
+      Result := Assigned(FDualPanel) and Assigned(FMdi) and (FMdi.Active = FDualPanel) and
+        FDualPanel.Visible and FDualPanel.ShowHostDialog(ADecl, AOnCommand, 'settings.md',
+          AOnChange);
+      if Result then
+        Recompose;
+    end);
 
   // Picture tabs a plugin opens (uPluginSurface): like dialogs, only from the panels.
   SetPluginSurfaceHost(
@@ -3115,6 +3125,7 @@ begin
   FreeAndNil(FUpdater);
   FreeAndNil(FTaskbarProgress);
   SetPluginDialogHost(nil);
+  SetPluginLiveDialogHost(nil);
   SetPluginSurfaceHost(nil);
   SetSurfaceNativeHooks(nil, nil);
   SetPluginHostServices(Default(TPluginHostServices));

@@ -74,7 +74,6 @@ const
   cResDialogMarkdownColors = 'DIALOG_MARKDOWNCOLORS';
   cResDialogMarkdownImport = 'DIALOG_MARKDOWNIMPORT';
   cResDialogCompareOpts = 'DIALOG_COMPAREOPTS';
-  cResDialogMultiRename = 'DIALOG_MULTIRENAME';
   cResDialogArchivePassword = 'DIALOG_ARCHIVEPASSWORD';
   cResDialogSetAttr = 'DIALOG_SETATTR';
   cResDialogSetMode = 'DIALOG_SETMODE';

@@ -400,8 +400,6 @@ begin
     'TC preset: Alt+F9 unpacks');
   Assert.IsTrue(MatchActionIn(Tc, [kcPanels, kcGlobal], Ord('A'), [ssCtrl]) = kaSelectAll,
     'TC preset: Ctrl+A selects all');
-  Assert.IsTrue(MatchActionIn(Tc, [kcPanels, kcGlobal], Ord('M'), [ssCtrl]) = kaMultiRename,
-    'TC preset: Ctrl+M renames by rules');
   Assert.IsTrue(MatchActionIn(Tc, [kcPanels, kcGlobal], Ord('P'), [ssCtrl]) = kaInsertPanelPath,
     'TC preset: Ctrl+P inserts the folder path');
   Assert.IsTrue(MatchActionIn(Tc, [kcPanels, kcGlobal], vkTab, [ssCtrl]) = kaNextTab,

@@ -43,6 +43,7 @@ uses
   TestTmpPanelCollect in 'TestTmpPanelCollect.pas',
   TestChecksums in 'TestChecksums.pas',
   TestFileSplit in 'TestFileSplit.pas',
+  TestMultiRename in 'TestMultiRename.pas',
   TestArchiveTest in 'TestArchiveTest.pas',
   TestPackEach in 'TestPackEach.pas',
   TestLogFilter in 'TestLogFilter.pas',

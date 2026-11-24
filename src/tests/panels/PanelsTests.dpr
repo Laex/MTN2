@@ -10,8 +10,6 @@ program PanelsTests;
 uses
   uTestRunner in '..\common\uTestRunner.pas',
   TestButtonTextClip in 'TestButtonTextClip.pas',
-  TestMultiRename in 'TestMultiRename.pas',
-  TestMultiRenameKey in 'TestMultiRenameKey.pas',
   TestChromeRows in 'TestChromeRows.pas',
   TestTmpPanelParentRow in 'TestTmpPanelParentRow.pas',
   TestFolderTree in 'TestFolderTree.pas',

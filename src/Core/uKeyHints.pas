@@ -311,8 +311,7 @@ begin
     hsMenu:
       Result := 'Tip: {CommandPalette} finds any command by name and shows its keys';
     hsManySelected:
-      Result := 'Several files: {MultiRename} rename by rules, ' +
-        '{RestoreSelection} last selection';
+      Result := 'Several files: {RestoreSelection} last selection';
     hsArchiveFile:
       Result := 'Archive file: Enter or {FolderDown} opens it as a folder, {Unpack} unpacks it';
     hsLongFolder:

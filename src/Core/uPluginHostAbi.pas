@@ -70,8 +70,9 @@ const
   /// 10: RegisterSaver, SaverGetSettings, SaverSetSettings.
   /// 11: RegisterService, ServiceReply, ServiceNotify, CallService,
   /// CallServiceAsync, ServiceStatus, CancelService.
-  /// 12: SurfaceSetKeyBar.</summary>
-  cPluginAbiVersion: Int64 = 12;
+  /// 12: SurfaceSetKeyBar.
+  /// 13: ShowDialogLive, RenameBatch, RenameUndo, EditText.</summary>
+  cPluginAbiVersion: Int64 = 13;
   /// <summary>Oldest plugin ABI version the host still loads.</summary>
   cPluginMinAbiVersion: Int64 = 1;
 
@@ -497,6 +498,33 @@ type
   /// Esc:Close. nil or an empty text removes them. 0 = set, -1 = unknown handle
   /// or bad JSON. Main thread only.</summary>
   THostSurfaceSetKeyBarFn = function(AHandle: Int64; AJson: PAnsiChar): Int64; cdecl;
+  /// <summary>Called, on the main thread, each time a field of a live dialog
+  /// changes. AValuesJson holds the values of the dialog (as for the command
+  /// callback). Returns the changes to show as JSON (text valid until the next
+  /// call), or nil for none: {"labels": {"id": "text"}, "lists": {"id": {"items":
+  /// [...], "selected": 0, "accents": [[item, col, len], ...]}}}.</summary>
+  THostDialogChangeCallback = function(AUserData: Pointer;
+    AValuesJson: PAnsiChar): PAnsiChar; cdecl;
+  /// <summary>ShowDialog that also reports every change of a field. 0 = shown,
+  /// -1 = invalid declaration or no dialog can be shown now.</summary>
+  THostShowDialogLiveFn = function(APluginId, ADeclJson: PAnsiChar;
+    AOnCommand: THostDialogCommandCallback; AOnChange: THostDialogChangeCallback;
+    AUserData: Pointer): Int64; cdecl;
+  /// <summary>Renames items of one folder as a background job (a move of each
+  /// item to its new name; the batch is journalled for RenameUndo when the items
+  /// are on local disks). ABatchJson: {"pairs": [{"from": uri, "to": uri}, ...]}.
+  /// 0 = started, -1 = refused (bad JSON, a job is already running).</summary>
+  THostRenameBatchFn = function(APluginId, ABatchJson: PAnsiChar): Int64; cdecl;
+  /// <summary>Takes back the last journalled RenameBatch (a toast reports the
+  /// outcome). 0 = started, -1 = refused.</summary>
+  THostRenameUndoFn = function(APluginId: PAnsiChar): Int64; cdecl;
+  /// <summary>Answer of EditText: the text of the file when its editor tab was
+  /// closed.</summary>
+  THostEditTextCallback = procedure(AUserData: Pointer; AText: PAnsiChar); cdecl;
+  /// <summary>Opens AText in the editor; closing the tab calls AOnDone once with
+  /// the saved text. 0 = opened, -1 = refused.</summary>
+  THostEditTextFn = function(APluginId, AText: PAnsiChar;
+    AOnDone: THostEditTextCallback; AUserData: Pointer): Int64; cdecl;
 
   /// <summary>Declares the extra columns the file panel can show in a folder of
   /// AScheme (Columns... dialog, custom column mode). AJson is an array:
@@ -771,6 +799,11 @@ type
     CancelService: THostCancelServiceFn;
     // ABI 12
     SurfaceSetKeyBar: THostSurfaceSetKeyBarFn;
+    // ABI 13
+    ShowDialogLive: THostShowDialogLiveFn;
+    RenameBatch: THostRenameBatchFn;
+    RenameUndo: THostRenameUndoFn;
+    EditText: THostEditTextFn;
   end;
   PHostApiTable = ^THostApiTable;
 

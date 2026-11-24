@@ -28,7 +28,7 @@ uses
   uOpenWith,
   uUserMenu, uUserMenuController, uDualPanelUserMenu,
   uDualPanelHistoryDialogs, uDualPanelPaletteDialog, uDualPanelSettingsDialogs, uDualPanelThemeDialogs, uDualPanelFileDialogs,
-  uDualPanelJobDialogs, uDualPanelFindDialogs, uDualPanelMultiRename, uDiffViewer, uDualPanelStatus, uStatusSegments, uElevatedVfs, uElevation,
+  uDualPanelJobDialogs, uDualPanelFindDialogs, uDiffViewer, uDualPanelStatus, uStatusSegments, uElevatedVfs, uElevation,
   uDualPanelInput, uDualPanelTopMenu, uDualPanelClick, uDualPanelDrag, uPanelUriLabels, uListExport,
   uMessageBus, uDisplaySettings, uConPty, uNotice, uToast, uHiddenDialogs, uPlatformDrives,
   uKeyHints, uFeatureTips, uPanelCompare;
@@ -136,6 +136,12 @@ type
     /// <summary>hdkHost: where ShowHostDialog's command (control id, values
     /// JSON) goes once the dialog has closed.</summary>
     FHostDialogCommand: TProc<string, string>;
+    /// <summary>hdkHost of a live plugin dialog: values in, JSON of what to
+    /// update out; and the values it last saw, so an update that changes no
+    /// field does not ask again.</summary>
+    FHostDialogChange: TFunc<string, string>;
+    FHostDialogLastValues: string;
+    FHostDialogInChange: Boolean;
     FHostDialogTopic: string;
     /// <summary>The declaration of the open hdkHost dialog, with the values typed so
     /// far: it is reopened after a color is picked for one of its fields.</summary>
@@ -310,7 +316,6 @@ type
     FPackIntoOpenArchive: Boolean;
     FSearchDlg: TSearchDialogController;
     FDirSync: TDirSyncDialogController;
-    FMultiRename: TMultiRenameController;
     FDiffView: TDiffViewer;
     /// <summary>The diff viewer was opened from the overwrite prompt; the
     /// prompt stays pending and reopens when the viewer closes.</summary>
@@ -890,6 +895,8 @@ type
     procedure BeginCopyInPlace;
     procedure ConfirmCopyInPlace(const AName: string);
     procedure DialogChanged(Sender: TObject);
+    procedure HostDialogChanged;
+    procedure ApplyHostDialogUpdates(const AJson: string);
     procedure DialogCommand(const AControlId, AValuesJson: string);
     /// <summary>DialogCommand's `case FDialogKind of` - one branch per
     /// THostDialogKind. Returns False from the (rare) branches that must
@@ -1015,7 +1022,6 @@ type
     function HandleExportListCommand(const AControlId: string;
       const AFields: TDialogCommandFields): Boolean;
     procedure OpenMarkdownColorsDialog;
-    procedure BeginMultiRename;
     procedure StartMultiRenameJob(const ASources, ADests: TArray<string>);
     procedure HostUndoMultiRename;
     procedure HostEditRenameNames(const AText: string; const AOnDone: TProc<string>);
@@ -1301,6 +1307,11 @@ type
     function PluginAppStateJson: string;
     function PluginPanelGoto(ASide: Integer; const AURI: string): Boolean;
     function PluginOpenDocument(const AURI: string; AEdit: Boolean): Boolean;
+    /// <summary>A rename batch from a plugin: a move job of each item to its
+    /// new name, journalled so that it can be undone.</summary>
+    function PluginRenameBatch(const ASources, ADests: TArray<string>): Boolean;
+    function PluginRenameUndo: Boolean;
+    function PluginEditText(const AText: string; const AOnDone: TProc<string>): Boolean;
     procedure PluginPanelRefresh;
     procedure PublishPanelEvents;
     procedure DrawSurfacePanel(const ABounds: TRectI; ABodyBg: TAlphaColor);
@@ -1313,7 +1324,8 @@ type
     /// <summary>Opens a dialog for a host or plugin; AHelpTopic is the help
     /// page F1 shows over it ('' = the contents page).</summary>
     function ShowHostDialog(const ADecl: TDialogDeclaration;
-      const AOnCommand: TProc<string, string>; const AHelpTopic: string = ''): Boolean;
+      const AOnCommand: TProc<string, string>; const AHelpTopic: string = '';
+      const AOnChange: TFunc<string, string> = nil): Boolean;
     /// <summary>A copy/move/delete job is running or waiting on the user.</summary>
     function HasBusyJob: Boolean;
     /// <summary>States of every job that is not idle, for the taskbar button.</summary>
@@ -2050,7 +2062,6 @@ begin
   FreeAndNil(FFolderTreeCtrl);
   FreeAndNil(FHistoryPopupCtrl);
   FreeAndNil(FDirSync);
-  FreeAndNil(FMultiRename);
   if Assigned(FDiffView) then
   begin
     FDiffView.OnChanged := nil;
@@ -2376,7 +2387,6 @@ begin
   FKeymapHost.OpenEnvironmentProfiles := OpenEnvironmentProfiles;
   FKeymapHost.ClearConsoleBuffer := ClearConsoleBuffer;
   FKeymapHost.OpenMarkdownColorsDialog := OpenMarkdownColorsDialog;
-  FKeymapHost.BeginMultiRename := BeginMultiRename;
   FKeymapHost.NavigateToRecycleBin := NavigateToRecycleBin;
   FKeymapHost.RestoreCursorItemFromRecycleBin := RestoreCursorItemFromRecycleBin;
   FKeymapHost.ActivateSide := ActivateSide;
@@ -3904,15 +3914,6 @@ begin
     CloseStub, NotifyChanged, HostIsAlive);
   FDirSync.OnShowExtras := ShowPathsInTmpPanel;
   FModalInputHost.HandleDirSyncList := FDirSync.HandleListInput;
-  FMultiRename := TMultiRenameController.Create(FDialog, DialogCommand,
-    HostSetDialogKind, CloseTransientUiBeforeDialog, HostShowShellStub,
-    StartMultiRenameJob, NotifyChanged,
-    function: Integer
-    begin
-      Result := Area.Width;
-    end);
-  FMultiRename.OnUndo := HostUndoMultiRename;
-  FMultiRename.OnEditNames := HostEditRenameNames;
   FMenus := TMenuStubController.Create(Theme, NotifyChanged,
     HostUserMenuAction, HostPanelBounds, KeymapActiveSide);
   FMenus.SetOnSortSelect(HostMenuSortSelect);
@@ -6988,11 +6989,92 @@ procedure TDualPanelWindow.DialogChanged(Sender: TObject);
 begin
   if (FDialogKind = hdkDirSync) and Assigned(FDirSync) then
     FDirSync.NotifyDialogChanged;
-  if (FDialogKind = hdkMultiRename) and Assigned(FMultiRename) then
-    FMultiRename.NotifyDialogChanged;
+  if FDialogKind = hdkHost then
+    HostDialogChanged;
   if (FDialogKind = hdkSearch) and Assigned(FSearchDlg) then
     FSearchDlg.SyncHexField;
   NotifyChanged;
+end;
+
+// A live plugin dialog: the plugin sees the values after every change and
+// answers with what to show (see PluginShowDialogLive).
+procedure TDualPanelWindow.HostDialogChanged;
+var
+  Values: string;
+begin
+  if FHostDialogInChange or not Assigned(FHostDialogChange) or not FDialog.Visible then
+    Exit;
+  Values := FDialog.GetValuesJson;
+  if Values = FHostDialogLastValues then
+    Exit;
+  FHostDialogInChange := True;
+  try
+    ApplyHostDialogUpdates(FHostDialogChange(Values));
+    if FDialog.Visible then
+      FHostDialogLastValues := FDialog.GetValuesJson;
+  finally
+    FHostDialogInChange := False;
+  end;
+end;
+
+procedure TDualPanelWindow.ApplyHostDialogUpdates(const AJson: string);
+var
+  Root, Labels, Lists, ListObj: TJSONValue;
+  Pair: TJSONPair;
+  Items, Accents, Triple: TJSONArray;
+  Lines: TArray<string>;
+  Marks: TArray<TListAccent>;
+  I, Selected: Integer;
+begin
+  if AJson = '' then
+    Exit;
+  Root := TJSONObject.ParseJSONValue(AJson);
+  try
+    if not (Root is TJSONObject) then
+      Exit;
+    FDialog.BeginUpdate;
+    try
+      Labels := TJSONObject(Root).GetValue('labels');
+      if Labels is TJSONObject then
+        for Pair in TJSONObject(Labels) do
+          FDialog.SetLabelText(Pair.JsonString.Value, Pair.JsonValue.Value);
+      Lists := TJSONObject(Root).GetValue('lists');
+      if Lists is TJSONObject then
+        for Pair in TJSONObject(Lists) do
+        begin
+          ListObj := Pair.JsonValue;
+          if not (ListObj is TJSONObject) then
+            Continue;
+          Items := TJSONObject(ListObj).GetValue('items') as TJSONArray;
+          if Items = nil then
+            Continue;
+          SetLength(Lines, Items.Count);
+          for I := 0 to Items.Count - 1 do
+            Lines[I] := Items.Items[I].Value;
+          Selected := 0;
+          TJSONObject(ListObj).TryGetValue<Integer>('selected', Selected);
+          FDialog.SetListItems(Pair.JsonString.Value, Lines, Selected);
+          Marks := nil;
+          if TJSONObject(ListObj).TryGetValue<TJSONArray>('accents', Accents) then
+          begin
+            for I := 0 to Accents.Count - 1 do
+              if (Accents.Items[I] is TJSONArray) and (TJSONArray(Accents.Items[I]).Count = 3) then
+              begin
+                Triple := TJSONArray(Accents.Items[I]);
+                SetLength(Marks, Length(Marks) + 1);
+                Marks[High(Marks)].Item := StrToIntDef(Triple.Items[0].Value, 0);
+                Marks[High(Marks)].Col := StrToIntDef(Triple.Items[1].Value, 0);
+                Marks[High(Marks)].Len := StrToIntDef(Triple.Items[2].Value, 0);
+              end;
+          end;
+          FDialog.SetListAccents(Pair.JsonString.Value, Marks);
+        end;
+    finally
+      FDialog.EndUpdate;
+    end;
+  finally
+    Root.Free;
+  end;
 end;
 
 procedure TDualPanelWindow.DialogCommand(const AControlId, AValuesJson: string);
@@ -7160,6 +7242,7 @@ begin
         FDialog.Close;
         HostCmd := FHostDialogCommand;
         FHostDialogCommand := nil;
+        FHostDialogChange := nil;
         if Assigned(HostCmd) then
           HostCmd(AControlId, Values);
         // A plugin's settings dialog is over: back to the Plugins list, unless the
@@ -7173,8 +7256,6 @@ begin
       end;
     hdkDirSync:
       Result := FDirSync.DispatchCommand(AControlId, AFields);
-    hdkMultiRename:
-      Result := FMultiRename.DispatchCommand(AControlId);
     hdkArchivePassword:
       begin
         HandleArchivePasswordCommand(AControlId, AFields.Password);
@@ -10203,16 +10284,6 @@ begin
     NotifyChanged;
 end;
 
-procedure TDualPanelWindow.BeginMultiRename;
-var
-  Ws: TDualPanelWorkspaceTab;
-begin
-  if not HostInPanelsWorkspace or not CanStartOperation or not Assigned(FMultiRename) then
-    Exit;
-  Ws := ActiveWorkspace;
-  FMultiRename.Open(CollectActiveSources, RowsForSide(Ws.State.ActiveSide));
-end;
-
 // Conflicts are ruled out by the dialog, so the batch is a plain move of
 // each item to its new name in the same folder.
 procedure TDualPanelWindow.StartMultiRenameJob(const ASources, ADests: TArray<string>);
@@ -10515,7 +10586,8 @@ begin
 end;
 
 function TDualPanelWindow.ShowHostDialog(const ADecl: TDialogDeclaration;
-  const AOnCommand: TProc<string, string>; const AHelpTopic: string): Boolean;
+  const AOnCommand: TProc<string, string>; const AHelpTopic: string;
+  const AOnChange: TFunc<string, string>): Boolean;
 begin
   Result := Assigned(FDialog) and not FDialog.Visible;
   if not Result then
@@ -10523,11 +10595,14 @@ begin
   CloseTransientUiBeforeDialog;
   FDialogKind := hdkHost;
   FHostDialogCommand := AOnCommand;
+  FHostDialogChange := AOnChange;
+  FHostDialogLastValues := '';
   FHostDialogTopic := AHelpTopic;
   if ADecl.HelpTopic <> '' then
     FHostDialogTopic := ADecl.HelpTopic;
   FHostDialogDecl := ADecl;
   FDialog.Open(ADecl, DialogCommand);
+  HostDialogChanged;
   NotifyChanged;
 end;
 
@@ -12883,6 +12958,16 @@ var
   Tab: TTab;
   Rows: TPanelRows;
   I, N: Integer;
+  ColsObj: TJSONObject;
+  ColId, ColText: string;
+
+  function ColName(const ARowText: string): string;
+  begin
+    Result := ARowText;
+    if (Result <> '') and (Result[Length(Result)] = '/') then
+      Delete(Result, Length(Result), 1);
+  end;
+
 begin
   Ws := ActiveWorkspace;
   if Ws.Kind <> wkPanels then
@@ -12918,6 +13003,18 @@ begin
       RowObj.AddPair('name', Rows[I].Text);
       RowObj.AddPair('dir', TJSONBool.Create(Rows[I].IsDirectory));
       RowObj.AddPair('size', TJSONNumber.Create(Rows[I].Size));
+      if Rows[I].ModificationTime > 0 then
+        RowObj.AddPair('mtime', TJSONNumber.Create(Rows[I].ModificationTime));
+      ColsObj := nil;
+      for ColId in ['dim', 'camera', 'artist', 'title'] do
+        if FolderCellText(Tab.CurrentURI, ColName(Rows[I].Text), ColId, ColText) and (ColText <> '') then
+        begin
+          if ColsObj = nil then
+            ColsObj := TJSONObject.Create;
+          ColsObj.AddPair(ColId, ColText);
+        end;
+      if ColsObj <> nil then
+        RowObj.AddPair('cols', ColsObj);
       RowsArr.Add(RowObj);
       // The cursor is reported as an index into this list (the ".." row is not in it).
       if I = Tab.CursorIndex then
@@ -13102,6 +13199,27 @@ begin
   if Side <> Previous then
     ActivateSide(Previous);
   NotifyChanged;
+end;
+
+function TDualPanelWindow.PluginRenameBatch(const ASources, ADests: TArray<string>): Boolean;
+begin
+  Result := CanBeginAnotherJob;
+  if Result then
+    StartMultiRenameJob(ASources, ADests);
+end;
+
+function TDualPanelWindow.PluginRenameUndo: Boolean;
+begin
+  Result := CanBeginAnotherJob;
+  if Result then
+    HostUndoMultiRename;
+end;
+
+function TDualPanelWindow.PluginEditText(const AText: string;
+  const AOnDone: TProc<string>): Boolean;
+begin
+  Result := True;
+  HostEditRenameNames(AText, AOnDone);
 end;
 
 function TDualPanelWindow.PluginOpenDocument(const AURI: string; AEdit: Boolean): Boolean;

@@ -100,6 +100,27 @@ begin
       if Result then
         ARecompose();
     end;
+  Result.RenameBatch :=
+    function(const ASources, ADests: TArray<string>): Boolean
+    begin
+      Result := Assigned(AWindow()) and AWindow().PluginRenameBatch(ASources, ADests);
+      if Result then
+        ARecompose();
+    end;
+  Result.RenameUndo :=
+    function: Boolean
+    begin
+      Result := Assigned(AWindow()) and AWindow().PluginRenameUndo;
+      if Result then
+        ARecompose();
+    end;
+  Result.EditText :=
+    function(const AText: string; const AOnDone: TProc<string>): Boolean
+    begin
+      Result := Assigned(AWindow()) and AWindow().PluginEditText(AText, AOnDone);
+      if Result then
+        ARecompose();
+    end;
   Result.PanelRefresh :=
     procedure
     begin

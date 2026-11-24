@@ -64,8 +64,6 @@ uses
   uEditorSearch in 'Core\uEditorSearch.pas',
   uEditorUndo in 'Core\uEditorUndo.pas',
   uEditorLineOps in 'Core\uEditorLineOps.pas',
-  uMultiRename in 'Core\uMultiRename.pas',
-  uDualPanelMultiRename in 'Core\uDualPanelMultiRename.pas',
   uEditorLayout in 'Core\uEditorLayout.pas',
   uEditorDialogs in 'Core\uEditorDialogs.pas',
   uEditorInput in 'Core\uEditorInput.pas',

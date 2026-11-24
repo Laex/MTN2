@@ -219,7 +219,6 @@ const
     'Compare folders',
     'External viewer',
     'External editor',
-    'Multi-rename',
     'Copy name',
     'Save list to a file',
     'Quick search (without Alt)',

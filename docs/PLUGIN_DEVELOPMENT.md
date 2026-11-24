@@ -72,6 +72,9 @@ A native plugin exports `mtn_plugin_get_abi_version`, `mtn_plugin_init(PHostApiT
 | File opening | `RegisterDocumentProvider` | `register_document_provider` | A decision on F3 / F4 for its own extensions: open it itself, substitute another URI (native only), or skip. The quick view mode (bit 4, the string `quick`, Ctrl+Q) accepts only a URI substitution |
 | Launch by a system program | `OpenExternal` | – | Opens a local file with the associated program (native only) |
 | Dialog | `ShowDialog` | `show_dialog` | A one-shot modal dialog from a JSON description; instead of the JSON text a file name from `plugins\<id>\dialogs\<name>.json` can be passed |
+| Live dialog | `ShowDialogLive` | – (native plugins only, ABI 13) | `ShowDialog` plus an `on_change(values)` callback after every field change; it returns JSON `{"labels": {"id": "text"}, "lists": {"id": {"items": [...], "selected": 0, "accents": [[item, col, len]]}}}` that the host applies to the open dialog (a preview that follows the fields) |
+| Batch rename | `RenameBatch`, `RenameUndo` | – (native plugins only, ABI 13) | `RenameBatch` takes `{"pairs": [{"from": uri, "to": uri}]}` and renames the items in a host job with the rename journal; `RenameUndo` takes the last batch back. `PanelList` rows also carry `mtime` and `cols` (`dim`, `camera`, `artist`, `title`) |
+| Text in the editor | `EditText` | – (native plugins only, ABI 13) | Opens a text in the built-in editor and calls back with the saved text |
 | Panel row activation | `RegisterPanelActivate` | `register_panel_activate` | A reaction to Enter / double click on a row of a panel of its scheme |
 | Command caption | `SetCommandCaption` | `set_command_caption` | A caption in the bottom key bar |
 | Status text | `SetStatusSegment` | `set_status_segment` | A named segment of the panel status line |

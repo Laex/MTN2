@@ -79,8 +79,6 @@ begin
       Result := 'fileops.md#attributes';
     hdkCompareOptions:
       Result := 'sync.md#compare-folders';
-    hdkMultiRename:
-      Result := 'fileops.md#multi-rename';
     hdkExportList:
       Result := 'fileops.md#export-list';
     hdkDeleteError, hdkIOError:
@@ -196,7 +194,7 @@ type
 const
   // The first rule whose prefix starts the name wins, so the specific
   // prefixes come before the general ones.
-  cRules: array[0..77] of TTopicRule = (
+  cRules: array[0..76] of TTopicRule = (
     (Prefix: 'tmaFileSelect'; Topic: 'selection.md'),
     (Prefix: 'tmaFileUnselect'; Topic: 'selection.md'),
     (Prefix: 'tmaFileInvertSelect'; Topic: 'selection.md'),
@@ -212,7 +210,6 @@ const
     (Prefix: 'tmaFileRunInBackground'; Topic: 'jobs.md'),
     (Prefix: 'tmaFileRunInNewTab'; Topic: 'terminals.md'),
     (Prefix: 'tmaFileSetAttributes'; Topic: 'fileops.md#attributes'),
-    (Prefix: 'tmaFileMultiRename'; Topic: 'fileops.md#multi-rename'),
     (Prefix: 'tmaFileExportList'; Topic: 'fileops.md#export-list'),
     (Prefix: 'tmaFile'; Topic: 'fileops.md'),
     (Prefix: 'tmaEdit'; Topic: 'text.md'),

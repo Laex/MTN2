@@ -244,8 +244,6 @@
         <DCCReference Include="Core\uEditorSearch.pas"/>
         <DCCReference Include="Core\uEditorUndo.pas"/>
         <DCCReference Include="Core\uEditorLineOps.pas"/>
-        <DCCReference Include="Core\uMultiRename.pas"/>
-        <DCCReference Include="Core\uDualPanelMultiRename.pas"/>
         <DCCReference Include="Core\uEditorLayout.pas"/>
         <DCCReference Include="Core\uEditorDialogs.pas"/>
         <DCCReference Include="Core\uEditorInput.pas"/>

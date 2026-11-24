@@ -19,7 +19,7 @@ const
 type
   // The state stores tips as a bit set of their ordinals: new ones are
   // appended, never inserted.
-  TFeatureTip = (ftNone, ftCommandPalette, ftMultiRename, ftFolderHotlist,
+  TFeatureTip = (ftNone, ftCommandPalette, ftRetired, ftFolderHotlist,
     ftPairedFolders, ftCompareFolders, ftQuickView, ftNewTerminal, ftFolderTree,
     ftGroupBy, ftNewWorkspace);
 
@@ -71,7 +71,7 @@ uses
 
 const
   cTipKey: array[TFeatureTip] of string = (
-    '', 'palette', 'multirename', 'hotlist', 'paired', 'compare', 'quickview',
+    '', 'palette', 'retired', 'hotlist', 'paired', 'compare', 'quickview',
     'terminal', 'tree', 'groupby', 'workspace');
 
 function FeatureTipTemplate(ATip: TFeatureTip): string;
@@ -79,8 +79,6 @@ begin
   case ATip of
     ftCommandPalette:
       Result := 'Tip: {CommandPalette} finds any command by name and shows its keys';
-    ftMultiRename:
-      Result := 'Tip: {MultiRename} renames the selected files by rules, with a preview';
     ftFolderHotlist:
       Result := 'Tip: {FolderHotlist} opens the folder hotlist, {FolderFrecent} the folders you visit most';
     ftPairedFolders:
@@ -106,7 +104,6 @@ function FeatureTipOfAction(AAction: TKeymapAction): TFeatureTip;
 begin
   case AAction of
     kaCommandPalette: Result := ftCommandPalette;
-    kaMultiRename: Result := ftMultiRename;
     kaFolderHotlist, kaFolderFrecent: Result := ftFolderHotlist;
     kaPairedFolders: Result := ftPairedFolders;
     kaCompareFolders, kaCompareFiles: Result := ftCompareFolders;

@@ -335,6 +335,16 @@ begin
       if Result then
         Recompose;
     end);
+  SetPluginLiveDialogHost(
+    function(const ADecl: TDialogDeclaration; const AOnCommand: TProc<string, string>;
+      const AOnChange: TFunc<string, string>): Boolean
+    begin
+      Result := Assigned(FDualPanel) and (FMdi.Active = FDualPanel) and
+        FDualPanel.Visible and FDualPanel.ShowHostDialog(ADecl, AOnCommand, 'settings.md',
+          AOnChange);
+      if Result then
+        Recompose;
+    end);
   SetPluginHostServices(BuildPanelPluginServices(
     function: TDualPanelWindow
     begin
@@ -363,6 +373,7 @@ begin
   SetPluginHostServices(Default(TPluginHostServices));
   SetPluginChromeChanged(nil);
   SetPluginDialogHost(nil);
+  SetPluginLiveDialogHost(nil);
   SetPluginSurfaceHost(nil);
   StopPluginHost;
 end;

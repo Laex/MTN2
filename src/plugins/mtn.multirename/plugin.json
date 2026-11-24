@@ -1,0 +1,19 @@
+{
+  "id": "mtn.multirename",
+  "name": "Multi-rename",
+  "version": "0.1.0",
+  "abi": 13,
+  "declarative": true,
+  "commands": [
+    {"id": "multirename.run", "key": "Ctrl+Alt+N"}
+  ],
+  "menuItems": [
+    {"id": "multirename.run", "parent": "Files", "caption": {"en": "Multi-rename...", "ru": "Групповое переименование..."}, "priority": 45}
+  ],
+  "description": {
+    "en": "Renames the selected items of a folder in one go: name and extension masks, search and replace (plain or regular expression), a counter and a letter case, with a live preview of every old and new name. The names can also be typed by hand in the editor; the last batch can be undone.",
+    "ru": "Переименовывает выбранные элементы папки за один раз: маски имени и расширения, поиск и замена (обычная или регулярное выражение), счётчик и регистр букв, с живым предпросмотром старых и новых имён. Имена можно ввести вручную в редакторе; последний набор можно отменить."
+  },
+  "author": "MTN2",
+  "help": "help.md"
+}

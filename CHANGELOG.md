@@ -23,6 +23,7 @@ This file describes what changes for the user from version to version: new featu
 - Checksums moved out of the program core into the `mtn.checksums` plugin. The command, its Ctrl+Alt+H key and the dialogs work as before, but the item is now at the end of the Files menu after a line, the Ctrl+Alt+F3 key bar hint and the "Checksums" tip are gone, and turning the plugin off in Plugins... removes the command. A plugin menu item can now name `Files` or `Commands` as its parent to sit in that menu.
 - Split / combine moved out of the program core into the `mtn.splitfile` plugin. The command works as before and stays in the Files menu, but turning the plugin off in Plugins... removes it.
 - "Test archive" and "Pack each item" moved out of the program core into the `mtn.archivetools` plugin. Both commands work as before and stay in the Files menu, but turning the plugin off in Plugins... removes them.
+- Multi-rename moved out of the program core into the `mtn.multirename` plugin. The dialog, its live preview, regular expressions, counter, letter case, "In editor" and "Undo last" work as before, and the Ctrl+Alt+N key stays, but the item is now at the end of the Files menu and turning the plugin off in Plugins... removes it. The plugin interface (version 13) gained dialogs that follow their fields, a batch rename with undo and editing text in the built-in editor for it.
 
 ## Dev v0.5.12.4 – 2026-11-24
 
@@ -56,7 +57,7 @@ This file describes what changes for the user from version to version: new featu
 - The job list has "When the queue ends": do nothing (default), sleep, shut down or close the program. The action is armed for one run, fires after the last job finishes without errors or cancels, asks first and goes ahead by itself after 30 seconds.
 - The top menu (≡ menu, Help) has "What MTN2 can do": a help page that lists the program's features by task (find a command, move around, select and rename files, search and compare, view and edit, console and terminals, tabs and workspaces, settings) with the keys and links to the details. The page is in the help contents too, in English, Russian, German and Chinese.
 - The help has a "Recipes" page with short answers to common tasks (copy, find, rename many files, compare folders, unpack an archive, return to a folder, terminals, remote servers, moving the settings), in English, Russian, German and Chinese.
-- From the third run on, the program shows one short tip per run about a feature you have not used yet (the command search, multi-rename, the folder hotlist, paired folders, comparison, Quick View, terminals, the folder tree, grouping, checksums, workspaces) with its current keys. A feature you already use is skipped and each tip appears once. The "Reset hints" button brings the tips back; the key hints switch turns them off.
+- From the third run on, the program shows one short tip per run about a feature you have not used yet (the command search, the folder hotlist, paired folders, comparison, Quick View, terminals, the folder tree, grouping, checksums, workspaces) with its current keys. A feature you already use is skipped and each tip appears once. The "Reset hints" button brings the tips back; the key hints switch turns them off.
 
 ### Changed
 

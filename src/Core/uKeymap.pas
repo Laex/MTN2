@@ -124,7 +124,6 @@ type
     kaCompareFolders, // Ctrl+Shift+C -- select what differs between panels
     kaExternalView,   // Alt+F3 -- external viewer
     kaExternalEdit,   // Alt+F4 -- external editor
-    kaMultiRename,    // Ctrl+Alt+N -- rename the selected items by rules
     kaCopyItemName,   // Ctrl+Shift+Ins -- copy item name(s) only (no path)
     kaExportList,     // unbound by default -- save the marked items as a text list
     kaQuickSearch,    // unbound by default -- open the quick search field without Alt
@@ -581,7 +580,6 @@ begin
   AddBinding(Result, kaCompareFolders, KeyBinding(Ord('C'), True, False, True));
   AddBinding(Result, kaExternalView, KeyBinding(vkF3, False, True, False));
   AddBinding(Result, kaExternalEdit, KeyBinding(vkF4, False, True, False));
-  AddBinding(Result, kaMultiRename, KeyBinding(Ord('N'), False, True, True));
   AddBinding(Result, kaRecycleBin, KeyBinding(vkF8, False, True, True));
   AddBinding(Result, kaRestore, KeyBinding(Ord('R'), False, True, True));
   AddBinding(Result, kaDelete, KeyBinding(vkF8, False, False, False));
@@ -1045,7 +1043,6 @@ const
     'CompareFolders',        // kaCompareFolders
     'ExternalView',          // kaExternalView
     'ExternalEdit',          // kaExternalEdit
-    'MultiRename',           // kaMultiRename
     'CopyItemName',          // kaCopyItemName
     'ExportList',            // kaExportList
     'QuickSearch',           // kaQuickSearch

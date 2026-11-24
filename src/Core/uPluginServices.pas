@@ -48,6 +48,13 @@ type
   /// <summary>Feeds one keystroke ("F5", "Ctrl+Shift+K", "a") to the window that has
   /// the focus, as if it was typed. False when the chord is not valid or nothing took it.</summary>
   TPluginSendKey = reference to function(const AChord: string): Boolean;
+  /// <summary>Renames ASources[i] to ADests[i] (items of one folder) as a
+  /// background job; the batch is journalled for the undo.</summary>
+  TPluginRenameBatch = reference to function(const ASources, ADests: TArray<string>): Boolean;
+  /// <summary>Opens AText in the editor; AOnDone gets the saved text when the
+  /// editor tab is closed.</summary>
+  TPluginEditText = reference to function(const AText: string;
+    const AOnDone: TProc<string>): Boolean;
 
   TPluginHostServices = record
     /// <summary>JSON about the active text document, '' when there is none.</summary>
@@ -73,6 +80,10 @@ type
     RunAction: TPluginSendKey;
     /// <summary>JSON about what the program is doing: see PluginAppState.</summary>
     AppState: TFunc<string>;
+    RenameBatch: TPluginRenameBatch;
+    /// <summary>Undoes the last journalled rename batch.</summary>
+    RenameUndo: TFunc<Boolean>;
+    EditText: TPluginEditText;
   end;
 
   /// <summary>Handler of a host event: topic and payload JSON.</summary>
@@ -93,6 +104,10 @@ function PluginPanelSelect(ASide, AMode: Integer; const AArg: string): Boolean;
 function PluginDocSetSelection(ARow1, ACol1, ARow2, ACol2: Integer): Boolean;
 function PluginDocLine(AIndex: Integer; out AText: string): Boolean;
 function PluginOpenDocument(const AURI: string; AEdit: Boolean): Boolean;
+
+function PluginRenameBatch(const ASources, ADests: TArray<string>): Boolean;
+function PluginRenameUndo: Boolean;
+function PluginEditText(const AText: string; const AOnDone: TProc<string>): Boolean;
 
 function PluginSendKey(const AChord: string): Boolean;
 function PluginSendText(const AText: string): Boolean;
@@ -317,6 +332,23 @@ function PluginOpenDocument(const AURI: string; AEdit: Boolean): Boolean;
 begin
   Result := Assigned(GServices.OpenDocument) and (AURI <> '') and
     GServices.OpenDocument(AURI, AEdit);
+end;
+
+function PluginRenameBatch(const ASources, ADests: TArray<string>): Boolean;
+begin
+  Result := Assigned(GServices.RenameBatch) and (Length(ASources) > 0) and
+    (Length(ASources) = Length(ADests)) and GServices.RenameBatch(ASources, ADests);
+end;
+
+function PluginRenameUndo: Boolean;
+begin
+  Result := Assigned(GServices.RenameUndo) and GServices.RenameUndo();
+end;
+
+function PluginEditText(const AText: string; const AOnDone: TProc<string>): Boolean;
+begin
+  Result := Assigned(GServices.EditText) and Assigned(AOnDone) and
+    GServices.EditText(AText, AOnDone);
 end;
 
 function PluginSendKey(const AChord: string): Boolean;

@@ -283,7 +283,7 @@ begin
     AItems[2] := '3GoTo';
   end
   else if Mods = [ssCtrl, ssAlt] then
-    HintsFromKeymap([Hint(kaMultiRename, 'MRen'), Hint(kaCompareFiles, 'Cmp'),
+    HintsFromKeymap([Hint(kaCompareFiles, 'Cmp'),
       Hint(kaDirSync, 'Sync'), Hint(kaRestore, 'Restore'),
       Hint(kaRunInNewTab, 'NewTab')], Mods, ALetters)
   else if Mods = [ssAlt, ssShift] then

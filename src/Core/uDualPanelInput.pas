@@ -148,7 +148,6 @@ type
     OpenEnvironmentProfiles: TKeymapProc;
     ClearConsoleBuffer: TKeymapProc;
     OpenMarkdownColorsDialog: TKeymapProc;
-    BeginMultiRename: TKeymapProc;
     NavigateToRecycleBin: TKeymapProc;
     RestoreCursorItemFromRecycleBin: TKeymapProc;
     ActivateSide: TKeymapSideProc;
@@ -1003,9 +1002,6 @@ begin
     kaCompareFolders:
       if Assigned(AHost.CompareFolders) then
         AHost.CompareFolders();
-    kaMultiRename:
-      if Assigned(AHost.BeginMultiRename) then
-        AHost.BeginMultiRename();
   else
     Result := False;
   end;

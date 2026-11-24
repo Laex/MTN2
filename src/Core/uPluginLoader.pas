@@ -482,6 +482,124 @@ begin
   end;
 end;
 
+function ThunkShowDialogLive(APluginId, ADeclJson: PAnsiChar;
+  AOnCommand: THostDialogCommandCallback; AOnChange: THostDialogChangeCallback;
+  AUserData: Pointer): Int64; cdecl;
+var
+  Callback: THostDialogCommandCallback;
+  ChangeCb: THostDialogChangeCallback;
+  UserData: Pointer;
+begin
+  try
+    if (APluginId = nil) or (ADeclJson = nil) or not Assigned(AOnCommand) or
+       not Assigned(AOnChange) then
+      Exit(-1);
+    Callback := AOnCommand;
+    ChangeCb := AOnChange;
+    UserData := AUserData;
+    if PluginShowDialogLive(UTF8ToString(APluginId), UTF8ToString(ADeclJson),
+      procedure(const AControlId, AValuesJson: string)
+      var
+        IdU, ValuesU: UTF8String;
+      begin
+        IdU := UTF8String(AControlId);
+        ValuesU := UTF8String(AValuesJson);
+        Callback(UserData, PAnsiChar(IdU), PAnsiChar(ValuesU));
+      end,
+      function(const AValuesJson: string): string
+      var
+        ValuesU: UTF8String;
+        Reply: PAnsiChar;
+      begin
+        ValuesU := UTF8String(AValuesJson);
+        Reply := ChangeCb(UserData, PAnsiChar(ValuesU));
+        if Reply = nil then
+          Result := ''
+        else
+          Result := UTF8ToString(Reply);
+      end) then
+      Result := 0
+    else
+      Result := -1;
+  except
+    Result := -1;
+  end;
+end;
+
+function ThunkRenameBatch(APluginId, ABatchJson: PAnsiChar): Int64; cdecl;
+var
+  Root, Pairs: TJSONValue;
+  Sources, Dests: TArray<string>;
+  Pair: TJSONValue;
+  From, Dest: string;
+begin
+  Result := -1;
+  try
+    if ABatchJson = nil then
+      Exit;
+    Root := TJSONObject.ParseJSONValue(UTF8ToString(ABatchJson));
+    try
+      if not (Root is TJSONObject) then
+        Exit;
+      Pairs := TJSONObject(Root).GetValue('pairs');
+      if not (Pairs is TJSONArray) then
+        Exit;
+      for Pair in TJSONArray(Pairs) do
+        if (Pair is TJSONObject) and TJSONObject(Pair).TryGetValue<string>('from', From) and
+           TJSONObject(Pair).TryGetValue<string>('to', Dest) then
+        begin
+          Sources := Sources + [From];
+          Dests := Dests + [Dest];
+        end;
+    finally
+      Root.Free;
+    end;
+    if PluginRenameBatch(Sources, Dests) then
+      Result := 0;
+  except
+    Result := -1;
+  end;
+end;
+
+function ThunkRenameUndo(APluginId: PAnsiChar): Int64; cdecl;
+begin
+  try
+    if PluginRenameUndo then
+      Result := 0
+    else
+      Result := -1;
+  except
+    Result := -1;
+  end;
+end;
+
+function ThunkEditText(APluginId, AText: PAnsiChar; AOnDone: THostEditTextCallback;
+  AUserData: Pointer): Int64; cdecl;
+var
+  Callback: THostEditTextCallback;
+  UserData: Pointer;
+begin
+  try
+    if (AText = nil) or not Assigned(AOnDone) then
+      Exit(-1);
+    Callback := AOnDone;
+    UserData := AUserData;
+    if PluginEditText(UTF8ToString(AText),
+      procedure(AResult: string)
+      var
+        U: UTF8String;
+      begin
+        U := UTF8String(AResult);
+        Callback(UserData, PAnsiChar(U));
+      end) then
+      Result := 0
+    else
+      Result := -1;
+  except
+    Result := -1;
+  end;
+end;
+
 function ThunkRegisterPanelActivate(APluginId, AScheme: PAnsiChar;
   AHandler: THostPanelActivateCallback; AUserData: Pointer): Int64; cdecl;
 var
@@ -1965,6 +2083,10 @@ begin
   Result.ServiceStatus := @HostServiceStatus;
   Result.CancelService := @HostCancelService;
   Result.SurfaceSetKeyBar := @ThunkSurfaceSetKeyBar;
+  Result.ShowDialogLive := @ThunkShowDialogLive;
+  Result.RenameBatch := @ThunkRenameBatch;
+  Result.RenameUndo := @ThunkRenameUndo;
+  Result.EditText := @ThunkEditText;
 end;
 
 function TPluginLoader.TryLoadOne(const AFileName, APluginId: string): Boolean;

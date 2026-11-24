@@ -127,7 +127,7 @@ begin
       SetLength(Seen, Length(Seen) + 1);
       Seen[High(Seen)] := Text;
     end;
-    Assert.AreEqual(Integer(Ord(High(TFeatureTip))), Integer(Length(Seen)), 'every tip came once');
+    Assert.AreEqual(Integer(Ord(High(TFeatureTip))) - 1, Integer(Length(Seen)), 'every tip came once');
     T.BeginSession;
     Assert.AreEqual('', T.NextTip(GetDefaultNDNProfile), 'then no more');
   finally
@@ -166,14 +166,14 @@ begin
   B := TFeatureTipTracker.Create(True);
   try
     First := A.NextTip(GetDefaultNDNProfile);
-    A.NoteAction(kaMultiRename);
+    A.NoteAction(kaFolderHotlist);
     B.State := A.State;
     B.BeginSession;
     Next := B.NextTip(GetDefaultNDNProfile);
     Assert.AreNotEqual('', Next);
     Assert.AreNotEqual(First, Next, 'the shown tip is remembered');
     Assert.AreEqual(A.State.Launches + 1, B.State.Launches, 'the run count carries on');
-    Assert.IsTrue(B.State.Used and (1 shl Ord(ftMultiRename)) <> 0, 'the used feature is remembered');
+    Assert.IsTrue(B.State.Used and (1 shl Ord(ftFolderHotlist)) <> 0, 'the used feature is remembered');
   finally
     A.Free;
     B.Free;
@@ -201,7 +201,7 @@ begin
   // The state stores tips as a bit set of these ordinals; moving one would
   // make a stored bit mean another tip.
   Assert.AreEqual(1, Ord(ftCommandPalette));
-  Assert.AreEqual(2, Ord(ftMultiRename));
+  Assert.AreEqual(2, Ord(ftRetired));
   Assert.AreEqual(10, Ord(ftNewWorkspace));
   Assert.IsTrue(Ord(High(TFeatureTip)) <= 30, 'the set fits an Integer');
 end;
@@ -213,6 +213,8 @@ var
 begin
   for Tip := Succ(ftNone) to High(TFeatureTip) do
   begin
+    if Tip = ftRetired then
+      Continue;
     Text := FeatureTipText(Tip, GetDefaultNDNProfile);
     Assert.AreNotEqual('', Text, 'text of tip ' + IntToStr(Ord(Tip)));
     Assert.AreEqual(0, Pos('?', Text), 'every key of tip ' + IntToStr(Ord(Tip)) + ' is bound: ' + Text);

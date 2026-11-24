@@ -154,7 +154,7 @@ begin
       hdkFolderHistory, hdkCmdHistory, hdkCommandPalette, hdkTheme,
       hdkColumnsConfig, hdkMaskGroups, hdkDisplay,
       hdkColorPicker, hdkHostColorPicker, hdkMarkdownPicker, hdkTmpSaveList, hdkExportList, hdkKeymap, hdkJobList,
-      hdkPanelFilter, hdkMultiRename,
+      hdkPanelFilter,
       hdkCompareOptions, hdkDatePicker, hdkFindPipeline,
       hdkThemeEditor, hdkThemeItems, hdkThemePicker:
         Exit(fbcDialogList);
@@ -335,8 +335,6 @@ begin
       Result := TArray<string>.Create(S('Search pipeline'), H('Enter', 'OK', '='), H('Esc', 'Cancel', '='));
     hdkCompareOptions:
       Result := TArray<string>.Create(S('Compare folders'), H('Enter', 'OK', '='), H('Esc', 'Cancel', '='));
-    hdkMultiRename:
-      Result := TArray<string>.Create(S('Multi-rename'), H('Enter', 'Rename', '='), H('Esc', 'Cancel', '='));
   else
     Result := TArray<string>.Create(S('Code page'), S('^v select'), H('Enter', 'Apply', '='), H('Esc', 'Cancel', '='));
   end;

@@ -19,7 +19,6 @@
     "CompareFolders": { "key": "C", "ctrl": true, "shift": true, "description": "Select files that differ between the panels" },
     "ExternalView": { "key": "F3", "alt": true, "description": "View file in the external viewer" },
     "ExternalEdit": { "key": "F4", "alt": true, "description": "Edit file in the external editor" },
-    "MultiRename": { "key": "N", "ctrl": true, "alt": true, "description": "Rename the selected items by rules" },
     "RecycleBin": { "key": "F8", "ctrl": true, "alt": true, "description": "Navigate to Recycle Bin" },
     "Restore": { "key": "R", "ctrl": true, "alt": true, "description": "Restore item under cursor from Recycle Bin" },
     "Delete": [
