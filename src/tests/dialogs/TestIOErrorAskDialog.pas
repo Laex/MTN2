@@ -107,7 +107,7 @@ begin
       Done := True;
     end,
     procedure(const AOriginSrc, AOriginDst: string) begin end,
-    procedure(const AOriginSrc: string) begin end,
+    procedure(const AOriginSrc: string; const AKeep: TArray<string>) begin end,
     nil);
   try
     Jobs.BeginJob(ASources, ADestDirURI, pjkCopy);

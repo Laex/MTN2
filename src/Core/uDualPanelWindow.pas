@@ -510,7 +510,8 @@ type
       AOfferPermanent: Boolean);
     procedure HostOpenIOErrorAsk(const AHeadline, APath, AErrorLine: string);
     procedure HostJobFinished(ASuccess: Boolean);
-    procedure HostClearJobSelection(const AOriginSrc: string);
+    procedure HostClearJobSelection(const AOriginSrc: string;
+      const AKeep: TArray<string>);
     procedure HostReloadJobPanels(const AOriginSrc, AOriginDst: string);
     function HostApplyFindResults(const ARoot, AMask: string;
       const AHits: TArray<TFindHit>; AUpdate: Boolean): Boolean;
@@ -3136,13 +3137,15 @@ begin
     NotifyChanged;
 end;
 
-procedure TDualPanelWindow.HostClearJobSelection(const AOriginSrc: string);
+procedure TDualPanelWindow.HostClearJobSelection(const AOriginSrc: string;
+  const AKeep: TArray<string>);
 var
   Ws: TDualPanelWorkspaceTab;
   Panel: TPanelState;
   Tab: TTab;
   Rows: TPanelRows;
-  Name: string;
+  Name, Kept: string;
+  Remaining: TArray<string>;
   Side: TPanelSide;
 begin
   Ws := ActiveWorkspace;
@@ -3151,14 +3154,35 @@ begin
   Tab := ActiveTab(Panel);
   if (AOriginSrc <> '') and (not SameVfsUri(Tab.CurrentURI, AOriginSrc)) then
     Exit;
-  Rows := RowsForSide(Side);
-  Name := PendingSelectNameAtCursor(Rows, Tab.CursorIndex);
-  if Name <> '' then
+  if Length(AKeep) > 0 then
   begin
-    FPendingSelectName := Name;
-    FPendingSelectSide := Side;
+    // Only the items the job did not copy stay selected; Ctrl+M brings the
+    // whole selection back.
+    SetLength(Remaining, 0);
+    for Name in Tab.SelectedURIs do
+      for Kept in AKeep do
+        if SameVfsUri(Name, Kept) then
+        begin
+          SetLength(Remaining, Length(Remaining) + 1);
+          Remaining[High(Remaining)] := Name;
+          Break;
+        end;
+    if Length(Remaining) = Length(Tab.SelectedURIs) then
+      Exit;
+    Tab.PrevSelectedURIs := Tab.SelectedURIs;
+    Tab.SelectedURIs := Remaining;
+  end
+  else
+  begin
+    Rows := RowsForSide(Side);
+    Name := PendingSelectNameAtCursor(Rows, Tab.CursorIndex);
+    if Name <> '' then
+    begin
+      FPendingSelectName := Name;
+      FPendingSelectSide := Side;
+    end;
+    TabClearSelection(Tab);
   end;
-  TabClearSelection(Tab);
   SetActiveTab(Panel, Tab);
   SetActivePanel(Ws, Panel);
   SaveActiveWorkspace(Ws);

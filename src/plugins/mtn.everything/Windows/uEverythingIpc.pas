@@ -15,10 +15,26 @@ uses
 function EverythingSearch(const AQuery: string; AMaxResults: Integer; out AItems: TEvItems;
   out AError: string): Boolean;
 
+/// <summary>True when ARoot is on a network share (a UNC path or a mapped network drive).
+/// Everything does not index those by default, so an empty answer for them means "not
+/// indexed", not "no such files".</summary>
+function EverythingRootIsRemote(const ARoot: string): Boolean;
+
 implementation
 
 uses
   Winapi.Windows, Winapi.Messages, System.SysUtils;
+
+function EverythingRootIsRemote(const ARoot: string): Boolean;
+var
+  Root: string;
+begin
+  Root := Trim(ARoot);
+  if IsUncPath(Root) then
+    Exit(True);
+  Result := (Length(Root) >= 2) and (Root[2] = ':') and
+    (GetDriveType(PChar(Copy(Root, 1, 2) + '\')) = DRIVE_REMOTE);
+end;
 
 const
   cQueryMessage = 2;      // EVERYTHING_IPC_COPYDATAQUERYW

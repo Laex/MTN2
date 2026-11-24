@@ -32,6 +32,10 @@ function EverythingUri(const AQuery: string): string;
 /// <summary>The query of an everything:/// address; False when it is another address.</summary>
 function ParseEverythingUri(const AUri: string; out AQuery: string): Boolean;
 
+/// <summary>True for a network path (\\server\share\...), which Everything does not index
+/// unless the user added it as a folder to index.</summary>
+function IsUncPath(const APath: string): Boolean;
+
 /// <summary>The full path of an item.</summary>
 function ItemPath(const AItem: TEvItem): string;
 
@@ -116,6 +120,15 @@ begin
   Result := SameText(Copy(AUri, 1, Length(cPrefix)), cPrefix);
   if Result then
     AQuery := EvDecode(Copy(AUri, Length(cPrefix) + 1, MaxInt));
+end;
+
+function IsUncPath(const APath: string): Boolean;
+var
+  P: string;
+begin
+  P := Trim(APath);
+  Result := (Length(P) > 2) and (P[1] = '\') and (P[2] = '\') and
+    not ((P[3] = '?') or (P[3] = '.'));
 end;
 
 function ItemPath(const AItem: TEvItem): string;

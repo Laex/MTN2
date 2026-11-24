@@ -78,7 +78,7 @@ begin
     procedure(const AHeadline, APath, AErrorLine: string) begin end,
     procedure(ASucceeded: Boolean) begin end,
     procedure(const AOriginSrc, AOriginDst: string) begin end,
-    procedure(const AOriginSrc: string) begin end);
+    procedure(const AOriginSrc: string; const AKeep: TArray<string>) begin end);
   Controller := TJobDialogController.Create(Host, Jobs, nil, nil);
   Controller.OnWarn :=
     procedure(const AMessage: string)
@@ -173,7 +173,7 @@ begin
     procedure(const AHeadline, APath, AErrorLine: string) begin end,
     procedure(ASucceeded: Boolean) begin end,
     procedure(const AOriginSrc, AOriginDst: string) begin end,
-    procedure(const AOriginSrc: string) begin end);
+    procedure(const AOriginSrc: string; const AKeep: TArray<string>) begin end);
   try
     Jobs.BeginJob(TArray<string>.Create(PathToFileUri(TPath.Combine(Dir, 'a.txt'))),
       PathToFileUri(TPath.Combine(Dir, 'other')), pjkCopy);
@@ -478,7 +478,7 @@ begin
     procedure(const AHeadline, APath, AErrorLine: string) begin end,
     procedure(ASucceeded: Boolean) begin end,
     procedure(const AOriginSrc, AOriginDst: string) begin end,
-    procedure(const AOriginSrc: string) begin end);
+    procedure(const AOriginSrc: string; const AKeep: TArray<string>) begin end);
 end;
 
 procedure TestCloseProgressOnlyWhenProgress;

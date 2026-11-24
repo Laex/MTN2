@@ -6,6 +6,11 @@ This file describes what changes for the user from version to version: new featu
 
 ## Unreleased
 
+### Fixed
+
+- After a copy, move, pack or unpack that ended early (cancelled, stopped by an error) or skipped some items, the items that did go through are deselected in the panel and the rest stay selected, so the selection shows what is still to be done. Ctrl+M brings the whole selection back.
+- A search by text in a folder on a network share found nothing when the Everything plugin was used to list the files: Everything does not index network shares. The names are now listed by the built-in walk in that case.
+
 ## v0.5.12 – 2026-11-23
 
 ### New

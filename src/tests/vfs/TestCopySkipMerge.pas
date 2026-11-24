@@ -49,6 +49,7 @@ type
     [Test] procedure TestOverwriteOfLockedFileKeepsIt;
     [Test] procedure TestFailedZipReplaceKeepsEntries;
     [Test] procedure TestSkippedFileIsNotOpenedAtTheSource;
+    [Test] procedure TestOnlyUncopiedSourcesStaySelected;
   end;
 
 implementation
@@ -406,7 +407,7 @@ begin
       Done := True;
     end,
     procedure(const AOriginSrc, AOriginDst: string) begin end,
-    procedure(const AOriginSrc: string) begin end,
+    procedure(const AOriginSrc: string; const AKeep: TArray<string>) begin end,
     nil);
   try
     Jobs.BeginJob(TArray<string>.Create(PathToFileUri(ASrcDir)),
@@ -533,7 +534,7 @@ begin
       Done := True;
     end,
     procedure(const AOriginSrc, AOriginDst: string) begin end,
-    procedure(const AOriginSrc: string) begin end,
+    procedure(const AOriginSrc: string; const AKeep: TArray<string>) begin end,
     nil);
   try
     Jobs.BeginJob(Sources, PathToFileUri(ADestDir), pjkCopy);
@@ -1161,6 +1162,65 @@ end;
 procedure TTestCopySkipMerge.TestSkippedFileIsNotOpenedAtTheSource;
 begin
   TestCopySkipMerge.TestSkippedFileIsNotOpenedAtTheSource;
+end;
+
+procedure TTestCopySkipMerge.TestOnlyUncopiedSourcesStaySelected;
+var
+  Jobs: TPanelJobController;
+  Done: Boolean;
+  Keep: TArray<string>;
+  Calls: Integer;
+  Src, Dst, Copied, Skipped: string;
+  Tick: Cardinal;
+begin
+  Src := TPath.Combine(GRoot, 'keep_src');
+  Dst := TPath.Combine(GRoot, 'keep_dst');
+  TDirectory.CreateDirectory(Src);
+  TDirectory.CreateDirectory(Dst);
+  Copied := TPath.Combine(Src, 'new.txt');
+  Skipped := TPath.Combine(Src, 'old.txt');
+  WriteTextFile(Copied, 'new');
+  WriteTextFile(Skipped, 'src-old');
+  WriteTextFile(TPath.Combine(Dst, 'old.txt'), 'dst-old');
+
+  Done := False;
+  Calls := 0;
+  Jobs := TPanelJobController.Create(nil, CreateDefaultVfs,
+    procedure begin end,
+    procedure(const ATitle, AMessage: string) begin end,
+    procedure(const APath, ANewLine, AExistingLine: string) begin end,
+    procedure(const APath, AHeadline, AQuestion, AErrorLine: string;
+      AOfferPermanent: Boolean) begin end,
+    procedure(const AHeadline, APath, AErrorLine: string) begin end,
+    procedure(ASucceeded: Boolean)
+    begin
+      Done := True;
+    end,
+    procedure(const AOriginSrc, AOriginDst: string) begin end,
+    procedure(const AOriginSrc: string; const AKeep: TArray<string>)
+    begin
+      Inc(Calls);
+      Keep := AKeep;
+    end,
+    nil);
+  try
+    Jobs.BeginJob(TArray<string>.Create(PathToFileUri(Copied), PathToFileUri(Skipped)),
+      PathToFileUri(Dst), pjkCopy);
+    Jobs.ApplyCopyMoveOptions(PathToFileUri(Dst), jomSkip, False);
+    Jobs.ConfirmJob;
+    Tick := GetTickCount;
+    while not Done do
+    begin
+      CheckSynchronize(20);
+      if GetTickCount - Tick > 30000 then
+        Assert.Fail('job timed out');
+    end;
+  finally
+    Jobs.Free;
+  end;
+  Assert.AreEqual(1, Calls, 'selection callback runs once');
+  Assert.AreEqual(1, Integer(Length(Keep)), 'one source stays selected');
+  Assert.AreEqual(PathToFileUri(Skipped), Keep[0], 'the skipped source stays selected');
 end;
 
 initialization

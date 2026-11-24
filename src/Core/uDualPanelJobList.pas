@@ -63,7 +63,8 @@ type
     procedure NoteQueueProgress(ASuccess: Boolean);
     procedure OnJobReload(AJob: TPanelJobController; const AOriginSrc,
       AOriginDst: string);
-    procedure OnJobClearSel(AJob: TPanelJobController; const AOriginSrc: string);
+    procedure OnJobClearSel(AJob: TPanelJobController; const AOriginSrc: string;
+      const AKeep: TArray<string>);
     procedure OnJobAfterClose(AJob: TPanelJobController);
     procedure ReplayAsk(AJob: TPanelJobController);
     procedure QueuePruneIdle;
@@ -614,9 +615,9 @@ begin
     begin
       OnJobReload(Job, AOriginSrc, AOriginDst);
     end,
-    procedure(const AOriginSrc: string)
+    procedure(const AOriginSrc: string; const AKeep: TArray<string>)
     begin
-      OnJobClearSel(Job, AOriginSrc);
+      OnJobClearSel(Job, AOriginSrc, AKeep);
     end,
     procedure
     begin
@@ -839,10 +840,10 @@ begin
 end;
 
 procedure TPanelJobList.OnJobClearSel(AJob: TPanelJobController;
-  const AOriginSrc: string);
+  const AOriginSrc: string; const AKeep: TArray<string>);
 begin
   if Assigned(FOnClearSelection) then
-    FOnClearSelection(AOriginSrc);
+    FOnClearSelection(AOriginSrc, AKeep);
 end;
 
 procedure TPanelJobList.OnJobAfterClose(AJob: TPanelJobController);

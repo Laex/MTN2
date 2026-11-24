@@ -42,7 +42,11 @@ type
   TQueueActionEvent = reference to procedure(AAction: TQueueAction);
   TJobReloadPanelsEvent = reference to procedure(const AOriginSrc,
     AOriginDst: string);
-  TJobClearSelectionEvent = reference to procedure(const AOriginSrc: string);
+  /// <summary>Called when a job ends. AKeep are the sources the job did not copy:
+  /// they stay selected and the rest is deselected. Empty AKeep: the whole
+  /// selection goes.</summary>
+  TJobClearSelectionEvent = reference to procedure(const AOriginSrc: string;
+    const AKeep: TArray<string>);
 
 var
   /// <summary>A job that ends in the background sooner than this after it
@@ -82,6 +86,8 @@ type
     /// inside a recursive tree copy so FJob.FilesDone can count real files
     /// instead of top-level selected items.</summary>
     FLastItemSrcPath: string;
+    /// <summary>The sources of a copy or move that went through.</summary>
+    FCopiedSources: TArray<string>;
     /// <summary>When the job started or last went to the background; a
     /// background job that ends soon after is not worth a toast.</summary>
     FWatchTick: UInt64;
@@ -166,7 +172,9 @@ type
       AIndex: Integer; const ACancel: IJobCancelToken);
     procedure RunLinkTransferThread(const ASrcURI, ADstURI: string; AIndex: Integer;
       AMove, AOverwrite: Boolean);
-    procedure AdvanceJobAfterItem(AIndex: Integer);
+    procedure AdvanceJobAfterItem(AIndex: Integer; ACopied: Boolean = False);
+    function SourcesNotCopied: TArray<string>;
+    procedure DeselectCopied(const AOriginSrc: string);
     procedure HandleTransferFailure(const ASrcURI, ADstURI: string; AIndex: Integer;
       AOverwrite, AAppend: Boolean; const AError: TVfsError);
     procedure FinishJob(ASuccess: Boolean; const AError: TVfsError);
@@ -853,6 +861,7 @@ begin
   FJob.FilesDone := 0;
   FJob.FilesSkipped := 0;
   FLastItemSrcPath := '';
+  SetLength(FCopiedSources, 0);
   ResetExcludeMasks;
   if Assigned(FOnInvalidate) then
     FOnInvalidate;
@@ -1170,8 +1179,13 @@ begin
   Result := NameMatchesAnyMask(AName, FExcludeMasks);
 end;
 
-procedure TPanelJobController.AdvanceJobAfterItem(AIndex: Integer);
+procedure TPanelJobController.AdvanceJobAfterItem(AIndex: Integer; ACopied: Boolean);
 begin
+  if ACopied and (AIndex >= 0) and (AIndex <= High(FJob.Sources)) then
+  begin
+    SetLength(FCopiedSources, Length(FCopiedSources) + 1);
+    FCopiedSources[High(FCopiedSources)] := FJob.Sources[AIndex];
+  end;
   CommitItemBytes;
   // Flush the last file of this item into FilesDone - NoteItemProgress only
   // counts on a path *transition*, so the final file of a tree (or the only
@@ -1469,6 +1483,7 @@ begin
   FJob.FilesDone := 0;
   FJob.FilesSkipped := 0;
   FLastItemSrcPath := '';
+  SetLength(FCopiedSources, 0);
   if FJob.FilesTotal < 1 then
     FJob.FilesTotal := Length(FJob.Sources);
   if Assigned(FOnInvalidate) then
@@ -2277,7 +2292,7 @@ begin
             HandleTransferFailure(SrcURI, DstURI, Idx, Overwrite, False, ACopyError);
             Exit;
           end;
-          AdvanceJobAfterItem(Idx);
+          AdvanceJobAfterItem(Idx, True);
         end, Overwrite, FJob.PreserveTimestamps);
     end, Overwrite, FJob.PreserveTimestamps);
 end;
@@ -2548,7 +2563,7 @@ begin
           HandleTransferFailure(SrcURI, DstURI, Idx, DoOverwrite, False, AError);
           Exit;
         end;
-        AdvanceJobAfterItem(Idx);
+        AdvanceJobAfterItem(Idx, True);
       end, DoOverwrite, FJob.PreserveTimestamps)
   else if Kind = pjkMove then
     ActiveVfs.MoveAsync(SrcURI, DstURI, Cancel,
@@ -2571,7 +2586,7 @@ begin
           HandleTransferFailure(SrcURI, DstURI, Idx, DoOverwrite, False, AError);
           Exit;
         end;
-        AdvanceJobAfterItem(Idx);
+        AdvanceJobAfterItem(Idx, True);
       end, DoOverwrite, FJob.PreserveTimestamps);
 end;
 
@@ -2620,7 +2635,7 @@ begin
             HandleTransferFailure(ASrcURI, ADstURI, AIndex, AOverwrite, False, Err);
             Exit;
           end;
-          AdvanceJobAfterItem(AIndex);
+          AdvanceJobAfterItem(AIndex, True);
         end);
     end).Start;
 end;
@@ -2702,7 +2717,7 @@ begin
             HandleTransferFailure(ASrcURI, ADstURI, AIndex, True, True, CapErr);
             Exit;
           end;
-          AdvanceJobAfterItem(AIndex);
+          AdvanceJobAfterItem(AIndex, True);
         end);
     end).Start;
 end;
@@ -2723,7 +2738,10 @@ begin
   begin
     NoteBackgroundFinish(True);
     if Assigned(FOnClearSelection) then
-      FOnClearSelection(OriginSrc);
+      if FJob.Kind in [pjkCopy, pjkMove, pjkPack, pjkUnpack] then
+        FOnClearSelection(OriginSrc, SourcesNotCopied)
+      else
+        FOnClearSelection(OriginSrc, nil);
     if Assigned(FOnReloadPanels) then
       FOnReloadPanels(OriginSrc, OriginDst);
     CloseJobUi;
@@ -2736,6 +2754,7 @@ begin
 
   if AError.Code = vecCancelled then
   begin
+    DeselectCopied(OriginSrc);
     if Assigned(FOnReloadPanels) then
       FOnReloadPanels(OriginSrc, OriginDst);
     CloseJobUi;
@@ -2758,8 +2777,42 @@ begin
     end;
   FJob.Cancel := nil;
   NoteBackgroundFinish(False);
+  DeselectCopied(OriginSrc);
   if Assigned(FOnInvalidate) then
     FOnInvalidate;
+end;
+
+function TPanelJobController.SourcesNotCopied: TArray<string>;
+var
+  Src, Done: string;
+  Found: Boolean;
+begin
+  SetLength(Result, 0);
+  for Src in FJob.Sources do
+  begin
+    Found := False;
+    for Done in FCopiedSources do
+      if SameVfsUri(Src, Done) then
+      begin
+        Found := True;
+        Break;
+      end;
+    if not Found then
+    begin
+      SetLength(Result, Length(Result) + 1);
+      Result[High(Result)] := Src;
+    end;
+  end;
+end;
+
+// A copy or move that ended early leaves the items it did not reach selected
+// and deselects the ones that went through.
+procedure TPanelJobController.DeselectCopied(const AOriginSrc: string);
+begin
+  if Assigned(FOnClearSelection) and
+     (FJob.Kind in [pjkCopy, pjkMove, pjkPack, pjkUnpack]) and
+     (Length(FCopiedSources) > 0) then
+    FOnClearSelection(AOriginSrc, SourcesNotCopied);
 end;
 
 procedure TPanelJobController.NoteBackgroundFinish(ASuccess: Boolean);

@@ -14,6 +14,7 @@ type
     [Test] procedure TestUriRoundTripsSlashesAndPercent;
     [Test] procedure TestForeignSchemeIsRejected;
     [Test] procedure TestItemPathJoinsWithBackslash;
+    [Test] procedure TestUncPathIsRecognized;
     [Test] procedure TestQueryMessageHoldsHeaderAndTerminatedText;
     [Test] procedure TestListReaderGivesNamesFoldersAndKinds;
     [Test] procedure TestListWithOffsetOutsideTheBlockIsRejected;
@@ -62,6 +63,15 @@ begin
   Assert.AreEqual('C:\a.txt', ItemPath(Item));
   Item.Dir := '';
   Assert.AreEqual('a.txt', ItemPath(Item));
+end;
+
+procedure TTestEverythingFormat.TestUncPathIsRecognized;
+begin
+  Assert.IsTrue(IsUncPath('\\server\share\dir'));
+  Assert.IsFalse(IsUncPath('C:\Work'));
+  Assert.IsFalse(IsUncPath('\\?\C:\Work'), 'a device path is a local one');
+  Assert.IsFalse(IsUncPath('\\'));
+  Assert.IsFalse(IsUncPath(''));
 end;
 
 procedure TTestEverythingFormat.TestQueryMessageHoldsHeaderAndTerminatedText;

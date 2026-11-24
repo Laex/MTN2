@@ -94,7 +94,7 @@
       "text": "&Case sensitive",
       "checked": false,
       "col": 1,
-      "row": 10,
+      "row": 9,
       "width": 22,
       "height": 1,
       "tab": 0
@@ -105,7 +105,7 @@
       "text": "&Whole words",
       "checked": false,
       "col": 39,
-      "row": 10,
+      "row": 9,
       "width": 25,
       "height": 1,
       "tab": 0
@@ -116,7 +116,7 @@
       "text": "Search for &folders",
       "checked": false,
       "col": 1,
-      "row": 11,
+      "row": 10,
       "width": 25,
       "height": 1,
       "tab": 0
@@ -127,7 +127,7 @@
       "text": "&Regex",
       "checked": false,
       "col": 39,
-      "row": 11,
+      "row": 10,
       "width": 25,
       "height": 1,
       "tab": 0
@@ -138,7 +138,7 @@
       "text": "Search in &subfolders",
       "checked": true,
       "col": 1,
-      "row": 12,
+      "row": 11,
       "width": 25,
       "height": 1,
       "tab": 0
@@ -149,7 +149,7 @@
       "text": "Search in arch&ives",
       "checked": false,
       "col": 39,
-      "row": 12,
+      "row": 11,
       "width": 25,
       "height": 1,
       "tab": 0
@@ -159,7 +159,7 @@
       "text": "Code &page:",
       "id": "lbl_encoding",
       "col": 1,
-      "row": 13,
+      "row": 12,
       "width": 15,
       "height": 1,
       "tab": 0
@@ -172,7 +172,7 @@
         "Auto-detect"
       ],
       "col": 17,
-      "row": 13,
+      "row": 12,
       "width": 20,
       "height": 1,
       "tab": 0
@@ -181,9 +181,9 @@
       "type": "button",
       "id": "pipeline",
       "text": "Pipeli&ne: Auto",
-      "col": 39,
-      "row": 13,
-      "width": 25,
+      "col": 44,
+      "row": 14,
+      "width": 20,
       "height": 1,
       "tab": 0
     },
@@ -347,7 +347,7 @@
         "(no preset)"
       ],
       "col": 1,
-      "row": 14,
+      "row": 13,
       "width": 30,
       "height": 1
     },
@@ -356,7 +356,7 @@
       "id": "preset_name",
       "value": "",
       "col": 33,
-      "row": 14,
+      "row": 13,
       "width": 30,
       "height": 1
     },
@@ -365,26 +365,26 @@
       "id": "preset_load",
       "text": "&Load",
       "col": 1,
-      "row": 15,
-      "width": 18,
+      "row": 14,
+      "width": 13,
       "height": 1
     },
     {
       "type": "button",
       "id": "preset_save",
       "text": "Sa&ve",
-      "col": 21,
-      "row": 15,
-      "width": 18,
+      "col": 15,
+      "row": 14,
+      "width": 13,
       "height": 1
     },
     {
       "type": "button",
       "id": "preset_del",
       "text": "D&elete",
-      "col": 41,
-      "row": 15,
-      "width": 18,
+      "col": 29,
+      "row": 14,
+      "width": 13,
       "height": 1
     },
     {

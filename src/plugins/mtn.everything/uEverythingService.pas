@@ -60,6 +60,13 @@ begin
     AJob.ReplyError(-32002, Err);
     Exit;
   end;
+  // A network share is not in the index unless the user added it; an empty answer there
+  // ends the call with an error so the host lists the names with its own walk.
+  if (Length(Items) = 0) and EverythingRootIsRemote(Req.Root) then
+  begin
+    AJob.ReplyError(-32002, 'the folder is not indexed by Everything');
+    Exit;
+  end;
   Truncated := Length(Items) >= cDefaultMaxResults;
 
   SetLength(Kept, 0);
