@@ -22,26 +22,30 @@ type
     [Test] procedure DatesAreLocaleIndependent;
     [Test] procedure NoFieldsOrNoItemsGiveEmptyText;
     [Test] procedure ParseFormatRadioAndResolvePath;
+    [Test] procedure TitlesComeFromTheCaller;
+    [Test] procedure ConfigSurvivesTheSettingsText;
+    [Test] procedure DamagedSettingsTextGivesDefaults;
   end;
 
 implementation
 
 uses
   System.SysUtils,
-  uDualPanelTypes, uListExport;
+  uListExport;
 
 function MakeItem(const AName, APath: string; ASize: Int64;
   AIsDir: Boolean = False): TListExportItem;
 begin
   Result.Name := AName;
   Result.FullPath := APath;
-  Result.Row := Default(TPanelRow);
-  Result.Row.Size := ASize;
-  Result.Row.IsDirectory := AIsDir;
-  Result.Row.Extension := ExtractFileExt(AName);
-  Result.Row.ModificationTime := EncodeDate(2026, 3, 7) + EncodeTime(14, 5, 9, 0);
-  Result.Row.AttrText := 'A';
-  Result.Row.FileType := 'File';
+  Result.Size := ASize;
+  Result.IsDir := AIsDir;
+  Result.Ext := ExtractFileExt(AName);
+  Result.Modified := EncodeDate(2026, 3, 7) + EncodeTime(14, 5, 9, 0);
+  Result.Created := 0;
+  Result.Accessed := 0;
+  Result.Attr := 'A';
+  Result.TypeName := 'File';
 end;
 
 function Config(AFormat: TListExportFormat; AHeader: Boolean;
@@ -63,7 +67,7 @@ var
 begin
   L := Lines(FormatItemList(
     [MakeItem('a.txt', 'C:\d\a.txt', 5), MakeItem('long name.bin', 'C:\d\long name.bin', 12345)],
-    Config(lefText, True, [lxfName, lxfSize]), 'list.txt'));
+    Config(lefText, True, [lxfName, lxfSize]), 'list.txt', DefaultListExportTitles));
   Assert.IsTrue(Length(L) = 3);
   Assert.AreEqual('Name' + StringOfChar(' ', 12) + 'Size', L[0]);
   Assert.AreEqual('a.txt' + StringOfChar(' ', 14) + '5', L[1]);
@@ -75,7 +79,7 @@ var
   L: TArray<string>;
 begin
   L := Lines(FormatItemList([MakeItem('a.txt', 'C:\d\a.txt', 5)],
-    Config(lefText, False, [lxfPath]), 'list.txt'));
+    Config(lefText, False, [lxfPath]), 'list.txt', DefaultListExportTitles));
   Assert.IsTrue(Length(L) = 1);
   Assert.AreEqual('C:\d\a.txt', L[0]);
 end;
@@ -85,7 +89,7 @@ var
   L: TArray<string>;
 begin
   L := Lines(FormatItemList([MakeItem('a.txt', 'C:\d\a.txt', 5)],
-    Config(lefCsv, True, [lxfAttr, lxfName, lxfExt, lxfType]), 'list.csv'));
+    Config(lefCsv, True, [lxfAttr, lxfName, lxfExt, lxfType]), 'list.csv', DefaultListExportTitles));
   Assert.AreEqual('Name,Ext,Type,Attr', L[0]);
   Assert.AreEqual('a.txt,txt,File,A', L[1]);
 end;
@@ -95,7 +99,7 @@ var
   L: TArray<string>;
 begin
   L := Lines(FormatItemList([MakeItem('a|b.txt', 'C:\d\a|b.txt', 5)],
-    Config(lefMarkdown, False, [lxfName, lxfSize]), 'list.md'));
+    Config(lefMarkdown, False, [lxfName, lxfSize]), 'list.md', DefaultListExportTitles));
   Assert.IsTrue(Length(L) = 3, 'a Markdown table always has its header');
   Assert.AreEqual('| Name | Size |', L[0]);
   Assert.AreEqual('| --- | ---: |', L[1]);
@@ -107,7 +111,7 @@ var
   L: TArray<string>;
 begin
   L := Lines(FormatItemList([MakeItem('a,"b".txt', 'C:\d\a.txt', 5)],
-    Config(lefCsv, False, [lxfName, lxfSize]), 'list.csv'));
+    Config(lefCsv, False, [lxfName, lxfSize]), 'list.csv', DefaultListExportTitles));
   Assert.IsTrue(Length(L) = 1);
   Assert.AreEqual('"a,""b"".txt",5', L[0]);
 end;
@@ -141,18 +145,18 @@ var
   Item: TListExportItem;
 begin
   Item := MakeItem('a.txt', 'C:\d\a.txt', 5);
-  Item.Row.CreationTime := 0;
+  Item.Created := 0;
   L := Lines(FormatItemList([Item],
-    Config(lefCsv, False, [lxfModified, lxfCreated]), 'list.csv'));
+    Config(lefCsv, False, [lxfModified, lxfCreated]), 'list.csv', DefaultListExportTitles));
   Assert.AreEqual('2026-03-07 14:05:09,', L[0], 'an unset date stays empty');
 end;
 
 procedure TTestListExport.NoFieldsOrNoItemsGiveEmptyText;
 begin
   Assert.AreEqual('', FormatItemList([MakeItem('a', 'C:\a', 1)],
-    Config(lefText, True, []), 'x.txt'));
+    Config(lefText, True, []), 'x.txt', DefaultListExportTitles));
   Assert.AreEqual('', FormatItemList(nil,
-    Config(lefText, True, [lxfName]), 'x.txt'));
+    Config(lefText, True, [lxfName]), 'x.txt', DefaultListExportTitles));
 end;
 
 procedure TTestListExport.ParseFormatRadioAndResolvePath;
@@ -177,6 +181,41 @@ begin
     ResolveExportListPath('list.txt', CPanelDir, CDocsDir), 'panel');
   Assert.AreEqual(IncludeTrailingPathDelimiter(CDocsDir) + 'list.txt',
     ResolveExportListPath('list.txt', '', CDocsDir), 'fallback');
+end;
+
+procedure TTestListExport.TitlesComeFromTheCaller;
+var
+  T: TListExportTitles;
+  L: TArray<string>;
+begin
+  T := DefaultListExportTitles;
+  T[lxfName] := 'Title';
+  L := Lines(FormatItemList([MakeItem('a.txt', 'C:\d.txt', 5)],
+    Config(lefCsv, True, [lxfName]), 'list.csv', T));
+  Assert.AreEqual('Title', L[0]);
+end;
+
+procedure TTestListExport.ConfigSurvivesTheSettingsText;
+var
+  Cfg, Back: TListExportConfig;
+begin
+  Cfg := Config(lefMarkdown, False, [lxfPath, lxfAttr, lxfAccessed]);
+  Back := ListExportConfigFromText(ListExportConfigToText(Cfg));
+  Assert.IsTrue(Back.Format = lefMarkdown, 'format');
+  Assert.IsFalse(Back.Header, 'header');
+  Assert.IsTrue(Back.Fields = [lxfPath, lxfAttr, lxfAccessed], 'fields');
+end;
+
+procedure TTestListExport.DamagedSettingsTextGivesDefaults;
+var
+  Def, Back: TListExportConfig;
+begin
+  Def := DefaultListExportConfig;
+  Back := ListExportConfigFromText('');
+  Assert.IsTrue(Back.Format = Def.Format);
+  Assert.IsTrue(Back.Fields = Def.Fields);
+  Back := ListExportConfigFromText('csv;True;nothing');
+  Assert.IsTrue(Back.Fields = Def.Fields, 'no known field keeps the defaults');
 end;
 
 initialization

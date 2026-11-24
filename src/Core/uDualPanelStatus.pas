@@ -153,14 +153,14 @@ begin
         Exit(fbcColorCodingEdit);
       hdkFolderHistory, hdkCmdHistory, hdkCommandPalette, hdkTheme,
       hdkColumnsConfig, hdkMaskGroups, hdkDisplay,
-      hdkColorPicker, hdkHostColorPicker, hdkMarkdownPicker, hdkTmpSaveList, hdkExportList, hdkKeymap, hdkJobList,
+      hdkColorPicker, hdkHostColorPicker, hdkMarkdownPicker, hdkTmpSaveList, hdkKeymap, hdkJobList,
       hdkPanelFilter,
       hdkCompareOptions, hdkDatePicker, hdkFindPipeline,
       hdkThemeEditor, hdkThemeItems, hdkThemePicker:
         Exit(fbcDialogList);
       hdkMkDir, hdkNewFile, hdkRename, hdkCopyInPlace, hdkHelp,
       hdkSelectMask, hdkUnselectMask, hdkDirSync, hdkCreateLink,
-      hdkSetAttributes, hdkDescribe,
+      hdkSetAttributes,
       hdkCompareResult, hdkArchivePassword, hdkFolderHotlistAdd,
       hdkFolderHotlistRename, hdkWorkspaceSave, hdkWorkspaceRename,
       hdkWorkspaceTabRename, hdkWorkspaceConfirm, hdkKeymapEdit,
@@ -283,8 +283,6 @@ begin
       Result := TArray<string>.Create(S('Dir sync'), H('Enter', 'Sync', '='), H('Esc', 'Cancel', '='));
     hdkCreateLink:
       Result := TArray<string>.Create(S('Link'), H('Enter', 'Create', '='), H('Esc', 'Cancel', '='));
-    hdkDescribe:
-      Result := TArray<string>.Create(S('Describe'), H('Enter', 'OK', '='), H('Esc', 'Cancel', '='));
     hdkSetAttributes:
       Result := TArray<string>.Create(S('Attr'), H('Enter', 'Set', '='), H('Esc', 'Cancel', '='));
     hdkCompareResult:
@@ -327,8 +325,6 @@ begin
       Result := TArray<string>.Create(S('Color'), H('Enter', 'OK', '='), H('Esc', 'Cancel', '='));
     hdkTmpSaveList:
       Result := TArray<string>.Create(S('Save list'), H('Enter', 'Save', '='), H('Esc', 'Cancel', '='));
-    hdkExportList:
-      Result := TArray<string>.Create(S('Export list'), H('Enter', 'Save', '='), H('Esc', 'Cancel', '='));
     hdkDatePicker:
       Result := TArray<string>.Create(S('Date'), S('^v select'), H('Enter', 'OK', '='), H('Esc', 'Cancel', '='));
     hdkFindPipeline:

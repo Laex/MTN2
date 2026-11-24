@@ -7,7 +7,7 @@ interface
 
 uses
   System.SysUtils,
-  uDualPanelTypes, uPanelColumns, uListExport;
+  uDualPanelTypes, uPanelColumns;
 
 const
   cSessionVersion = 1;
@@ -52,8 +52,6 @@ type
     /// <summary>Which plugin columns each scheme shows, as the JSON object of
     /// uPluginColumns.SchemeColumnSelectionsToJson; '' = none chosen.</summary>
     PluginColumns: string;
-    /// <summary>Files > Export list... layout and fields. App-wide.</summary>
-    ListExport: TListExportConfig;
     /// <summary>Id of the last saved/restored ws:/// snapshot. '' = none.</summary>
     LastWorkspaceId: string;
     /// <summary>On startup, load LastWorkspaceId into the live ws:/// store.</summary>
@@ -543,57 +541,6 @@ begin
   Result := True;
 end;
 
-const
-  cListExportFieldNames: array[TListExportField] of string = ('name', 'path',
-    'ext', 'size', 'modified', 'created', 'accessed', 'type', 'attr');
-  cListExportFormatNames: array[TListExportFormat] of string = ('auto', 'text',
-    'markdown', 'csv');
-
-function ListExportToJson(const AConfig: TListExportConfig): TJSONObject;
-var
-  Fields: TJSONArray;
-  F: TListExportField;
-begin
-  Result := TJSONObject.Create;
-  Result.AddPair('format', cListExportFormatNames[AConfig.Format]);
-  Result.AddPair('header', TJSONBool.Create(AConfig.Header));
-  Fields := TJSONArray.Create;
-  for F := Low(TListExportField) to High(TListExportField) do
-    if F in AConfig.Fields then
-      Fields.Add(cListExportFieldNames[F]);
-  Result.AddPair('fields', Fields);
-end;
-
-function ListExportFromJson(O: TJSONObject): TListExportConfig;
-var
-  Fmt: TListExportFormat;
-  F: TListExportField;
-  V: TJSONValue;
-  Name: string;
-  I: Integer;
-begin
-  Result := DefaultListExportConfig;
-  if O = nil then
-    Exit;
-  Name := LowerCase(JsonStr(O, 'format', ''));
-  for Fmt := Low(TListExportFormat) to High(TListExportFormat) do
-    if Name = cListExportFormatNames[Fmt] then
-      Result.Format := Fmt;
-  Result.Header := JsonBool(O, 'header', Result.Header);
-  V := O.GetValue('fields');
-  if V is TJSONArray then
-  begin
-    Result.Fields := [];
-    for I := 0 to TJSONArray(V).Count - 1 do
-    begin
-      Name := LowerCase(TJSONArray(V).Items[I].Value);
-      for F := Low(TListExportField) to High(TListExportField) do
-        if Name = cListExportFieldNames[F] then
-          Include(Result.Fields, F);
-    end;
-  end;
-end;
-
 function WindowToJson(const AWindow: TMtnWindowBounds): TJSONObject;
 begin
   Result := TJSONObject.Create;
@@ -674,7 +621,6 @@ begin
         else
           V.Free;
       end;
-      Root.AddPair('listExport', ListExportToJson(ASession.ListExport));
       if ASession.LastWorkspaceId <> '' then
         Root.AddPair('lastWorkspaceId', ASession.LastWorkspaceId);
       Root.AddPair('restoreWorkspaceOnStart', TJSONBool.Create(ASession.RestoreWorkspaceOnStart));
@@ -783,7 +729,6 @@ begin
   ASession.ThemeName := '';
   ASession.ThemeFile := '';
   ASession.PluginColumns := '';
-  ASession.ListExport := DefaultListExportConfig;
   ASession.LastWorkspaceId := '';
   ASession.RestoreWorkspaceOnStart := True;
   ASession.FontName := '';
@@ -906,9 +851,6 @@ begin
       V := Root.GetValue('pluginColumns');
       if V is TJSONObject then
         ASession.PluginColumns := V.ToJSON;
-      V := Root.GetValue('listExport');
-      if V is TJSONObject then
-        ASession.ListExport := ListExportFromJson(TJSONObject(V));
       ASession.LastWorkspaceId := JsonStr(Root, 'lastWorkspaceId', '');
       ASession.RestoreWorkspaceOnStart :=
         JsonBool(Root, 'restoreWorkspaceOnStart', True);

@@ -1,0 +1,19 @@
+{
+  "id": "mtn.describe",
+  "name": "File descriptions",
+  "version": "0.1.0",
+  "abi": 13,
+  "declarative": true,
+  "commands": [
+    {"id": "describe.run", "key": "Ctrl+Alt+Z"}
+  ],
+  "menuItems": [
+    {"id": "describe.run", "parent": "Files", "caption": {"en": "Describe...", "ru": "Описание..."}, "priority": 55}
+  ],
+  "description": {
+    "en": "Stores a description of the selected files in Descript.ion next to them (the Far and Total Commander format). The panels show the description of the file under the cursor in the status line.",
+    "ru": "Сохраняет описание выбранных файлов в Descript.ion рядом с ними (формат Far и Total Commander). Панели показывают описание файла под курсором в строке состояния."
+  },
+  "author": "MTN2",
+  "help": "help.md"
+}

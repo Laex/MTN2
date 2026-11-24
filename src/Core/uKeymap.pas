@@ -114,7 +114,6 @@ type
     kaNextPanelTab, // Alt+PgDn -- next tab of the active panel
     kaPrevPanelTab, // Alt+PgUp -- previous tab of the active panel
     kaRestoreSelection, // Ctrl+M -- selection as it was before it was last cleared
-    kaDescribe, // Ctrl+Z -- describe the item(s) (Descript.ion)
     kaTogglePassivePanel, // Ctrl+P -- hide / show the inactive panel
     kaUnselectAll, // Shift+Gray - -- deselect all files
     kaSetAttributes,
@@ -125,7 +124,6 @@ type
     kaExternalView,   // Alt+F3 -- external viewer
     kaExternalEdit,   // Alt+F4 -- external editor
     kaCopyItemName,   // Ctrl+Shift+Ins -- copy item name(s) only (no path)
-    kaExportList,     // unbound by default -- save the marked items as a text list
     kaQuickSearch,    // unbound by default -- open the quick search field without Alt
     kaShellContextMenu, // Shift+F10 / Menu -- Windows context menu for the selection
     kaFindToWorkspace,  // Ctrl+Alt+F7 -- link the found (or marked) items in the Workspace panel
@@ -625,7 +623,6 @@ begin
   AddBinding(Result, kaWorkspaceSave, KeyBinding(Ord('D'), True, True, True));
   AddBinding(Result, kaNewWorkspace, KeyBinding(Ord('W'), True, False, True));
   AddBinding(Result, kaRestoreSelection, KeyBinding(Ord('M'), False, False, True));
-  AddBinding(Result, kaDescribe, KeyBinding(Ord('Z'), False, False, True));
   AddBinding(Result, kaTogglePassivePanel, KeyBinding(Ord('P'), False, False, True));
   AddBinding(Result, kaNextPanelTab, KeyBinding(vkNext, False, True, False));
   AddBinding(Result, kaPrevPanelTab, KeyBinding(vkPrior, False, True, False));
@@ -1033,7 +1030,6 @@ const
     'NextPanelTab',          // kaNextPanelTab
     'PrevPanelTab',          // kaPrevPanelTab
     'RestoreSelection',      // kaRestoreSelection
-    'Describe',              // kaDescribe
     'TogglePassivePanel',    // kaTogglePassivePanel
     'UnselectAll',           // kaUnselectAll
     'SetAttributes',         // kaSetAttributes
@@ -1044,7 +1040,6 @@ const
     'ExternalView',          // kaExternalView
     'ExternalEdit',          // kaExternalEdit
     'CopyItemName',          // kaCopyItemName
-    'ExportList',            // kaExportList
     'QuickSearch',           // kaQuickSearch
     'ShellContextMenu',      // kaShellContextMenu
     'FindToWorkspace',       // kaFindToWorkspace

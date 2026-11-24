@@ -66,7 +66,7 @@ A short overview of the features; details are in the help (F1), the other docume
 - **Link copying** – symbolic links and junctions are copied as links, their contents only on request.
 - **Link markers** – links in the panels carry a marker before the name: `~` for a folder, `@` for a file; the "Mark links" option turns it off.
 - **Apply command to selection** – `Ctrl+G` runs a command on the selected files with user menu substitutions (`!.!`, `!&`, `!\`, `!#`).
-- **File descriptions** – `Ctrl+Z`: a description in `Descript.ion` in Far and Total Commander format, shown in the status line.
+- **File descriptions** – `Ctrl+Alt+Z`: a description in `Descript.ion` in Far and Total Commander format, shown in the status line.
 - **Checksums** – the Checksums plugin, `Ctrl+Alt+H` or File menu: MD5, SHA-1, SHA-256 and SHA-512 of the selected files and folders, calculated in the background; the result is copied or saved to a `.sha256` file, and a `.md5` / `.sha1` / `.sha256` / `.sha512` file is verified with OK, FAILED and MISSING marks.
 - **Save list to file** – selected items as text, a Markdown table or CSV with a choice of fields.
 - **Copy names and paths** – `Ctrl+Shift+Ins` copies names, `Alt+Shift+Ins` full paths to the clipboard.

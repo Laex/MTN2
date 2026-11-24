@@ -44,6 +44,7 @@ uses
   TestChecksums in 'TestChecksums.pas',
   TestFileSplit in 'TestFileSplit.pas',
   TestMultiRename in 'TestMultiRename.pas',
+  TestListExport in 'TestListExport.pas',
   TestArchiveTest in 'TestArchiveTest.pas',
   TestPackEach in 'TestPackEach.pas',
   TestLogFilter in 'TestLogFilter.pas',

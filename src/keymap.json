@@ -68,7 +68,6 @@
     "NewWorkspace": { "key": "W", "ctrl": true, "shift": true, "description": "New workspace" },
     "NextPanelTab": { "key": "PageDown", "alt": true, "description": "Next tab of the active panel" },
     "RestoreSelection": { "key": "M", "ctrl": true, "description": "Restore the selection as it was before it was last cleared" },
-    "Describe": { "key": "Z", "ctrl": true, "description": "Describe the item(s): Descript.ion" },
     "TogglePassivePanel": { "key": "P", "ctrl": true, "description": "Hide / show the inactive panel" },
     "PrevPanelTab": { "key": "PageUp", "alt": true, "description": "Previous tab of the active panel" },
     "SshConnections": { "key": "N", "ctrl": true, "alt": true, "shift": true, "description": "SSH/SFTP connections dialog" },

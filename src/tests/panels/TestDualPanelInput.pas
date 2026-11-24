@@ -67,7 +67,6 @@ type
     procedure NextTab;
     procedure PrevTab;
     procedure RestoreSel;
-    procedure Describe;
     procedure Invert;
     procedure SelectAll;
     procedure UnselectAll;
@@ -216,11 +215,6 @@ begin
   Last := 'invert';
 end;
 
-procedure TKeymapSpy.Describe;
-begin
-  Last := 'describe';
-end;
-
 procedure TKeymapSpy.PrevTab;
 begin
   Last := 'prevtab';
@@ -307,7 +301,6 @@ begin
   AHost.RestoreSelection := ASpy.RestoreSel;
   AHost.SelectAllActive := ASpy.SelectAll;
   AHost.UnselectAllActive := ASpy.UnselectAll;
-  AHost.DescribeItems := ASpy.Describe;
   AHost.InvertSelectionActive := ASpy.Invert;
   AHost.NewWorkspace := ASpy.NewWorkspace;
   AHost.ClosePanelTabOnSide := ASpy.CloseTab;
@@ -460,10 +453,6 @@ begin
     Assert.IsTrue(DispatchKeymapActionPrimary(Host, kaInvertSelection, Key, KeyChar),
       'kaInvertSelection is primary');
     Assert.AreEqual('invert', Spy.Last, 'Gray * inverts the selection');
-    Spy.Last := '';
-    Assert.IsTrue(DispatchKeymapActionPrimary(Host, kaDescribe, Key, KeyChar),
-      'kaDescribe is primary');
-    Assert.AreEqual('describe', Spy.Last, 'Ctrl+Z describes');
     Spy.Last := '';
     Assert.IsTrue(DispatchKeymapActionPrimary(Host, kaTogglePassivePanel, Key, KeyChar),
       'kaTogglePassivePanel is primary');

@@ -1,0 +1,19 @@
+{
+  "id": "mtn.exportlist",
+  "name": "Export list",
+  "version": "0.1.0",
+  "abi": 13,
+  "declarative": true,
+  "commands": [
+    {"id": "exportlist.run"}
+  ],
+  "menuItems": [
+    {"id": "exportlist.run", "parent": "Files", "caption": {"en": "Export list...", "ru": "Сохранить список в файл..."}, "priority": 50}
+  ],
+  "description": {
+    "en": "Saves the selected items of the active panel as a text list: aligned text, a Markdown table or CSV, with the name, path, extension, size, dates, type and attributes of your choice.",
+    "ru": "Сохраняет выбранные элементы активной панели в виде списка: выровненный текст, таблица Markdown или CSV с именем, путём, расширением, размером, датами, типом и атрибутами на выбор."
+  },
+  "author": "MTN2",
+  "help": "help.md"
+}

@@ -71,7 +71,7 @@ end;
 function HelpTopicForDialog(AKind: THostDialogKind): string;
 begin
   case AKind of
-    hdkMkDir, hdkNewFile, hdkRename, hdkCopyInPlace, hdkCreateLink, hdkDescribe:
+    hdkMkDir, hdkNewFile, hdkRename, hdkCopyInPlace, hdkCreateLink:
       Result := 'fileops.md';
     hdkJobConfirm, hdkOverwriteAsk, hdkOverwriteRename:
       Result := 'fileops.md#copy';
@@ -79,8 +79,6 @@ begin
       Result := 'fileops.md#attributes';
     hdkCompareOptions:
       Result := 'sync.md#compare-folders';
-    hdkExportList:
-      Result := 'fileops.md#export-list';
     hdkDeleteError, hdkIOError:
       Result := 'jobs.md#errors';
     hdkJobList, hdkJobProgress:
@@ -194,7 +192,7 @@ type
 const
   // The first rule whose prefix starts the name wins, so the specific
   // prefixes come before the general ones.
-  cRules: array[0..76] of TTopicRule = (
+  cRules: array[0..75] of TTopicRule = (
     (Prefix: 'tmaFileSelect'; Topic: 'selection.md'),
     (Prefix: 'tmaFileUnselect'; Topic: 'selection.md'),
     (Prefix: 'tmaFileInvertSelect'; Topic: 'selection.md'),
@@ -210,7 +208,6 @@ const
     (Prefix: 'tmaFileRunInBackground'; Topic: 'jobs.md'),
     (Prefix: 'tmaFileRunInNewTab'; Topic: 'terminals.md'),
     (Prefix: 'tmaFileSetAttributes'; Topic: 'fileops.md#attributes'),
-    (Prefix: 'tmaFileExportList'; Topic: 'fileops.md#export-list'),
     (Prefix: 'tmaFile'; Topic: 'fileops.md'),
     (Prefix: 'tmaEdit'; Topic: 'text.md'),
     (Prefix: 'tmaLeftDrive'; Topic: 'drives.md'),

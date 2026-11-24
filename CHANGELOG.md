@@ -24,6 +24,7 @@ This file describes what changes for the user from version to version: new featu
 - Split / combine moved out of the program core into the `mtn.splitfile` plugin. The command works as before and stays in the Files menu, but turning the plugin off in Plugins... removes it.
 - "Test archive" and "Pack each item" moved out of the program core into the `mtn.archivetools` plugin. Both commands work as before and stay in the Files menu, but turning the plugin off in Plugins... removes them.
 - Multi-rename moved out of the program core into the `mtn.multirename` plugin. The dialog, its live preview, regular expressions, counter, letter case, "In editor" and "Undo last" work as before, and the Ctrl+Alt+N key stays, but the item is now at the end of the Files menu and turning the plugin off in Plugins... removes it. The plugin interface (version 13) gained dialogs that follow their fields, a batch rename with undo and editing text in the built-in editor for it.
+- Export list moved out of the program core into the `mtn.exportlist` plugin. The dialog, layouts (text, Markdown, CSV) and fields work as before and the choice is remembered, but the item sits in the Files menu after a line, it handles only items of local folders, and turning the plugin off in Plugins... removes it. Describe (Ctrl+Alt+Z, `Descript.ion`) moved the same way into the `mtn.describe` plugin; the description in the status line stays in the program.
 
 ## Dev v0.5.12.4 – 2026-11-24
 

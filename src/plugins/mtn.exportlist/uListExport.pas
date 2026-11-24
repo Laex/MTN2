@@ -3,13 +3,12 @@ unit uListExport;
 { Saving the marked panel items as a text list: which fields go into the file
   (name, full path, extension, size, dates, type, attributes) and in which
   layout (aligned text, Markdown table, CSV). Pure formatting - the panel
-  window collects the items and writes the file. }
+  plugin collects the items and writes the file. }
 
 interface
 
 uses
-  System.SysUtils, System.IOUtils,
-  uDualPanelTypes, uVfsTypes;
+  System.SysUtils, System.IOUtils, uVfsTypes;
 
 type
   /// <summary>lefAuto picks the layout from the file extension: .md and
@@ -32,8 +31,25 @@ type
     /// <summary>Last segment of the path ("" for a drive root).</summary>
     Name: string;
     FullPath: string;
-    Row: TPanelRow;
+    /// <summary>Extension with or without the leading dot.</summary>
+    Ext: string;
+    IsDir: Boolean;
+    Size: Int64;
+    /// <summary>0 = unknown.</summary>
+    Modified, Created, Accessed: TDateTime;
+    TypeName: string;
+    Attr: string;
   end;
+
+  /// <summary>Column titles by field, in the language of the user interface.</summary>
+  TListExportTitles = array[TListExportField] of string;
+
+function DefaultListExportTitles: TListExportTitles;
+
+/// <summary>The config as one line for a settings store and back; a missing or
+/// damaged line gives the defaults.</summary>
+function ListExportConfigToText(const AConfig: TListExportConfig): string;
+function ListExportConfigFromText(const AText: string): TListExportConfig;
 
 function DefaultListExportConfig: TListExportConfig;
 
@@ -54,23 +70,20 @@ function ResolveListExportFormat(AFormat: TListExportFormat;
 /// come out in TListExportField order whatever the set's order; an empty
 /// field set yields ''.</summary>
 function FormatItemList(const AItems: TArray<TListExportItem>;
-  const AConfig: TListExportConfig; const AFileName: string): string;
+  const AConfig: TListExportConfig; const AFileName: string;
+  const ATitles: TListExportTitles): string;
 
 /// <summary>Whether the file should start with a UTF-8 byte order mark:
 /// spreadsheets take a CSV as UTF-8 only with it, other layouts stay plain.</summary>
 function ListExportNeedsBom(AFormat: TListExportFormat;
   const AFileName: string): Boolean;
 
-var
-  /// <summary>App-wide export settings, loaded from and saved to the session.</summary>
-  GListExportConfig: TListExportConfig;
-
 implementation
 
-uses
-  uStrings;
-
 const
+  cFormatNames: array[TListExportFormat] of string = ('auto', 'text', 'markdown', 'csv');
+  cFieldNames: array[TListExportField] of string = ('name', 'path', 'ext', 'size',
+    'modified', 'created', 'accessed', 'type', 'attr');
   cAllFields: array[0..8] of TListExportField = (lxfName, lxfPath, lxfExt,
     lxfSize, lxfModified, lxfCreated, lxfAccessed, lxfType, lxfAttr);
   cDirSize = '<DIR>';
@@ -80,6 +93,59 @@ begin
   Result.Format := lefAuto;
   Result.Header := True;
   Result.Fields := [lxfName, lxfSize, lxfModified];
+end;
+
+function DefaultListExportTitles: TListExportTitles;
+begin
+  Result[lxfName] := 'Name';
+  Result[lxfPath] := 'Path';
+  Result[lxfExt] := 'Ext';
+  Result[lxfSize] := 'Size';
+  Result[lxfModified] := 'Modified';
+  Result[lxfCreated] := 'Created';
+  Result[lxfAccessed] := 'Accessed';
+  Result[lxfType] := 'Type';
+  Result[lxfAttr] := 'Attr';
+end;
+
+function ListExportConfigToText(const AConfig: TListExportConfig): string;
+var
+  F: TListExportField;
+  Names: string;
+begin
+  Names := '';
+  for F := Low(TListExportField) to High(TListExportField) do
+    if F in AConfig.Fields then
+    begin
+      if Names <> '' then
+        Names := Names + ',';
+      Names := Names + cFieldNames[F];
+    end;
+  Result := cFormatNames[AConfig.Format] + ';' + BoolToStr(AConfig.Header, False) + ';' + Names;
+end;
+
+function ListExportConfigFromText(const AText: string): TListExportConfig;
+var
+  Parts: TArray<string>;
+  Fmt: TListExportFormat;
+  F: TListExportField;
+  Name: string;
+begin
+  Result := DefaultListExportConfig;
+  Parts := AText.Split([';']);
+  if Length(Parts) <> 3 then
+    Exit;
+  for Fmt := Low(TListExportFormat) to High(TListExportFormat) do
+    if SameText(Parts[0], cFormatNames[Fmt]) then
+      Result.Format := Fmt;
+  Result.Header := SameText(Parts[1], 'True');
+  Result.Fields := [];
+  for Name in Parts[2].Split([',']) do
+    for F := Low(TListExportField) to High(TListExportField) do
+      if SameText(Name, cFieldNames[F]) then
+        Include(Result.Fields, F);
+  if Result.Fields = [] then
+    Result.Fields := DefaultListExportConfig.Fields;
 end;
 
 function ParseListExportFormatRadio(const AFmt: string): TListExportFormat;
@@ -129,22 +195,6 @@ begin
   Result := ResolveListExportFormat(AFormat, AFileName) = lefCsv;
 end;
 
-function FieldTitle(AField: TListExportField): string;
-begin
-  case AField of
-    lxfName:     Result := T('col.name', 'Name');
-    lxfPath:     Result := T('col.path', 'Path');
-    lxfExt:      Result := T('col.ext', 'Ext');
-    lxfSize:     Result := T('col.size', 'Size');
-    lxfModified: Result := T('col.modified', 'Modified');
-    lxfCreated:  Result := T('col.created', 'Created');
-    lxfAccessed: Result := T('col.accessed', 'Accessed');
-    lxfType:     Result := T('col.type', 'Type');
-  else
-    Result := T('col.attr', 'Attr');
-  end;
-end;
-
 function DateCell(AValue: TDateTime): string;
 begin
   if AValue <= 0 then
@@ -158,18 +208,18 @@ begin
     lxfName: Result := AItem.Name;
     lxfPath: Result := AItem.FullPath;
     lxfExt:
-      Result := AItem.Row.Extension.TrimLeft(['.']);
+      Result := AItem.Ext.TrimLeft(['.']);
     lxfSize:
-      if AItem.Row.IsDirectory then
+      if AItem.IsDir then
         Result := cDirSize
       else
-        Result := IntToStr(AItem.Row.Size);
-    lxfModified: Result := DateCell(AItem.Row.ModificationTime);
-    lxfCreated:  Result := DateCell(AItem.Row.CreationTime);
-    lxfAccessed: Result := DateCell(AItem.Row.AccessTime);
-    lxfType:     Result := AItem.Row.FileType;
+        Result := IntToStr(AItem.Size);
+    lxfModified: Result := DateCell(AItem.Modified);
+    lxfCreated:  Result := DateCell(AItem.Created);
+    lxfAccessed: Result := DateCell(AItem.Accessed);
+    lxfType:     Result := AItem.TypeName;
   else
-    Result := AItem.Row.AttrText;
+    Result := AItem.Attr;
   end;
 end;
 
@@ -198,7 +248,8 @@ begin
 end;
 
 function FormatItemList(const AItems: TArray<TListExportItem>;
-  const AConfig: TListExportConfig; const AFileName: string): string;
+  const AConfig: TListExportConfig; const AFileName: string;
+  const ATitles: TListExportTitles): string;
 var
   Fields: TArray<TListExportField>;
   Cells: TArray<TArray<string>>;
@@ -254,7 +305,7 @@ begin
 
   SetLength(Titles, Length(Fields));
   for C := 0 to High(Fields) do
-    Titles[C] := FieldTitle(Fields[C]);
+    Titles[C] := ATitles[Fields[C]];
   SetLength(Cells, Length(AItems));
   for I := 0 to High(AItems) do
   begin
@@ -311,8 +362,5 @@ begin
     Lines.Free;
   end;
 end;
-
-initialization
-  GListExportConfig := DefaultListExportConfig;
 
 end.

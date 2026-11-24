@@ -177,7 +177,7 @@ implementation
 uses
   System.IOUtils, uThemeRegistry, uColorCoding, uKeymap, uStrings, uChromeRows,
   uShellProfiles, uDualPanelTypes, uConsoleSettings, uCliInfo,
-  uEditorSearch, uEditorWindow, uBaseConsoleWindow, uTerminalWorkspace, uPanelColumns, uPluginColumns, uListExport, uThemeDrawing,
+  uEditorSearch, uEditorWindow, uBaseConsoleWindow, uTerminalWorkspace, uPanelColumns, uPluginColumns, uThemeDrawing,
   uDualPanelDrag, uKeyChord, uDialogHost, uPlatformInfo, uTerminalWindow,
   uToast, uScreenSaver, uWindowChrome, uConsoleLaunch, uPluginHost, uPluginSurface,
   uPluginPanelServices, uPluginServices, uPluginUi, uPluginChrome, uDialogTypes, uVfsTypes,
@@ -583,7 +583,6 @@ begin
   if Sess.RestoreWorkspaceOnStart then
     FDualPanel.RestoreWorkspaceLibrary(Sess.LastWorkspaceId);
   LoadSchemeColumnSelectionsFromJson(Sess.PluginColumns);
-  GListExportConfig := Sess.ListExport;
   GShowToasts := Sess.ShowNotifications;
   FDualPanel.KeyHintsEnabled := Sess.ShowKeyHints;
   FDualPanel.KeyHintsSeen := Sess.KeyHintsSeen;
@@ -698,7 +697,6 @@ begin
   Sess.QuickSearchFuzzy := FDualPanel.QuickSearchFuzzy;
   Sess.Language := CurrentLocale;
   Sess.PluginColumns := SchemeColumnSelectionsToJson;
-  Sess.ListExport := GListExportConfig;
   Sess.LastWorkspaceId := FDualPanel.WorkspaceLibraryId;
   FSession := Sess;
   Result := SaveSession(DefaultSessionFilePath, Sess);

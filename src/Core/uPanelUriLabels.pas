@@ -21,10 +21,6 @@ function PanelItemFullPath(const AURI, APanelURI: string; AIsParent: Boolean): s
 /// row is not a folder or there is no row.</summary>
 function QuickDirectoryTarget(AHasRow: Boolean; const ARow: TPanelRow;
   const APanelURI: string): string;
-/// <summary>File names for the Describe dialog: selected rows, or the cursor
-/// row when nothing is selected. Parent and empty-URI rows are skipped.</summary>
-function CollectDescribeItemNames(const ATab: TTab;
-  const ARows: TPanelRows): TArray<string>;
 /// <summary>Paths or bare names for the clipboard: selected rows (parent
 /// skipped), or the cursor row when nothing is selected. ANameOnly keeps only
 /// the last path segment.</summary>
@@ -70,35 +66,6 @@ end;
 function ProjectsUri: string;
 begin
   Result := PathToFileUri(PlatformProjectsDir);
-end;
-
-function CollectDescribeItemNames(const ATab: TTab;
-  const ARows: TPanelRows): TArray<string>;
-var
-  R: TPanelRow;
-  Keys: TArray<string>;
-  Full: string;
-
-  procedure AddName(const ARow: TPanelRow);
-  begin
-    if ARow.IsParent or (ARow.URI = '') then
-      Exit;
-    Full := PanelItemFullPath(ARow.URI, ATab.CurrentURI, False);
-    if Full <> '' then
-      Result := Result + [PathLastSegment(Full)];
-  end;
-
-begin
-  Result := nil;
-  if Length(ATab.SelectedURIs) > 0 then
-  begin
-    Keys := TabSelectionKeys(ATab);
-    for R in ARows do
-      if SelectionKeysHas(Keys, R.URI) then
-        AddName(R);
-  end
-  else if (ATab.CursorIndex >= 0) and (ATab.CursorIndex <= High(ARows)) then
-    AddName(ARows[ATab.CursorIndex]);
 end;
 
 function CollectClipboardItemTexts(const ATab: TTab; const ARows: TPanelRows;

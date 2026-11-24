@@ -162,8 +162,6 @@ begin
   Assert.IsTrue(Act = kaInsertItemPath, 'Ctrl+Shift+Enter still inserts the path');
   Act := MatchAction(Profile, Ord('M'), [ssCtrl]);
   Assert.IsTrue(Act = kaRestoreSelection, 'Ctrl+M should match kaRestoreSelection');
-  Act := MatchAction(Profile, Ord('Z'), [ssCtrl]);
-  Assert.IsTrue(Act = kaDescribe, 'Ctrl+Z should match kaDescribe');
   Act := MatchAction(Profile, Ord('P'), [ssCtrl]);
   Assert.IsTrue(Act = kaTogglePassivePanel, 'Ctrl+P should match kaTogglePassivePanel');
   // FAR: Ctrl+A is the file attributes, Shift+Gray + selects all files,

@@ -34,7 +34,7 @@ uses
   System.SysUtils, System.IOUtils, System.JSON, System.Math,
   uVfsTypes, uScreenSaver, uDialogTabs,
   uDualPanelTypes,
-  uPanelColumns, uListExport,
+  uPanelColumns,
   uConfigLocation,
   uDisplaySettings,
   uSession,
@@ -95,7 +95,6 @@ begin
   Result.TerminalCloseOnExit := True;
   Result.ProgramsInTerminal := True;
   Result.RestoreWorkspaceOnStart := True;
-  Result.ListExport := DefaultListExportConfig;
   Result.FontName := 'Consolas';
   Result.FallbackFont := 'SimSun';
   Result.FontSize := 16;

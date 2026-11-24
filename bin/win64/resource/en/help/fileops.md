@@ -18,22 +18,12 @@
 | Shift+F10, Menu key | the Windows context menu (for the selection or the item under the cursor) |
 | Ctrl+Alt+C | compare the files under the cursors of both panels, or the two marked files of the active panel; the dialog shows size, modified time and a content verdict |
 | Ctrl+Alt+H | checksums (MD5, SHA-1, SHA-256, SHA-512) of the selected files and folders; on a `.md5` / `.sha1` / `.sha256` / `.sha512` file – verify it |
-| Ctrl+Alt+M | rename the selected items in one go: name and extension masks, counter, search and replace, letter case |
+| Ctrl+Alt+N | rename the selected items in one go: name and extension masks, counter, search and replace, letter case |
 | Ctrl+C / Ctrl+X / Ctrl+V | copy / cut / paste files through the clipboard |
 | Alt+Shift+Ins | copy the full path to the clipboard |
 | Ctrl+Shift+Ins | copy only the name (no path) to the clipboard |
-| Ctrl+Z | describe the file: an input line, the text is kept in `Descript.ion` next to the file |
 
 **Alt+Shift+Ins** and **Ctrl+Shift+Ins** take the selected items (one per line) or, with nothing selected, the item under the cursor; on `..` – the current folder. Paste the result anywhere with **Shift+Ins** / **Ctrl+V**. A short notice in the bottom right corner confirms the copy (or says there is nothing to copy); it can be turned off in **Options → User interface...**.
-
-<!--export-list-->**Files → Export list...** saves the selected items (or, with nothing selected, the item under the cursor) to a file.
-
-**The dialog asks for**
-- the file name;
-- the layout – by extension (`.md` – Markdown table, `.csv` – CSV, anything else – aligned text), plain text, Markdown or CSV;
-- the fields: name, full path, extension, size, modified / created / accessed date, type and attributes.
-
-The header line can be switched off (a Markdown table always has one). Folders show `<DIR>` in place of the size. The choice is remembered between launches; the item has no default key, one can be assigned in the key bindings dialog (action `ExportList`).
 
 <!--attributes-->In the **Ctrl+A** dialog dates are typed in the system date format, time as `hh:mm:ss` (seconds and the time part are optional).
 - An empty field keeps the date: that is how dates that differ between the selected files are shown.

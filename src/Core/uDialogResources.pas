@@ -64,7 +64,6 @@ const
   cResDialogThemeText = 'DIALOG_THEMETEXT';
   cResDialogThemeChoice = 'DIALOG_THEMECHOICE';
   cResDialogColumnsConfig = 'DIALOG_COLUMNSCONFIG';
-  cResDialogExportList = 'DIALOG_EXPORTLIST';
   cResDialogDisplay = 'DIALOG_DISPLAY';
   cResDialogInterface = 'DIALOG_INTERFACE';
   cResDialogExternalTools = 'DIALOG_EXTERNALTOOLS';

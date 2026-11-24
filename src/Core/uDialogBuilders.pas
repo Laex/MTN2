@@ -7,7 +7,7 @@ interface
 
 uses
   System.SysUtils, System.UITypes,
-  uDialogTypes, uListExport, uFileFind;
+  uDialogTypes, uFileFind;
 
 function BuildConfirmDialog(const ATitle, AMessage: string): TDialogDeclaration;
 function BuildDeleteDialog(const ATitle, AMessage, AOkText: string;
@@ -159,10 +159,6 @@ function BuildColumnsConfigDialog(AShowExt, AShowSize, AShowModified,
   AShowCreated, AShowAccessed, AShowType, AShowAttr: Boolean;
   const AScheme: string = '';
   const ASetItems: TArray<string> = nil): TDialogDeclaration;
-/// <summary>Files > Export list...: target file, layout and the fields of the
-/// saved list, prefilled from AConfig.</summary>
-function BuildExportListDialog(const APath: string;
-  const AConfig: TListExportConfig): TDialogDeclaration;
 function BuildDisplayDialog(const AFontNames: TArray<string>;
   AFontIndex, ASizeIndex, AZoomIndex, ABlinkMsIndex: Integer;
   ABlink, AShowIcons: Boolean; const ANote: string;
@@ -1013,30 +1009,6 @@ begin
           Inc(Result.Controls[I].Row, Delta);
     Inc(Result.Height, Delta);
   end;
-end;
-
-function BuildExportListDialog(const APath: string;
-  const AConfig: TListExportConfig): TDialogDeclaration;
-begin
-  RequireDialogResource(cResDialogExportList, Result);
-  DialogSetInputValue(Result, 'name', APath);
-  case AConfig.Format of
-    lefText: DialogSetRadio(Result, 'format', 'fmt_text');
-    lefMarkdown: DialogSetRadio(Result, 'format', 'fmt_md');
-    lefCsv: DialogSetRadio(Result, 'format', 'fmt_csv');
-  else
-    DialogSetRadio(Result, 'format', 'fmt_auto');
-  end;
-  DialogSetCheckbox(Result, 'header', AConfig.Header);
-  DialogSetCheckbox(Result, 'f_name', lxfName in AConfig.Fields);
-  DialogSetCheckbox(Result, 'f_path', lxfPath in AConfig.Fields);
-  DialogSetCheckbox(Result, 'f_ext', lxfExt in AConfig.Fields);
-  DialogSetCheckbox(Result, 'f_size', lxfSize in AConfig.Fields);
-  DialogSetCheckbox(Result, 'f_modified', lxfModified in AConfig.Fields);
-  DialogSetCheckbox(Result, 'f_created', lxfCreated in AConfig.Fields);
-  DialogSetCheckbox(Result, 'f_accessed', lxfAccessed in AConfig.Fields);
-  DialogSetCheckbox(Result, 'f_type', lxfType in AConfig.Fields);
-  DialogSetCheckbox(Result, 'f_attr', lxfAttr in AConfig.Fields);
 end;
 
 function BuildMarkdownColorsDialog: TDialogDeclaration;

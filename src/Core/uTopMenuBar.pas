@@ -67,8 +67,6 @@ type
     tmaFileCalcSize,
     tmaFileCopyPath,
     tmaFileCopyName,
-    tmaFileExportList,
-    tmaFileDescribe,
     tmaFileRunDetached,
     tmaFileRunInBackground,
     tmaFileRunInNewTab,
@@ -523,8 +521,6 @@ begin
       Result := kaUnselectAll;
     tmaFileRestoreSelection:
       Result := kaRestoreSelection;
-    tmaFileDescribe:
-      Result := kaDescribe;
     tmaCmdTogglePassivePanel:
       Result := kaTogglePassivePanel;
     tmaFileInvertSelect:
@@ -533,8 +529,6 @@ begin
       Result := kaCopyFullPath;
     tmaFileCopyName:
       Result := kaCopyItemName;
-    tmaFileExportList:
-      Result := kaExportList;
     tmaFileRunDetached:
       Result := kaRunDetached;
     tmaFileRunInBackground:
@@ -1248,7 +1242,7 @@ begin
   FCategories[2].Title := 'Files';
   FCategories[2].HotChar := 'F';
   FCategories[2].HotPos := 1;
-  SetLength(FCategories[2].Items, 28);
+  SetLength(FCategories[2].Items, 26);
   FCategories[2].Items[0] := SubItem('View', 'V', 'F3', tmaFileView);
   FCategories[2].Items[1] := SubItem('Edit', 'E', 'F4', tmaFileEdit);
   FCategories[2].Items[2] := SubItem('Copy', 'C', 'F5', tmaFileCopy);
@@ -1274,9 +1268,7 @@ begin
   FCategories[2].Items[22] := SubItem('Calculate folder size', 'Z', 'F3', tmaFileCalcSize);
   FCategories[2].Items[23] := SubItem('Copy full path', 'Y', 'Alt+Shift+Ins', tmaFileCopyPath);
   FCategories[2].Items[24] := SubItem('Copy name', #0, 'Ctrl+Shift+Ins', tmaFileCopyName);
-  FCategories[2].Items[25] := SubItem('Export list...', #0, '', tmaFileExportList);
-  FCategories[2].Items[26] := SubItem('Describe...', #0, 'Ctrl+Z', tmaFileDescribe);
-  FCategories[2].Items[27] := SubItem('Run detached (OS)', 'R', 'Shift+Enter', tmaFileRunDetached);
+  FCategories[2].Items[25] := SubItem('Run detached (OS)', 'R', 'Shift+Enter', tmaFileRunDetached);
 
   // 3: Edit (clipboard + document ops - not Files -> Edit / F4)
   FCategories[3].Title := 'Edit';

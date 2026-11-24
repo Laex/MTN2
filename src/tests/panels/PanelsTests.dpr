@@ -68,8 +68,7 @@ uses
   TestHostShell in 'TestHostShell.pas',
   TestKeyRouting in 'TestKeyRouting.pas',
   TestThemeController in 'TestThemeController.pas',
-  TestUserMenuController in 'TestUserMenuController.pas',
-  TestListExport in 'TestListExport.pas';
+  TestUserMenuController in 'TestUserMenuController.pas';
 
 begin
   RunRegisteredTests;

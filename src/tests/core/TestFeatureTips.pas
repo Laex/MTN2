@@ -31,7 +31,7 @@ type
 implementation
 
 uses
-  System.SysUtils, System.JSON, System.IOUtils, uDualPanelTypes, uListExport, uStrings, uKeymap, uKeyHints, uFeatureTips, uSession;
+  System.SysUtils, System.JSON, System.IOUtils, uDualPanelTypes, uStrings, uKeymap, uKeyHints, uFeatureTips, uSession;
 
 procedure TTestFeatureTips.Setup;
 begin
@@ -240,7 +240,6 @@ begin
   Saved := Default(TMtnSession);
   Saved.Version := cSessionVersion;
   Saved.Zoom := 1;
-  Saved.ListExport := DefaultListExportConfig;
   SetLength(Saved.Panels.WorkspaceTabs, 1);
   Saved.Panels.WorkspaceTabs[0].Kind := wkPanels;
   SetLength(Saved.Panels.WorkspaceTabs[0].State.LeftPanel.Tabs, 1);

@@ -63,7 +63,6 @@ type
     ActiveSide: TKeymapSideFn;
     CopyFullPathToClipboard: TKeymapProc;
     CopyItemNameToClipboard: TKeymapProc;
-    ExportItemList: TKeymapProc;
     ToggleConsole: TKeymapProc;
     RequestQuit: TKeymapProc;
     TogglePanelVisible: TKeymapSideProc;
@@ -155,7 +154,6 @@ type
     NextPanelTab: TKeymapProc;
     PrevPanelTab: TKeymapProc;
     RestoreSelection: TKeymapProc;
-    DescribeItems: TKeymapProc;
     NewWorkspace: TKeymapProc;
     ClosePanelTabOnSide: TKeymapSideProc;
     CalculateFolderSize: TKeymapProc;
@@ -747,9 +745,6 @@ begin
     kaCopyItemName:
       if Assigned(AHost.CopyItemNameToClipboard) then
         AHost.CopyItemNameToClipboard();
-    kaExportList:
-      if Assigned(AHost.ExportItemList) then
-        AHost.ExportItemList();
     kaQuickSearch:
       if Assigned(AHost.StartQuickSearch) then
         AHost.StartQuickSearch();
@@ -764,7 +759,6 @@ function ApplyPanelTool(const AHost: TDualPanelKeymapHost; AAction: TKeymapActio
 begin
   Result := True;
   case AAction of
-    kaDescribe: AHost.DescribeItems();
     kaSshConnections: AHost.OpenSshConnectionsDialog();
     kaAssociations: AHost.OpenUserAssociationsDialog();
     kaBranchView: AHost.BeginBranchView();

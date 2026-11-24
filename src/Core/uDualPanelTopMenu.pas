@@ -119,7 +119,6 @@ begin
     tmaFileSelectAll: CallProc(AHost.SelectAllActive);
     tmaFileUnselectAll: CallProc(AHost.UnselectAllActive);
     tmaFileRestoreSelection: CallProc(AHost.RestoreSelection);
-    tmaFileDescribe: CallProc(AHost.DescribeItems);
     tmaCmdTogglePassivePanel:
       if AHost.ActiveSide() = psLeft then
         AHost.TogglePanelVisible(psRight)
@@ -129,7 +128,6 @@ begin
     tmaFileCalcSize: CallProc(AHost.CalculateFolderSize);
     tmaFileCopyPath: CallProc(AHost.CopyFullPathToClipboard);
     tmaFileCopyName: CallProc(AHost.CopyItemNameToClipboard);
-    tmaFileExportList: CallProc(AHost.ExportItemList);
     tmaFileRunDetached: CallProc(AHost.RunDetached);
     tmaFileRunInBackground: CallProc(AHost.RunInBackground);
     tmaFileRunInNewTab: CallProc(AHost.RunInNewTab);

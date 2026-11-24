@@ -83,7 +83,6 @@ uses
   uFunctionBar in 'Core\uFunctionBar.pas',
   uPanelModel in 'Core\uPanelModel.pas',
   uPanelColumns in 'Core\uPanelColumns.pas',
-  uListExport in 'Core\uListExport.pas',
   uDisplaySettings in 'Core\uDisplaySettings.pas',
   uChromeRows in 'Core\uChromeRows.pas',
   uStatusSegments in 'Core\uStatusSegments.pas',

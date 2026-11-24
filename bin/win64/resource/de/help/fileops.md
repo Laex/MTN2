@@ -18,22 +18,12 @@
 | Shift+F10, Menütaste | das Windows-Kontextmenü (für die Auswahl oder das Element unter dem Cursor) |
 | Ctrl+Alt+C | die Dateien unter den Cursorn beider Panels oder die zwei markierten Dateien des aktiven Panels vergleichen; das Fenster zeigt Größe, Änderungszeit und das Ergebnis des Inhaltsvergleichs |
 | Ctrl+Alt+H | Prüfsummen (MD5, SHA-1, SHA-256, SHA-512) der ausgewählten Dateien und Ordner; bei einer `.md5`- / `.sha1`- / `.sha256`- / `.sha512`-Datei – sie prüfen |
-| Ctrl+Alt+M | ausgewählte Elemente gemeinsam umbenennen: Masken für Name und Erweiterung, Zähler, Suchen und Ersetzen, Groß-/Kleinschreibung |
+| Ctrl+Alt+N | ausgewählte Elemente gemeinsam umbenennen: Masken für Name und Erweiterung, Zähler, Suchen und Ersetzen, Groß-/Kleinschreibung |
 | Ctrl+C / Ctrl+X / Ctrl+V | Dateien über die Zwischenablage kopieren / ausschneiden / einfügen |
 | Alt+Shift+Ins | den vollständigen Pfad in die Zwischenablage kopieren |
 | Ctrl+Shift+Ins | nur den Namen (ohne Pfad) in die Zwischenablage kopieren |
-| Ctrl+Z | die Datei beschreiben: eine Eingabezeile, der Text wird in `Descript.ion` neben der Datei gespeichert |
 
 **Alt+Shift+Ins** und **Ctrl+Shift+Ins** übernehmen die ausgewählten Elemente (eines pro Zeile) oder, ohne Auswahl, das Element unter dem Cursor; bei `..` – den aktuellen Ordner. Das Ergebnis lässt sich überall mit **Shift+Ins** / **Ctrl+V** einfügen. Ein kurzer Hinweis unten rechts bestätigt das Kopieren (oder meldet, dass nichts zu kopieren ist); er lässt sich unter **Optionen → Oberfläche...** ausschalten.
-
-<!--export-list-->**Dateien → Liste speichern...** schreibt die ausgewählten Elemente (ohne Auswahl das Element unter dem Cursor) in eine Datei.
-
-**Der Dialog fragt nach**
-- dem Dateinamen;
-- dem Format – nach Endung (`.md` – Markdown-Tabelle, `.csv` – CSV, sonst ausgerichteter Text), einfacher Text, Markdown oder CSV;
-- den Feldern: Name, vollständiger Pfad, Endung, Größe, Änderungs- / Erstellungs- / Zugriffsdatum, Typ und Attribute.
-
-Die Überschriftenzeile lässt sich abschalten (eine Markdown-Tabelle hat immer eine). Bei Ordnern steht statt der Größe `<DIR>`. Die Auswahl bleibt über Neustarts erhalten; der Eintrag hat keine Standardtaste – sie lässt sich im Dialog für die Tastenbelegung zuweisen (Aktion `ExportList`).
 
 <!--attributes-->Im Dialog **Ctrl+A** werden Datumsangaben im Systemformat eingegeben, die Zeit als `hh:mm:ss` (Sekunden und Zeitteil sind optional).
 - Ein leeres Feld behält das Datum: so werden Datumsangaben angezeigt, die sich zwischen den ausgewählten Dateien unterscheiden.

@@ -25,7 +25,7 @@ uses
   System.SysUtils, System.IOUtils, System.DateUtils,
   uVfsTypes,
   uDualPanelTypes,
-  uPanelColumns, uListExport,
+  uPanelColumns,
   uSession;
 
 function FileRow(const AName: string; AModified: TDateTime): TPanelRow;
@@ -136,7 +136,6 @@ begin
   Saved := Default(TMtnSession);
   Saved.Version := cSessionVersion;
   Saved.Zoom := 1;
-  Saved.ListExport := DefaultListExportConfig;
   SetLength(Saved.Panels.WorkspaceTabs, 1);
   Saved.Panels.WorkspaceTabs[0].Id := 1;
   Saved.Panels.WorkspaceTabs[0].Title := 'Workspace';

@@ -188,7 +188,7 @@ type
     hdkCompareResult, hdkColorCoding, hdkColorCodingEdit, hdkColorPicker, hdkHostColorPicker, hdkTheme,
     hdkThemeNew, hdkThemeName, hdkThemeDelete, hdkThemeEditor, hdkThemeItems,
     hdkThemeColors, hdkThemeText, hdkThemeChoice, hdkThemePicker,
-    hdkColumnsConfig, hdkMaskGroups, hdkDisplay, hdkInterface, hdkArchivePassword, hdkTmpSaveList, hdkExportList,
+    hdkColumnsConfig, hdkMaskGroups, hdkDisplay, hdkInterface, hdkArchivePassword, hdkTmpSaveList,
     hdkWorkspaceLibrary, hdkWorkspaceSave, hdkWorkspaceRename, hdkWorkspaceConfirm,
     hdkSetAttributes,
     hdkSshConnections, hdkSshConnectionEdit, hdkSshConnectionConfirm,
@@ -197,7 +197,7 @@ type
     hdkKeymap, hdkKeymapEdit, hdkIOError, hdkJobList, hdkJobProgress, hdkStopConfirm,
     hdkWorkspaceTabRename, hdkExternalTools, hdkMarkdownColors, hdkMarkdownImport, hdkMarkdownPicker,
     hdkCompareOptions, hdkDatePicker,
-    hdkFindPipeline, hdkPanelFilter, hdkDescribe, hdkConsoleOptions, hdkConsoleSave,
+    hdkFindPipeline, hdkPanelFilter, hdkConsoleOptions, hdkConsoleSave,
     hdkSettingsExport, hdkSettingsImport, hdkConfigLocation,
     // The Plugins list (Options > Plugins): switch plugins on and off.
     hdkPluginList, hdkPluginInfo, hdkPluginPerms,

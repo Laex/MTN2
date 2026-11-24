@@ -28,7 +28,7 @@ uses
   System.SysUtils, System.IOUtils,
   uVfsTypes,
   uDualPanelTypes,
-  uPanelColumns, uListExport,
+  uPanelColumns,
   uSession;
 
 procedure TTestPairedFolders.Setup;
@@ -131,7 +131,6 @@ begin
   Saved := Default(TMtnSession);
   Saved.Version := cSessionVersion;
   Saved.Zoom := 1;
-  Saved.ListExport := DefaultListExportConfig;
   SetLength(Saved.Panels.WorkspaceTabs, 2);
   for var I := 0 to 1 do
   begin
