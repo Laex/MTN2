@@ -19,9 +19,9 @@ type
     UseRobocopyFile: Boolean;
     /// <summary>userIgnoreFilters of .obsidian/app.json in the compared roots.</summary>
     UseObsidian: Boolean;
-    /// <summary>File name masks separated by ";" (*.md;*.txt): when set, only
-    /// files whose name matches one of them are compared; folders are still
-    /// entered.</summary>
+    /// <summary>File name masks separated by ";" (*.md;*.txt): only files whose
+    /// name matches one of them are compared; folders are still entered. Blank,
+    /// "*.*" and "*" mean every file.</summary>
     Only: string;
     /// <summary>More gitignore patterns, separated by ";" or line breaks.</summary>
     Extra: string;
@@ -51,7 +51,10 @@ implementation
 
 uses
   System.SysUtils, System.Classes, System.IOUtils, System.JSON,
-  System.Generics.Collections;
+  System.Generics.Collections, uFileFind;
+
+const
+  cAllFilesMask = '*.*';
 
 type
   TIgnoreRule = record
@@ -65,13 +68,34 @@ function DefaultSyncFilterOptions: TSyncFilterOptions;
 begin
   Result := Default(TSyncFilterOptions);
   Result.SkipJunctions := True;
+  Result.Only := cAllFilesMask;
+end;
+
+// The masks that limit the comparison; none when the text is blank or holds a
+// mask that matches every file (*.* or *). A mask written as @Name stands for the
+// masks of that mask group.
+function OnlyMasksOf(const AOnly: string): TArray<string>;
+var
+  Mask: string;
+begin
+  SetLength(Result, 0);
+  for Mask in SplitMasks(AOnly.Replace(sLineBreak, ';')) do
+  begin
+    if (Mask = '*') or (Mask = cAllFilesMask) then
+    begin
+      SetLength(Result, 0);
+      Exit;
+    end;
+    SetLength(Result, Length(Result) + 1);
+    Result[High(Result)] := Mask;
+  end;
 end;
 
 function SyncFilterOptionsActive(const AOptions: TSyncFilterOptions): Boolean;
 begin
   Result := AOptions.SkipJunctions or AOptions.UseIgnoreFiles or
     AOptions.UseRobocopyFile or AOptions.UseObsidian or
-    (Trim(AOptions.Only) <> '') or (Trim(AOptions.Extra) <> '');
+    (Length(OnlyMasksOf(AOptions.Only)) > 0) or (Trim(AOptions.Extra) <> '');
 end;
 
 function ClassMatch(const P: string; var PI: Integer; ACh: Char;
@@ -438,13 +462,7 @@ begin
   FOptions := AOptions;
   FSeenDirs := TDictionary<string, Boolean>.Create;
   SetLength(FRules, 0);
-  SetLength(FOnlyMasks, 0);
-  for Part in AOptions.Only.Replace(sLineBreak, ';').Split([';']) do
-    if Trim(Part) <> '' then
-    begin
-      SetLength(FOnlyMasks, Length(FOnlyMasks) + 1);
-      FOnlyMasks[High(FOnlyMasks)] := Trim(Part);
-    end;
+  FOnlyMasks := OnlyMasksOf(AOptions.Only);
   for Part in AOptions.Extra.Replace(sLineBreak, ';').Split([';']) do
     AddIgnoreText(FRules, Trim(Part), '');
   for I := 0 to High(ARoots) do

@@ -12,8 +12,33 @@ uses
   uDialogHostKeys, uDialogHostClicks, uDialogTabs;
 
 type
+  /// <summary>An open dialog set aside while another one is shown over it.</summary>
+  TDialogSnapshot = record
+    Decl: TDialogDeclaration;
+    FocusIndex: Integer;
+    OnCommand: TDialogCommandEvent;
+    ListSeen: TArray<TPair<string, Integer>>;
+    ListSelId: string;
+    ListSelIndex: Integer;
+    ListScrollTop: Integer;
+    ScrollY: Integer;
+    ScrollFollow: Integer;
+    Tag: Integer;
+  end;
+
   TDialogHost = class
   private
+    /// <summary>Dialogs set aside by PushDialog, the newest last.</summary>
+    FStash: TArray<TDialogSnapshot>;
+    /// <summary>Set by the owner: true while the mask groups editor may be opened
+    /// from a mask field (it is not offered inside the editor itself).</summary>
+    FOnMaskGroupsAvailable: TFunc<Boolean>;
+    FOnEditMaskGroups: TProc;
+    /// <summary>Of the open history list: how many rows are history entries (the
+    /// rest are mask groups and the editor row) and whether the last row opens
+    /// the mask groups editor.</summary>
+    FDropHistoryCount: Integer;
+    FDropActionRow: Boolean;
     FTheme: IThemeRenderer;
     FVisible: Boolean;
     FDecl: TDialogDeclaration;
@@ -65,6 +90,7 @@ type
     /// never runs against the next.</summary>
     FOpenGen: Cardinal;
     FOnDeferredCommand: TNotifyEvent;
+    procedure RefreshHistoryDropItems(AControlIndex: Integer);
     function FirstFocusable: Integer;
     /// <summary>Shows page ANew of the tab strip at AStrip. Focus moves to the
     /// strip when its control is on the page that goes away.</summary>
@@ -250,6 +276,17 @@ type
     /// <summary>DIALOG_PLUGIN JSON subset. Returns False if parse fails (no open).</summary>
     function OpenJson(const ADeclJson: string; AOnCommand: TDialogCommandEvent): Boolean;
     procedure Close;
+    /// <summary>Sets the open dialog aside (ATag is handed back by PopDialog) so the
+    /// next Open shows over it. Close forgets whatever was set aside.</summary>
+    procedure PushDialog(ATag: Integer);
+    /// <summary>Brings back the dialog set aside by PushDialog, with its field
+    /// values and focus. False when none was set aside.</summary>
+    function PopDialog(out ATag: Integer): Boolean;
+    /// <summary>Mask history lists end with a row that calls OnEditMaskGroups; it is
+    /// shown while OnMaskGroupsAvailable (when set) answers True.</summary>
+    property OnEditMaskGroups: TProc read FOnEditMaskGroups write FOnEditMaskGroups;
+    property OnMaskGroupsAvailable: TFunc<Boolean> read FOnMaskGroupsAvailable
+      write FOnMaskGroupsAvailable;
     function Visible: Boolean;
     /// <summary>Help topic the open dialog asks F1 to show ('' = none).</summary>
     function HelpTopic: string;
@@ -422,7 +459,7 @@ procedure DialogButtonCaptureRelease(AAbsCol, AAbsRow: Integer);
 implementation
 
 uses
-  System.Character, uKeyChord, uDialogLocaleLayout, uCharWidth,
+  System.Character, uStrings, uKeyChord, uDialogLocaleLayout, uCharWidth,
   uDialogValues, uDialogV2Layout, uDialogLayout, uDialogListDraw, uPluginInputChord;
 
 const
@@ -793,6 +830,7 @@ begin
     Exit;
   FVisible := False;
   FOnCommand := nil;
+  SetLength(FStash, 0);
   DropPress;
   Inc(FOpenGen);
   FDropOpenIndex := -1;
@@ -853,6 +891,88 @@ begin
       DialogHistoryAdd(FDecl.Controls[I].History, Trim(FDecl.Controls[I].Edit.Text));
 end;
 
+function IsMaskHistoryKey(const AKey: string): Boolean;
+begin
+  Result := SameText(AKey, 'masks') or SameText(AKey, 'findmask');
+end;
+
+// The list a history field drops down: its history, then (mask fields) the mask
+// groups as @Name and a last row that opens the groups editor.
+procedure TDialogHost.RefreshHistoryDropItems(AControlIndex: Integer);
+var
+  Hist, Items: TArray<string>;
+  Name, Ref: string;
+begin
+  Hist := DialogHistoryItems(FDecl.Controls[AControlIndex].History);
+  Items := Hist;
+  FDropHistoryCount := Length(Hist);
+  FDropActionRow := False;
+  if IsMaskHistoryKey(FDecl.Controls[AControlIndex].History) then
+  begin
+    for Name in MaskGroupNames do
+    begin
+      Ref := '@' + Name;
+      if not MatchText(Ref, Hist) then
+        Items := Items + [Ref];
+    end;
+    FDropActionRow := Assigned(FOnEditMaskGroups) and
+      (not Assigned(FOnMaskGroupsAvailable) or FOnMaskGroupsAvailable());
+    if FDropActionRow then
+      Items := Items + [T('ui.maskGroups.editRow', 'Mask groups...')];
+  end;
+  FDecl.Controls[AControlIndex].Items := Items;
+end;
+
+procedure TDialogHost.PushDialog(ATag: Integer);
+var
+  S: TDialogSnapshot;
+begin
+  if not FVisible then
+    Exit;
+  S.Decl := FDecl;
+  S.FocusIndex := FFocusIndex;
+  S.OnCommand := FOnCommand;
+  S.ListSeen := Copy(FListSeen);
+  S.ListSelId := FListSelId;
+  S.ListSelIndex := FListSelIndex;
+  S.ListScrollTop := FListScrollTop;
+  S.ScrollY := FScrollY;
+  S.ScrollFollow := FScrollFollow;
+  S.Tag := ATag;
+  FStash := FStash + [S];
+end;
+
+function TDialogHost.PopDialog(out ATag: Integer): Boolean;
+var
+  S: TDialogSnapshot;
+begin
+  ATag := 0;
+  Result := Length(FStash) > 0;
+  if not Result then
+    Exit;
+  S := FStash[High(FStash)];
+  SetLength(FStash, High(FStash));
+  FDecl := S.Decl;
+  FOnCommand := S.OnCommand;
+  FListSeen := S.ListSeen;
+  FListSelId := S.ListSelId;
+  FListSelIndex := S.ListSelIndex;
+  FListScrollTop := S.ListScrollTop;
+  FScrollY := S.ScrollY;
+  FScrollFollow := S.ScrollFollow;
+  FFocusIndex := S.FocusIndex;
+  ATag := S.Tag;
+  DropPress;
+  Inc(FOpenGen);
+  FDropOpenIndex := -1;
+  FDropHover := 0;
+  FDropScrollTop := 0;
+  FCursorVisible := True;
+  FVisible := True;
+  EnsureLayout;
+  NotifyChanged;
+end;
+
 procedure TDialogHost.RemoveDropHoverFromHistory;
 var
   C: TDialogControl;
@@ -860,10 +980,12 @@ begin
   if not IsHistoryInput(FDropOpenIndex) then
     Exit;
   C := FDecl.Controls[FDropOpenIndex];
-  if (FDropHover < 0) or (FDropHover > High(C.Items)) then
+  // Mask groups and the editor row are not history entries.
+  if (FDropHover < 0) or (FDropHover >= FDropHistoryCount) or
+     (FDropHover > High(C.Items)) then
     Exit;
   DialogHistoryRemove(C.History, C.Items[FDropHover]);
-  FDecl.Controls[FDropOpenIndex].Items := DialogHistoryItems(C.History);
+  RefreshHistoryDropItems(FDropOpenIndex);
   if Length(FDecl.Controls[FDropOpenIndex].Items) = 0 then
   begin
     CloseDropDown;
@@ -881,6 +1003,8 @@ begin
   if (FDecl.Controls[AControlIndex].Kind <> dckDropDown) and
      not IsHistoryInput(AControlIndex) then
     Exit;
+  if IsHistoryInput(AControlIndex) then
+    RefreshHistoryDropItems(AControlIndex);
   if Length(FDecl.Controls[AControlIndex].Items) = 0 then
     Exit;
   FFocusIndex := AControlIndex;
@@ -904,15 +1028,23 @@ begin
 end;
 
 function TDialogHost.CommitDropDown: Boolean;
+var
+  OpenEditor: Boolean;
 begin
   Result := False;
   if FDropOpenIndex < 0 then
     Exit;
+  OpenEditor := False;
   if IsHistoryInput(FDropOpenIndex) then
   begin
     if (FDropHover >= 0) and (FDropHover <= High(FDecl.Controls[FDropOpenIndex].Items)) then
-      InputLineSetText(FDecl.Controls[FDropOpenIndex].Edit,
-        FDecl.Controls[FDropOpenIndex].Items[FDropHover]);
+    begin
+      if FDropActionRow and (FDropHover = High(FDecl.Controls[FDropOpenIndex].Items)) then
+        OpenEditor := True
+      else
+        InputLineSetText(FDecl.Controls[FDropOpenIndex].Edit,
+          FDecl.Controls[FDropOpenIndex].Items[FDropHover]);
+    end;
   end
   else
     SetListSelectedIndex(FDropOpenIndex, FDropHover);
@@ -921,6 +1053,8 @@ begin
   FDropScrollTop := 0;
   NotifyChanged;
   Result := True;
+  if OpenEditor and Assigned(FOnEditMaskGroups) then
+    FOnEditMaskGroups();
 end;
 
 function TDialogHost.DropPopupBounds(out ARect: TRectI): Boolean;

@@ -249,8 +249,20 @@ begin
   Assert.IsTrue(F.Skip('sub' + PathDelim + 'x.dat', False, False));
   Assert.IsFalse(F.Skip('sub', True, False), 'folders are still entered');
   O.Only := '  ;  ';
-  Assert.IsFalse(SyncFilterOptionsActive(O) and NewSyncFilter(O, []).Skip('pic.png', False, False),
-    'blank masks filter nothing');
+  Assert.IsFalse(SyncFilterOptionsActive(O), 'blank masks filter nothing');
+  O.Only := '*.*';
+  Assert.IsFalse(SyncFilterOptionsActive(O), '*.* is every file');
+  Assert.IsFalse(NewSyncFilter(O, []).Skip('Makefile', False, False),
+    'a name without a dot passes *.*');
+  O.Only := '*.md;*.*';
+  Assert.IsFalse(NewSyncFilter(O, []).Skip('pic.png', False, False),
+    'a match-all mask among others lifts the limit');
+  Assert.AreEqual('*.*', DefaultSyncFilterOptions.Only, 'the dialog starts with every file');
+  O.Only := '@Video;*.srt';
+  F := NewSyncFilter(O, []);
+  Assert.IsFalse(F.Skip('clip.mp4', False, False), 'a mask group stands for its masks');
+  Assert.IsFalse(F.Skip('clip.srt', False, False), 'masks next to a group still count');
+  Assert.IsTrue(F.Skip('pic.png', False, False), 'names outside the group are left out');
 end;
 
 procedure TTestSyncIgnore.TestCompareWithOnlyMaskLeavesOtherTypesOut;

@@ -107,6 +107,9 @@ type
     procedure OpenColumns(const AConfig: TCustomColumnsConfig; const AScheme: string = '');
     /// <summary>Lists the mask groups and lets the user add, change and delete them.</summary>
     procedure OpenMaskGroups;
+    /// <summary>Opens the editor over the dialog that is open (its mask field asked
+    /// for it); closing the editor brings that dialog back.</summary>
+    procedure OpenMaskGroupsOver;
     procedure OpenDisplay;
     procedure OpenInterface;
     procedure OpenExternalTools;
@@ -280,6 +283,11 @@ begin
   ShowMaskGroups('', '', '');
 end;
 
+procedure TSettingsDialogController.OpenMaskGroupsOver;
+begin
+  ShowMaskGroups('', '', '');
+end;
+
 // Opens (or refreshes) the dialog. The row of ASelectName is selected; AName and
 // AMasks fill the edit lines.
 procedure TSettingsDialogController.ShowMaskGroups(const ASelectName, AName,
@@ -320,10 +328,18 @@ var
   Names: TArray<string>;
   Idx: Integer;
   GName, GMasks: string;
+  ParentKind: Integer;
 begin
   if DialogCmdIsReject(AControlId) then
   begin
-    FDialog.Close;
+    // Opened from a mask field: the dialog it came from returns as it was.
+    if FDialog.PopDialog(ParentKind) then
+    begin
+      SetKind(THostDialogKind(ParentKind));
+      Notify;
+    end
+    else
+      FDialog.Close;
     Exit;
   end;
   Names := MaskGroupNames;

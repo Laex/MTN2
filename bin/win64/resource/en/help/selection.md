@@ -16,7 +16,7 @@ In the select-by-mask dialog the “Select folders” check box applies the mask
 
 ### Mask groups
 
-<!--mask-groups-->In any mask (selection, panel filter, search, colour groups) `@Name` expands to a named set of masks, for example `@Images` or `*.log;@Documents`. The groups Images, Audio, Video, Documents, Archives and Sources are built in. Your own groups, or replacements of built-in ones, go into `maskgroups.json` in the settings folder: `{ "groups": { "Logs": "*.log;*.out" } }`. An unknown name stays ordinary mask text. The Options menu item "Mask groups..." opens a list where groups are added, changed and deleted; the select-by-mask dialog can also save its mask as a group. In a mask field of a dialog (select, filter, search), Ctrl+G saves the typed masks as a group named after the first mask and puts `@Name` in the field.
+<!--mask-groups-->Several masks in one field are separated by `;` (a comma works as well; the extra patterns of the folder synchronization dialog accept only `;`). In any mask (selection, panel filter, search, colour groups) `@Name` expands to a named set of masks, for example `@Images` or `*.log;@Documents`. The groups Images, Audio, Video, Documents, Archives and Sources are built in. Your own groups, or replacements of built-in ones, go into `maskgroups.json` in the settings folder: `{ "groups": { "Logs": "*.log;*.out" } }`. An unknown name stays ordinary mask text. The Options menu item "Mask groups..." opens a list where groups are added, changed and deleted; the select-by-mask dialog can also save its mask as a group. In a mask field of a dialog (select, filter, search), Ctrl+G saves the typed masks as a group named after the first mask and puts `@Name` in the field.
 
 ### Column sets
 

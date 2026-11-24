@@ -20,6 +20,8 @@ type
     [TearDownFixture] procedure TearDownFixture;
     [Test] procedure TestStore;
     [Test] procedure TestHost;
+    [Test] procedure TestMaskFieldListOffersGroupsAndEditor;
+    [Test] procedure TestPushedDialogComesBack;
   end;
 
 implementation
@@ -185,15 +187,19 @@ begin
     Assert.IsTrue(not Host.Visible, 'Esc cancels the dialog');
     Assert.IsTrue(Joined(DialogHistoryItems('masks')) = '*.dpr|*.pas', 'Cancel records nothing');
 
-    // Ctrl+Down with no history does nothing harmful.
+    // With no history the list holds only the mask groups; Esc closes it and
+    // Enter in the field still accepts.
     if TFile.Exists(APath) then
       TFile.Delete(APath);
     DialogHistoryUseFile(APath);
     OpenSelectMask(Host, 'x');
     Key(Host, vkDown, [ssCtrl]);
+    Key(Host, vkEscape);
+    Assert.IsTrue(Host.Visible and (Host.GetInputValue('name') = 'x'),
+      'Esc closes the list and keeps the text');
     Key(Host, vkReturn);
     Assert.IsTrue(not Host.Visible and (GLastCmd = 'ok'),
-      'empty history: Ctrl+Down opens nothing, Enter still accepts');
+      'empty history: Enter still accepts');
   finally
     Host.Free;
   end;
@@ -232,6 +238,94 @@ end;
 procedure TTestDialogHistory.TestHost;
 begin
   TestDialogHistory.TestHost(Path);
+end;
+
+procedure TTestDialogHistory.TestMaskFieldListOffersGroupsAndEditor;
+var
+  Host: TDialogHost;
+  Idx: Integer;
+  Items: TArray<string>;
+  Fired: Boolean;
+begin
+  if TFile.Exists(Path) then
+    TFile.Delete(Path);
+  DialogHistoryUseFile(Path);
+  DialogHistoryAdd('masks', '*.log');
+  Host := TDialogHost.Create(nil);
+  try
+    Idx := OpenSelectMask(Host, 'x');
+    // No editor wired: history, then the groups, no editor row.
+    Key(Host, vkDown, [ssCtrl]);
+    Items := Host.GetControl(Idx).Items;
+    Assert.AreEqual('*.log', Items[0], 'history comes first');
+    Assert.IsTrue(Joined(Items).Contains('@Video'), 'groups are listed as @Name');
+    Assert.IsFalse(Items[High(Items)].EndsWith('...'), 'no editor row without a handler');
+    Key(Host, vkDown);
+    Key(Host, vkReturn);
+    Assert.IsTrue(Host.GetInputValue('name').StartsWith('@'), 'a group row puts @Name in the field');
+    // Del on a group row leaves the history alone.
+    Key(Host, vkDown, [ssCtrl]);
+    Key(Host, vkDown);
+    Key(Host, vkDelete);
+    Key(Host, vkEscape);
+    Assert.AreEqual('*.log', Joined(DialogHistoryItems('masks')), 'a group row is not history');
+
+    Fired := False;
+    Host.OnEditMaskGroups :=
+      procedure
+      begin
+        Fired := True;
+      end;
+    Host.Close;
+    Idx := OpenSelectMask(Host, 'x');
+    Key(Host, vkDown, [ssCtrl]);
+    Items := Host.GetControl(Idx).Items;
+    Assert.IsTrue(Items[High(Items)].EndsWith('...'), 'last row opens the groups editor');
+    Key(Host, vkEnd);
+    Key(Host, vkReturn);
+    Assert.IsTrue(Fired, 'picking the editor row calls the handler');
+    Assert.AreEqual('x', Host.GetInputValue('name'), 'the field keeps its text');
+    Assert.AreEqual('*.log', Joined(DialogHistoryItems('masks')), 'the editor row is not history');
+
+    // The owner can hide the row.
+    Host.OnMaskGroupsAvailable :=
+      function: Boolean
+      begin
+        Result := False;
+      end;
+    Key(Host, vkDown, [ssCtrl]);
+    Items := Host.GetControl(Idx).Items;
+    Assert.IsFalse(Items[High(Items)].EndsWith('...'), 'row hidden when unavailable');
+    Key(Host, vkEscape);
+  finally
+    Host.Free;
+  end;
+end;
+
+procedure TTestDialogHistory.TestPushedDialogComesBack;
+var
+  Host: TDialogHost;
+  Tag: Integer;
+begin
+  Host := TDialogHost.Create(nil);
+  try
+    OpenSelectMask(Host, 'abc');
+    Host.PushDialog(7);
+    OpenSelectMask(Host, 'zzz');
+    Assert.AreEqual('zzz', Host.GetInputValue('name'));
+    Assert.IsTrue(Host.PopDialog(Tag), 'the pushed dialog returns');
+    Assert.AreEqual(7, Tag);
+    Assert.IsTrue(Host.Visible);
+    Assert.AreEqual('abc', Host.GetInputValue('name'), 'with its field text');
+    Assert.IsFalse(Host.PopDialog(Tag), 'nothing more to bring back');
+    // Close forgets what was pushed.
+    Host.PushDialog(1);
+    Host.Close;
+    OpenSelectMask(Host, 'q');
+    Assert.IsFalse(Host.PopDialog(Tag), 'Close drops the pushed dialog');
+  finally
+    Host.Free;
+  end;
 end;
 
 initialization

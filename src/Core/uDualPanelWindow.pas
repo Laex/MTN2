@@ -1891,6 +1891,17 @@ begin
   FTerminals := TObjectDictionary<Cardinal, TTerminalWorkspaceWindow>.Create([]);
   FDialog := TDialogHost.Create(ATheme);
   FDialog.OnChanged := DialogChanged;
+  FDialog.OnMaskGroupsAvailable :=
+    function: Boolean
+    begin
+      Result := FDialogKind <> hdkMaskGroups;
+    end;
+  FDialog.OnEditMaskGroups :=
+    procedure
+    begin
+      FDialog.PushDialog(Ord(FDialogKind));
+      FSettings.OpenMaskGroupsOver;
+    end;
   FDialogKind := hdkNone;
   FPluginListReturnRow := -1;
   FPluginInfoRow := -1;

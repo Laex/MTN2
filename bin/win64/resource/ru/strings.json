@@ -259,7 +259,7 @@
       "use_rcj": "Учитывать robocopy &exclude.rcj (/XD и /XF)",
       "use_obsidian": "Учитывать фильтры &Obsidian (.obsidian)",
       "lbl_only": "Только файлы по маске (через ;):",
-      "lbl_extra": "Дополнительные шаблоны (через ;):",
+      "lbl_extra": "Что дополнительно пропускать (шаблоны через ;):",
       "ok": "Сравнить",
       "cancel": "Отмена"
     },
@@ -702,7 +702,7 @@
         "Search": "Поиск",
         "Filters": "Фильтры"
       },
-      "lbl_mask": "Маска файла или несколько масок:",
+      "lbl_mask": "Маски файлов (через ;):",
       "lbl_text": "Содержащие текст:",
       "$title": "Поиск файла",
       "lbl_format": "Размер: 10K, 1.5M",
@@ -734,7 +734,7 @@
     "DIALOG_PANELFILTER": {
       "$title": "Фильтр панели",
       "lbl_filter": "Фильтр",
-      "lbl_mask": "Своя маска:",
+      "lbl_mask": "Свои маски (через ;):",
       "ok": "ОК",
       "clear": "&Сбросить",
       "cancel": "Отмена"
@@ -743,7 +743,7 @@
       "$title": "Группы масок",
       "lbl_groups": "Группы (в любой маске пишите @Имя):",
       "lbl_name": "Имя:",
-      "lbl_masks": "Маски:",
+      "lbl_masks": "Маски (через ;):",
       "edit": "&Изменить",
       "save": "Сохранить",
       "delete": "&Удалить",
@@ -1677,6 +1677,8 @@
     "theme.customName": "%s (своя)",
     "theme.loadFailed": "Не удалось прочитать тему.",
     "theme.blank": "(пустая)",
+    "maskGroups.editRow": "Группы масок...",
+    "maskGroups.builtIn": "(встроенная)",
     "theme.builtInReadOnly": "Встроенные темы удалять нельзя.",
     "theme.deleteTitle": "Удаление темы",
     "theme.deleteConfirm": "Удалить тему \"%s\"?",
@@ -1983,7 +1985,7 @@
 
     "selectMask.deselectTitle": "Снять выделение",
     "selectMask.selectTitle": "Выделение",
-    "selectMask.prompt": "Маска файлов (можно несколько):",
+    "selectMask.prompt": "Маски файлов (через ;):",
 
     "rename.failedTitle": "Ошибка переименования",
     "rename.failedMsg": "Здесь нельзя переименовать",

@@ -6,9 +6,7 @@ This file describes what changes for the user from version to version: new featu
 
 ## Unreleased
 
-### Added
-
-- The dialog before the folder comparison has an "Only files matching" field: name masks such as `*.md;*.txt` limit the synchronization to files of those types (folders are still entered).
+## Dev v0.5.12.4 – 2026-11-24
 
 ### Fixed
 
@@ -17,6 +15,11 @@ This file describes what changes for the user from version to version: new featu
 - Copying only newer files, overwrite-newer, folder synchronization and Compare folders now share one rule for which file is newer: when both modification times carry fractions of a second they are compared almost exactly, and the two-second tolerance applies only when one of them is a whole-second time (FAT, some network shares). Files copied to such volumes are no longer reported as newer because of timestamp rounding.
 - After a copy, move, pack or unpack that ended early (cancelled, stopped by an error) or skipped some items, the items that did go through are deselected in the panel and the rest stay selected, so the selection shows what is still to be done. Ctrl+M brings the whole selection back.
 - A search by text in a folder on a network share found nothing when the Everything plugin was used to list the files: Everything does not index network shares. The names are now listed by the built-in walk in that case.
+
+### Added
+
+- The dialog before the folder comparison has an "Only files matching" field: name masks such as `*.md;*.txt` limit the synchronization to files of those types (folders are still entered). The field starts as `*.*` and accepts mask groups such as `@Video`.
+- The list that drops down from a mask field now also shows the mask groups (`@Video`, `@Images`, ...) and ends with a "Mask groups..." row that opens the groups editor over the dialog; closing the editor brings the dialog back as it was.
 
 ## v0.5.12 – 2026-11-23
 

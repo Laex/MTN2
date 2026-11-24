@@ -16,7 +16,7 @@ Im Dialog „Nach Maske auswählen“ wendet das Kontrollfeld „Ordner auswähl
 
 ### Maskengruppen
 
-<!--mask-groups-->In jeder Maske (Auswahl, Panelfilter, Suche, Farbgruppen) steht `@Name` für eine benannte Gruppe von Masken, zum Beispiel `@Images` oder `*.log;@Documents`. Eingebaut sind Images, Audio, Video, Documents, Archives und Sources. Eigene Gruppen verwaltet der Menüpunkt "Maskengruppen..." im Menü Optionen (Datei `maskgroups.json` im Einstellungsordner); der Dialog zur Auswahl nach Maske kann seine Maske ebenfalls als Gruppe speichern. In einem Maskenfeld eines Dialogs speichert Strg+G die eingegebenen Masken als Gruppe (benannt nach der ersten Maske) und setzt `@Name` ins Feld.
+<!--mask-groups-->Mehrere Masken in einem Feld werden durch `;` getrennt (ein Komma geht ebenfalls; die zusätzlichen Muster im Dialog zur Ordnersynchronisierung kennen nur `;`). In jeder Maske (Auswahl, Panelfilter, Suche, Farbgruppen) steht `@Name` für eine benannte Gruppe von Masken, zum Beispiel `@Images` oder `*.log;@Documents`. Eingebaut sind Images, Audio, Video, Documents, Archives und Sources. Eigene Gruppen verwaltet der Menüpunkt "Maskengruppen..." im Menü Optionen (Datei `maskgroups.json` im Einstellungsordner); der Dialog zur Auswahl nach Maske kann seine Maske ebenfalls als Gruppe speichern. In einem Maskenfeld eines Dialogs speichert Strg+G die eingegebenen Masken als Gruppe (benannt nach der ersten Maske) und setzt `@Name` ins Feld.
 
 ---
 

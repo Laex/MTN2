@@ -260,7 +260,7 @@
       "use_rcj": "使用 robocopy 的 exclude.rcj(&E,/XD 和 /XF)",
       "use_obsidian": "使用 Obsidian 忽略过滤器(&B,.obsidian)",
       "lbl_only": "仅限匹配的文件(掩码,用 ; 分隔):",
-      "lbl_extra": "附加规则(用 ; 分隔):",
+      "lbl_extra": "额外跳过的规则(用 ; 分隔):",
       "ok": "比较",
       "cancel": "取消"
     },
@@ -703,7 +703,7 @@
         "Search": "搜索",
         "Filters": "筛选"
       },
-      "lbl_mask": "文件掩码(可多个):",
+      "lbl_mask": "文件掩码(用 ; 分隔):",
       "lbl_text": "包含文本:",
       "$title": "查找文件",
       "lbl_format": "大小: 10K, 1.5M",
@@ -735,7 +735,7 @@
     "DIALOG_PANELFILTER": {
       "$title": "面板过滤",
       "lbl_filter": "过滤",
-      "lbl_mask": "自定义掩码:",
+      "lbl_mask": "自定义掩码(用 ; 分隔):",
       "ok": "确定",
       "clear": "清除(&C)",
       "cancel": "取消"
@@ -744,7 +744,7 @@
       "$title": "掩码组",
       "lbl_groups": "组（在任何掩码中写 @名称）：",
       "lbl_name": "名称：",
-      "lbl_masks": "掩码：",
+      "lbl_masks": "掩码(用 ; 分隔):",
       "edit": "编辑(&E)",
       "save": "保存",
       "delete": "删除(&D)",
@@ -1669,6 +1669,8 @@
     "theme.customName": "%s (自定义)",
     "theme.loadFailed": "无法读取主题。",
     "theme.blank": "(空白)",
+    "maskGroups.editRow": "掩码组...",
+    "maskGroups.builtIn": "(内置)",
     "theme.builtInReadOnly": "内置主题不能删除。",
     "theme.deleteTitle": "删除主题",
     "theme.deleteConfirm": "删除主题\"%s\"?",
@@ -1970,7 +1972,7 @@
     "newFile.title": "新建文件",
     "selectMask.deselectTitle": "取消选择",
     "selectMask.selectTitle": "选择",
-    "selectMask.prompt": "一个或多个文件掩码:",
+    "selectMask.prompt": "文件掩码(用 ; 分隔):",
     "rename.failedTitle": "重命名失败",
     "rename.failedMsg": "无法在此重命名",
     "rename.title": "重命名",

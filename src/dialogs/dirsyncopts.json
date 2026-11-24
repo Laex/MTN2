@@ -7,10 +7,29 @@
   "children": [
     {
       "type": "label",
+      "id": "lbl_only",
+      "text": "Only files matching (masks separated by ;):",
+      "col": 1,
+      "row": 0,
+      "width": 68,
+      "height": 1
+    },
+    {
+      "type": "input",
+      "id": "only",
+      "value": "*.*",
+      "history": "masks",
+      "col": 1,
+      "row": 1,
+      "width": 68,
+      "height": 1
+    },
+    {
+      "type": "label",
       "id": "src_label",
       "text": "Source:",
       "col": 1,
-      "row": 0,
+      "row": 2,
       "width": 10,
       "height": 1
     },
@@ -19,7 +38,7 @@
       "id": "src_path",
       "text": "",
       "col": 12,
-      "row": 0,
+      "row": 2,
       "width": 58,
       "height": 1
     },
@@ -28,7 +47,7 @@
       "id": "dst_label",
       "text": "Target:",
       "col": 1,
-      "row": 1,
+      "row": 3,
       "width": 10,
       "height": 1
     },
@@ -37,7 +56,7 @@
       "id": "dst_path",
       "text": "",
       "col": 12,
-      "row": 1,
+      "row": 3,
       "width": 58,
       "height": 1
     },
@@ -48,7 +67,7 @@
       "text": "&One-way (→)",
       "checked": true,
       "col": 1,
-      "row": 3,
+      "row": 5,
       "width": 30,
       "height": 1
     },
@@ -59,7 +78,7 @@
       "text": "&Two-way (⇄)",
       "checked": false,
       "col": 33,
-      "row": 3,
+      "row": 5,
       "width": 30,
       "height": 1
     },
@@ -70,7 +89,7 @@
       "text": "&Date / size",
       "checked": true,
       "col": 1,
-      "row": 4,
+      "row": 6,
       "width": 30,
       "height": 1
     },
@@ -81,7 +100,7 @@
       "text": "&Content",
       "checked": false,
       "col": 33,
-      "row": 4,
+      "row": 6,
       "width": 30,
       "height": 1
     },
@@ -91,7 +110,7 @@
       "text": "Skip &junctions and symbolic links",
       "checked": true,
       "col": 1,
-      "row": 6,
+      "row": 8,
       "width": 68,
       "height": 1
     },
@@ -101,7 +120,7 @@
       "text": "&Use .gitignore, .geminiignore and .obsidianignore",
       "checked": false,
       "col": 1,
-      "row": 7,
+      "row": 9,
       "width": 68,
       "height": 1
     },
@@ -111,7 +130,7 @@
       "text": "Use robocopy &exclude.rcj (/XD and /XF)",
       "checked": false,
       "col": 1,
-      "row": 8,
+      "row": 10,
       "width": 68,
       "height": 1
     },
@@ -121,32 +140,14 @@
       "text": "Use Obs&idian ignore filters (.obsidian)",
       "checked": false,
       "col": 1,
-      "row": 9,
-      "width": 68,
-      "height": 1
-    },
-    {
-      "type": "label",
-      "id": "lbl_only",
-      "text": "Only files matching (masks separated by ;):",
-      "col": 1,
       "row": 11,
-      "width": 68,
-      "height": 1
-    },
-    {
-      "type": "input",
-      "id": "only",
-      "value": "",
-      "col": 1,
-      "row": 12,
       "width": 68,
       "height": 1
     },
     {
       "type": "label",
       "id": "lbl_extra",
-      "text": "Extra patterns (separated by ;):",
+      "text": "Extra patterns to skip (separated by ;):",
       "col": 1,
       "row": 13,
       "width": 68,

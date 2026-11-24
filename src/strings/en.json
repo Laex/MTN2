@@ -262,7 +262,7 @@
       "use_rcj": "Use robocopy &exclude.rcj (/XD and /XF)",
       "use_obsidian": "Use Obs&idian ignore filters (.obsidian)",
       "lbl_only": "Only files matching (masks separated by ;):",
-      "lbl_extra": "Extra patterns (separated by ;):",
+      "lbl_extra": "Extra patterns to skip (separated by ;):",
       "ok": "Compare",
       "cancel": "Cancel"
     },
@@ -722,7 +722,7 @@
       "preset_load": "&Load",
       "preset_save": "Sa&ve",
       "preset_del": "D&elete",
-      "lbl_mask": "A file mask or several file masks:",
+      "lbl_mask": "File masks (separated by ;):",
       "lbl_text": "Containing text:",
       "lbl_size": "Size from:",
       "lbl_size_to": "to:",
@@ -737,7 +737,7 @@
     "DIALOG_PANELFILTER": {
       "$title": "Panel filter",
       "lbl_filter": "Filter",
-      "lbl_mask": "Custom mask:",
+      "lbl_mask": "Custom masks (separated by ;):",
       "ok": "OK",
       "clear": "&Clear",
       "cancel": "Cancel"
@@ -746,7 +746,7 @@
       "$title": "Mask groups",
       "lbl_groups": "Groups (use @Name in any mask):",
       "lbl_name": "Name:",
-      "lbl_masks": "Masks:",
+      "lbl_masks": "Masks (separated by ;):",
       "edit": "&Edit",
       "save": "Save",
       "delete": "&Delete",
@@ -1680,6 +1680,8 @@
     "theme.customName": "%s (custom)",
     "theme.loadFailed": "Could not read the theme.",
     "theme.blank": "(blank)",
+    "maskGroups.editRow": "Mask groups...",
+    "maskGroups.builtIn": "(built-in)",
     "theme.builtInReadOnly": "Built-in themes cannot be deleted.",
     "theme.deleteTitle": "Delete theme",
     "theme.deleteConfirm": "Delete theme \"%s\"?",
@@ -1986,7 +1988,7 @@
 
     "selectMask.deselectTitle": "Deselect",
     "selectMask.selectTitle": "Select",
-    "selectMask.prompt": "A file mask or several file masks:",
+    "selectMask.prompt": "File masks (separated by ;):",
 
     "rename.failedTitle": "Rename failed",
     "rename.failedMsg": "Cannot rename here",
