@@ -222,6 +222,7 @@ const
     'Checksums',
     'Split / combine files',
     'Test archive',
+    'Pack each item',
     'Multi-rename',
     'Copy name',
     'Save list to a file',

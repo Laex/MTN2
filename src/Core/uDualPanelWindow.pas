@@ -1032,6 +1032,7 @@ type
     procedure BeginChecksums;
     procedure BeginSplitCombine;
     procedure BeginTestArchive;
+    procedure BeginPackEach;
     procedure DispatchSplitCombineCommand(AKind: THostDialogKind; const AControlId: string);
     procedure StartSplitJob(const ASrc, ADestDir: string; APartSize: Int64);
     procedure StartCombineJob(const AParts: TArray<string>; const ADest: string);
@@ -1706,7 +1707,7 @@ implementation
 uses
   uFindRouter,
   uPlatformInfo, uPlatformProcess, uPlatformFolders, uPlatformPaths, uImageInfo, uFileClip, uWinFileDragDrop, uStrings, uFileHistory, uChromeRows,
-  uExternalTools, uEnvProfiles, uDialogHistory, uChecksums, uFileSplit, uArchiveTest, uKeyChord, uConsoleSettings, uZipVfs,
+  uExternalTools, uEnvProfiles, uDialogHistory, uChecksums, uFileSplit, uArchiveTest, uPackEach, uKeyChord, uConsoleSettings, uZipVfs,
   uCharWidth, uConfigMode, uPluginChrome, uColorPickerControl, uRenameJournal, uConfigLocation;
 
 const
@@ -2407,6 +2408,7 @@ begin
   FKeymapHost.BeginChecksums := BeginChecksums;
   FKeymapHost.BeginSplitCombine := BeginSplitCombine;
   FKeymapHost.BeginTestArchive := BeginTestArchive;
+  FKeymapHost.BeginPackEach := BeginPackEach;
   FKeymapHost.BeginMultiRename := BeginMultiRename;
   FKeymapHost.NavigateToRecycleBin := NavigateToRecycleBin;
   FKeymapHost.RestoreCursorItemFromRecycleBin := RestoreCursorItemFromRecycleBin;
@@ -10820,6 +10822,77 @@ begin
           Text := T('ui.archtest.failed', '%d of %d files are damaged:',
             [R.Failed, R.Checked]) + sLineBreak + string.Join(sLineBreak, R.Errors);
           OpenStub(skShellInfo, Title, Text);
+        end);
+    end).Start;
+end;
+
+procedure TDualPanelWindow.BeginPackEach;
+var
+  Paths: TArray<string>;
+  Ws: TDualPanelWorkspaceTab;
+  OtherUri, DestDir, Title: string;
+  Life: ILifeFlag;
+  Token: IJobCancelToken;
+begin
+  if not HostInPanelsWorkspace or not CanStartOperation or Assigned(FSplitToken) then
+    Exit;
+  Paths := FileUrisToLocalPaths(CollectActiveSources);
+  Title := T('ui.packeach.title', 'Pack each item');
+  if (Length(Paths) = 0) or SourcesContainArchive(CollectActiveSources) or
+    not (TFile.Exists(Paths[0]) or TDirectory.Exists(Paths[0])) then
+  begin
+    OpenStub(skShellInfo, Title, T('ui.packeach.noSources', 'Select files or folders on disk'));
+    Exit;
+  end;
+  // Archives go to the other panel's folder when it is a local one.
+  Ws := ActiveWorkspace;
+  if Ws.State.ActiveSide = psLeft then
+    OtherUri := ActiveTab(Ws.State.RightPanel).CurrentURI
+  else
+    OtherUri := ActiveTab(Ws.State.LeftPanel).CurrentURI;
+  DestDir := ExcludeTrailingPathDelimiter(FileUriToPath(OtherUri));
+  if (DestDir = '') or not TDirectory.Exists(DestDir) then
+    DestDir := ExcludeTrailingPathDelimiter(ExtractFilePath(ExcludeTrailingPathDelimiter(Paths[0])));
+  Life := FLife;
+  Token := TJobCancelToken.Create;
+  FSplitToken := Token;
+  OpenStub(skShellInfo, Title, T('ui.split.working', 'Working... Esc=Cancel'));
+  TThread.CreateAnonymousThread(
+    procedure
+    var
+      Count: Integer;
+      Done: Boolean;
+      Err: string;
+    begin
+      Count := 0;
+      Done := False;
+      Err := '';
+      try
+        Done := PackEachToZip(Paths, DestDir,
+          function: Boolean
+          begin
+            Result := Token.IsCancellationRequested;
+          end, Count);
+      except
+        on E: Exception do
+          Err := E.Message;
+      end;
+      TThread.Queue(nil,
+        procedure
+        begin
+          if Token.IsCancellationRequested or not Life.Alive then
+            Exit;
+          FSplitToken := nil;
+          CloseStub;
+          ReloadPanelsTouching([DestDir]);
+          NotifyChanged;
+          if Err <> '' then
+          begin
+            OpenStub(skShellInfo, Title, Err);
+            Exit;
+          end;
+          if Done then
+            FToast.Show(T('ui.packeach.done', '%d archives created', [Count]), '', tkInfo);
         end);
     end).Start;
 end;

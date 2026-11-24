@@ -55,6 +55,7 @@ uses
   uChecksums in 'Core\uChecksums.pas',
   uFileSplit in 'Core\uFileSplit.pas',
   uArchiveTest in 'Core\uArchiveTest.pas',
+  uPackEach in 'Core\uPackEach.pas',
   uThemeTypes in 'Core\uThemeTypes.pas',
   uMessageBus in 'Core\uMessageBus.pas',
   uDualPanelInput in 'Core\uDualPanelInput.pas',

@@ -127,6 +127,7 @@ type
     kaChecksums,      // Ctrl+Alt+H -- calculate / verify checksums
     kaSplitCombine,   // unbound by default -- split a file into parts / join the parts
     kaTestArchive,    // unbound by default -- test the integrity of the archive under the cursor
+    kaPackEach,       // unbound by default -- pack every selected item into its own ZIP
     kaMultiRename,    // Ctrl+Alt+N -- rename the selected items by rules
     kaCopyItemName,   // Ctrl+Shift+Ins -- copy item name(s) only (no path)
     kaExportList,     // unbound by default -- save the marked items as a text list
@@ -1052,6 +1053,7 @@ const
     'Checksums',             // kaChecksums
     'SplitCombine',          // kaSplitCombine
     'TestArchive',           // kaTestArchive
+    'PackEach',              // kaPackEach
     'MultiRename',           // kaMultiRename
     'CopyItemName',          // kaCopyItemName
     'ExportList',            // kaExportList

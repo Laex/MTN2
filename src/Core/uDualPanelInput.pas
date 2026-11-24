@@ -151,6 +151,7 @@ type
     BeginChecksums: TKeymapProc;
     BeginSplitCombine: TKeymapProc;
     BeginTestArchive: TKeymapProc;
+    BeginPackEach: TKeymapProc;
     BeginMultiRename: TKeymapProc;
     NavigateToRecycleBin: TKeymapProc;
     RestoreCursorItemFromRecycleBin: TKeymapProc;
@@ -1015,6 +1016,9 @@ begin
     kaTestArchive:
       if Assigned(AHost.BeginTestArchive) then
         AHost.BeginTestArchive();
+    kaPackEach:
+      if Assigned(AHost.BeginPackEach) then
+        AHost.BeginPackEach();
     kaMultiRename:
       if Assigned(AHost.BeginMultiRename) then
         AHost.BeginMultiRename();
