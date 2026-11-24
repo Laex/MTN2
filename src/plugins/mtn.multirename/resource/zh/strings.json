@@ -1,0 +1,42 @@
+{
+  "menu": {
+    "run": "批量重命名..."
+  },
+  "dlg": {
+    "title": "批量重命名",
+    "nameMask": "名称掩码:",
+    "extMask": "扩展名:",
+    "search": "查找:",
+    "replace": "替换:",
+    "counter": "计数从:",
+    "step": "步长:",
+    "digits": "位数:",
+    "matchCase": "区分大小写(&C)",
+    "letterCase": "字母大小写:",
+    "caseKeep": "不变",
+    "caseLower": "小写",
+    "caseUpper": "大写",
+    "caseFirst": "首字母大写",
+    "caseWords": "每个单词首字母大写",
+    "regex": "正则表达式(&X)",
+    "tokens": "标记: [N] [E] [C] [Date] [Time] [Year] [Month] [Day] [Parent] [Size] [Dim] [Camera] [Artist] [Title]",
+    "colOld": "原名",
+    "colNew": "新名",
+    "colNote": "说明",
+    "undo": "撤销(&U)",
+    "editor": "在编辑器中(&E)",
+    "ok": "重命名(&R)",
+    "cancel": "取消"
+  },
+  "msg": {
+    "nothingSelected": "请先选择文件或文件夹",
+    "oneFolder": "请选择同一文件夹中的项目",
+    "status": "待重命名 %d,不变 %d,有问题 %d",
+    "blocked": "请先修正标有 ! 的名称",
+    "linesChanged": "行数必须保持为 %d: 每个项目一个新名称",
+    "problemEmpty": "名称为空",
+    "problemInvalid": "名称无效",
+    "problemDuplicate": "名称重复",
+    "problemExists": "名称已存在"
+  }
+}

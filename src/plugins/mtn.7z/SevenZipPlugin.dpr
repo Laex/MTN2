@@ -7,13 +7,13 @@ library SevenZipPlugin;
 uses
   System.SysUtils, System.Classes, System.IOUtils, System.JSON, System.Math, System.SyncObjs,
   uPluginHostAbi in '..\..\Core\uPluginHostAbi.pas',
+  uPluginSdk in '..\..\Core\uPluginSdk.pas',
   uSevenZipApi,
   uPlatformProcess, uPlatformInfo,
   uSevenZipVfs in 'uSevenZipVfs.pas',
   uVfsTypes in '..\..\Core\uVfsTypes.pas';
 
 var
-  GHostApi: PHostApiTable;
   GVfsCallbacks: TVfsCallbacksCdecl;
 
 function WriteUtf8Buf(const AData: UTF8String; ABuf: PAnsiChar; ABufSize: Int64;
@@ -278,50 +278,6 @@ var
   GTestJob: Boolean;
   GTestLock: TCriticalSection;
 
-function Tr(const AKey, ADefault: string): string;
-var
-  Id, Key, Def: UTF8String;
-  Buf: array[0..511] of AnsiChar;
-  Len: Int64;
-begin
-  Result := ADefault;
-  if (GHostApi = nil) or not Assigned(GHostApi.Translate) then
-    Exit;
-  Id := UTF8String(cPluginId);
-  Key := UTF8String(AKey);
-  Def := UTF8String(ADefault);
-  Len := GHostApi.Translate(PAnsiChar(Id), PAnsiChar(Key), PAnsiChar(Def), @Buf[0], SizeOf(Buf));
-  if (Len >= 0) and (Len < SizeOf(Buf)) then
-    Result := UTF8ToString(PAnsiChar(@Buf[0]));
-end;
-
-procedure ShowNotice(const AText: string; AKind: Int64);
-var
-  Text: UTF8String;
-begin
-  if (GHostApi = nil) or not Assigned(GHostApi.ShowMessage) then
-    Exit;
-  Text := UTF8String(AText);
-  GHostApi.ShowMessage(PAnsiChar(Text), AKind);
-end;
-
-function ReadPanelInfo: string;
-var
-  Buf: UTF8String;
-  Len: Int64;
-begin
-  Result := '';
-  if (GHostApi = nil) or not Assigned(GHostApi.PanelInfo) then
-    Exit;
-  Len := GHostApi.PanelInfo(nil, 0);
-  if Len <= 0 then
-    Exit;
-  SetLength(Buf, Len + 1);
-  Len := GHostApi.PanelInfo(PAnsiChar(Buf), Length(Buf));
-  if (Len > 0) and (Len < Length(Buf)) then
-    Result := UTF8ToString(PAnsiChar(Buf));
-end;
-
 /// <summary>The file under the cursor of the active panel (a file: URI); empty
 /// when the cursor is on no file.</summary>
 function CursorFileUri: string;
@@ -332,7 +288,7 @@ var
   Json: string;
 begin
   Result := '';
-  Json := ReadPanelInfo;
+  Json := HostText(GHostApi.PanelInfo);
   if Json = '' then
     Exit;
   Root := TJSONObject.ParseJSONValue(Json);
@@ -392,7 +348,7 @@ begin
     end;
     TInterlocked.Exchange(GTestBusy, 0);
     if Text <> '' then
-      ShowNotice(Text, Kind);
+      Notice(Text, Kind);
   except
   end;
 end;
@@ -459,7 +415,7 @@ begin
   finally
     GTestLock.Leave;
   end;
-  if Assigned(GHostApi) and Assigned(GHostApi.PostToMain) then
+  if Assigned(GHostApi.PostToMain) then
     GHostApi.PostToMain(PAnsiChar(UTF8String(cPluginId)), MainTestDone, nil);
 end;
 
@@ -471,7 +427,7 @@ var
   Uri, Local: string;
 begin
   try
-    if (GHostApi = nil) or not Assigned(GHostApi.PostToMain) then
+    if not Assigned(GHostApi.PostToMain) then
       Exit;
     Uri := CursorFileUri;
     Local := '';
@@ -479,7 +435,7 @@ begin
       Local := FileUriToPath(Uri);
     if (Local = '') or not TFile.Exists(Local) then
     begin
-      ShowNotice(Tr('msg.testNoFile', 'Put the cursor on an archive file on disk.'), 0);
+      Notice(Tr('msg.testNoFile', 'Put the cursor on an archive file on disk.'), 0);
       Exit;
     end;
     if TInterlocked.CompareExchange(GTestBusy, 1, 0) <> 0 then
@@ -535,7 +491,7 @@ begin
     GTestLock.Leave;
   end;
   TInterlocked.Exchange(GSfxBusy, 0);
-  ShowNotice(Text, 0);
+  Notice(Text, 0);
 end;
 
 { Writes ASfx followed by the archive as AOut: a program that unpacks the archive. }
@@ -582,7 +538,7 @@ var
   N: Integer;
 begin
   try
-    if (GHostApi = nil) or not Assigned(GHostApi.PostToMain) then
+    if not Assigned(GHostApi.PostToMain) then
       Exit;
     Uri := CursorFileUri;
     Local := '';
@@ -590,13 +546,13 @@ begin
       Local := FileUriToPath(Uri);
     if (Local = '') or not TFile.Exists(Local) or not SameText(ExtractFileExt(Local), '.7z') then
     begin
-      ShowNotice(Tr('msg.sfxNoFile', 'Put the cursor on a .7z archive on disk.'), 0);
+      Notice(Tr('msg.sfxNoFile', 'Put the cursor on a .7z archive on disk.'), 0);
       Exit;
     end;
     Sfx := FindSfxModule;
     if Sfx = '' then
     begin
-      ShowNotice(Tr('msg.sfxNoModule', '7z.sfx was not found: put it into the plugin folder.'), 1);
+      Notice(Tr('msg.sfxNoModule', '7z.sfx was not found: put it into the plugin folder.'), 1);
       Exit;
     end;
     if TInterlocked.CompareExchange(GSfxBusy, 1, 0) <> 0 then
@@ -625,7 +581,7 @@ begin
         finally
           GTestLock.Leave;
         end;
-        if Assigned(GHostApi) and Assigned(GHostApi.PostToMain) then
+        if Assigned(GHostApi.PostToMain) then
           GHostApi.PostToMain(PAnsiChar(UTF8String(cPluginId)), MainSfxDone, nil)
         else
           TInterlocked.Exchange(GSfxBusy, 0);
@@ -647,7 +603,7 @@ var
 begin
   if AHostApi = nil then
     Exit(-1);
-  GHostApi := AHostApi;
+  SdkAttach(AHostApi, cPluginId);
   EnginePath := PlatformSevenZipEngine(ExtractFilePath(GetModuleName(HInstance)));
   if (EnginePath = '') or not SevenZipLoadEngine(EnginePath) then
     Exit(-2);
@@ -699,7 +655,7 @@ begin
   TInterlocked.Exchange(GTestCancel, 1);
   SevenZipClearAllPasswords;
   SevenZipUnloadEngine;
-  GHostApi := nil;
+  SdkDetach;
 end;
 
 exports

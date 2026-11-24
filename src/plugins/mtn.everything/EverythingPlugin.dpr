@@ -8,6 +8,7 @@ uses
   System.SysUtils,
   System.JSON,
   uPluginHostAbi in '..\..\Core\uPluginHostAbi.pas',
+  uPluginSdk in '..\..\Core\uPluginSdk.pas',
   uVfsTypes in '..\..\Core\uVfsTypes.pas',
   uPluginServiceSettings in '..\..\Core\uPluginServiceSettings.pas',
   uEverythingFormat in 'uEverythingFormat.pas',
@@ -24,26 +25,8 @@ const
   cMaxResults = 5000;
 
 var
-  GHost: PHostApiTable;
   GCallbacks: TVfsCallbacksCdeclV2;
   GLastQuery: string;
-
-function Tr(const AKey, ADefault: string): string;
-var
-  Id, Key, Def: UTF8String;
-  Buf: array[0..511] of AnsiChar;
-  Len: Int64;
-begin
-  Result := ADefault;
-  if (GHost = nil) or not Assigned(GHost.Translate) then
-    Exit;
-  Id := UTF8String(cPluginId);
-  Key := UTF8String(AKey);
-  Def := UTF8String(ADefault);
-  Len := GHost.Translate(PAnsiChar(Id), PAnsiChar(Key), PAnsiChar(Def), @Buf[0], SizeOf(Buf));
-  if (Len >= 0) and (Len < SizeOf(Buf)) then
-    Result := UTF8ToString(PAnsiChar(@Buf[0]));
-end;
 
 function Fail(ACtx: PVfsOpContext; ACode: TVfsCdeclResult; const AText: string): Int64;
 var
@@ -229,7 +212,7 @@ begin
       Exit;
     GLastQuery := Query;
     Uri := UTF8String(EverythingUri(Query));
-    GHost.PanelGoto(-1, PAnsiChar(Uri));
+    GHostApi.PanelGoto(-1, PAnsiChar(Uri));
   except
     // Never let an exception cross into the host.
   end;
@@ -242,7 +225,7 @@ var
   Json, Plugin: UTF8String;
 begin
   try
-    if not Assigned(GHost.ShowDialog) or not Assigned(GHost.PanelGoto) then
+    if not Assigned(GHostApi.ShowDialog) or not Assigned(GHostApi.PanelGoto) then
       Exit;
     Decl := TJSONObject.Create;
     try
@@ -262,7 +245,7 @@ begin
       Decl.Free;
     end;
     Plugin := UTF8String(cPluginId);
-    GHost.ShowDialog(PAnsiChar(Plugin), PAnsiChar(Json), @OnSearchDialog, nil);
+    GHostApi.ShowDialog(PAnsiChar(Plugin), PAnsiChar(Json), @OnSearchDialog, nil);
   except
     // Never let an exception cross into the host.
   end;
@@ -282,7 +265,7 @@ begin
     if (AHostApi = nil) or (AHostApi.AbiVersion < 4) or
        not Assigned(AHostApi.RegisterVfsSchemeV2) then
       Exit;
-    GHost := AHostApi;
+    SdkAttach(AHostApi, cPluginId);
     Id := UTF8String(cPluginId);
     GCallbacks.ListDirectory := VfsListDirectory;
     GCallbacks.Delete := VfsDelete;
@@ -320,7 +303,7 @@ end;
 procedure mtn_plugin_shutdown; cdecl;
 begin
   StopEverythingService;
-  GHost := nil;
+  SdkDetach;
 end;
 
 exports

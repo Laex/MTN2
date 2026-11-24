@@ -11,6 +11,7 @@ uses
   System.SysUtils, System.Classes, System.IOUtils, System.Diagnostics,
   System.Generics.Collections, System.JSON,
   uPluginHostAbi in '..\..\Core\uPluginHostAbi.pas',
+  uPluginSdk in '..\..\Core\uPluginSdk.pas',
   uVfsTypes in '..\..\Core\uVfsTypes.pas',
   uTreemap in 'uTreemap.pas',
   uDiskMapTree in 'uDiskMapTree.pas',
@@ -55,7 +56,6 @@ type
   end;
 
 var
-  GHostApi: THostApiTable;
   GSessions: TList<TSession>;
   GCache: TList<IDiskScan>;
   GEnabled: Boolean = True;
@@ -66,38 +66,6 @@ begin
     Scan.Scan.Cancel;
   View.Free;
   inherited;
-end;
-
-function Tr(const AKey, ADefault: string): string;
-var
-  Id, Key, Def: UTF8String;
-  Buf: array[0..255] of AnsiChar;
-  Len: Int64;
-begin
-  Result := ADefault;
-  if not Assigned(GHostApi.Translate) then
-    Exit;
-  Id := UTF8String(cPluginId);
-  Key := UTF8String(AKey);
-  Def := UTF8String(ADefault);
-  Len := GHostApi.Translate(PAnsiChar(Id), PAnsiChar(Key), PAnsiChar(Def), @Buf[0], SizeOf(Buf));
-  if (Len >= 0) and (Len < SizeOf(Buf)) then
-    Result := UTF8ToString(PAnsiChar(@Buf[0]));
-end;
-
-function GetSettingText(const AKey: string): string;
-var
-  Id, Key: UTF8String;
-  Buf: array[0..63] of AnsiChar;
-begin
-  Result := '';
-  if not Assigned(GHostApi.GetSetting) then
-    Exit;
-  Id := UTF8String(cPluginId);
-  Key := UTF8String(AKey);
-  Buf[0] := #0;
-  if GHostApi.GetSetting(PAnsiChar(Id), PAnsiChar(Key), @Buf[0], SizeOf(Buf)) >= 0 then
-    Result := UTF8ToString(PAnsiChar(@Buf[0]));
 end;
 
 procedure PutSettingText(const AKey, AValue: string);
@@ -559,7 +527,7 @@ begin
   if (AHostApi = nil) or (AHostApi.AbiVersion < 2) or
      not Assigned(AHostApi.RegisterDocumentProvider) then
     Exit(-1);
-  GHostApi := AHostApi^;
+  SdkAttach(AHostApi, cPluginId);
   GSessions := TList<TSession>.Create;
   GCache := TList<IDiskScan>.Create;
   GEnabled := GetSettingText(cSettingEnabled) <> '0';
@@ -586,7 +554,7 @@ begin
     FreeAndNil(GSessions);
   end;
   FreeAndNil(GCache);
-  FillChar(GHostApi, SizeOf(GHostApi), 0);
+  SdkDetach;
 end;
 
 exports

@@ -15,6 +15,7 @@ uses
   uWinSysCodes,
 {$ENDIF}
   uPluginHostAbi in '..\..\Core\uPluginHostAbi.pas',
+  uPluginSdk in '..\..\Core\uPluginSdk.pas',
   uWinSysFormat in 'uWinSysFormat.pas',
   uWinSysRegistry,
   uWinSysProcess,
@@ -49,46 +50,18 @@ type
   end;
 
 var
-  GHost: PHostApiTable;
   GLock: TCriticalSection;
   GColorsUri: string;
   GColorsJson: string;
-
-function Tr(const AKey, ADefault: string): string;
-var
-  Id, Key, Def: UTF8String;
-  Buf: array[0..511] of AnsiChar;
-  Len: Int64;
-begin
-  Result := ADefault;
-  if (GHost = nil) or not Assigned(GHost.Translate) then
-    Exit;
-  Id := UTF8String(cPluginId);
-  Key := UTF8String(AKey);
-  Def := UTF8String(ADefault);
-  Len := GHost.Translate(PAnsiChar(Id), PAnsiChar(Key), PAnsiChar(Def), @Buf[0], SizeOf(Buf));
-  if (Len >= 0) and (Len < SizeOf(Buf)) then
-    Result := UTF8ToString(PAnsiChar(@Buf[0]));
-end;
-
-procedure Notice(const AText: string; AKind: Int64);
-var
-  Text: UTF8String;
-begin
-  if (GHost = nil) or not Assigned(GHost.ShowMessage) then
-    Exit;
-  Text := UTF8String(AText);
-  GHost.ShowMessage(PAnsiChar(Text), AKind);
-end;
 
 procedure PostToMain(ACallback: THostMainCallback; AData: Pointer);
 var
   Id: UTF8String;
 begin
-  if (GHost = nil) or not Assigned(GHost.PostToMain) then
+  if not Assigned(GHostApi.PostToMain) then
     Exit;
   Id := UTF8String(cPluginId);
-  GHost.PostToMain(PAnsiChar(Id), ACallback, AData);
+  GHostApi.PostToMain(PAnsiChar(Id), ACallback, AData);
 end;
 
 { row colors of svc:/// }
@@ -98,7 +71,7 @@ var
   Uri, Json: string;
   UriU, JsonU, Id: UTF8String;
 begin
-  if (GHost = nil) or not Assigned(GHost.SetRowDecorations) then
+  if not Assigned(GHostApi.SetRowDecorations) then
     Exit;
   GLock.Enter;
   try
@@ -112,7 +85,7 @@ begin
   Id := UTF8String(cPluginId);
   UriU := UTF8String(Uri);
   JsonU := UTF8String(Json);
-  GHost.SetRowDecorations(PAnsiChar(Id), PAnsiChar(UriU), PAnsiChar(JsonU));
+  GHostApi.SetRowDecorations(PAnsiChar(Id), PAnsiChar(UriU), PAnsiChar(JsonU));
 end;
 
 procedure OnServiceColors(const AFolderUri, AJson: string);
@@ -128,23 +101,6 @@ begin
 end;
 
 { service commands }
-
-function ReadPanelInfo: string;
-var
-  Buf: UTF8String;
-  Len: Int64;
-begin
-  Result := '';
-  if (GHost = nil) or not Assigned(GHost.PanelInfo) then
-    Exit;
-  Len := GHost.PanelInfo(nil, 0);
-  if Len <= 0 then
-    Exit;
-  SetLength(Buf, Len + 1);
-  Len := GHost.PanelInfo(PAnsiChar(Buf), Length(Buf));
-  if (Len > 0) and (Len < Length(Buf)) then
-    Result := UTF8ToString(PAnsiChar(Buf));
-end;
 
 // The address of the row under the cursor in the active panel.
 function ActiveCursorUri(const APanelInfo: string): string;
@@ -178,8 +134,8 @@ begin
     else
       Notice(Format(Tr('ui.msg.failed', 'Service %s: %s'),
         [R.Name, WinSysErrorText(R.Err)]), 1);
-    if Assigned(GHost.PanelRefresh) then
-      GHost.PanelRefresh;
+    if Assigned(GHostApi.PanelRefresh) then
+      GHostApi.PanelRefresh;
   finally
     R.Free;
   end;
@@ -191,7 +147,7 @@ var
   Segs: TArray<string>;
   Name: string;
 begin
-  if not ParseWinSysUri(ActiveCursorUri(ReadPanelInfo), Kind, Segs) or (Kind <> wkSvc) or
+  if not ParseWinSysUri(ActiveCursorUri(HostText(GHostApi.PanelInfo)), Kind, Segs) or (Kind <> wkSvc) or
      (Length(Segs) <> 1) then
   begin
     Notice(Tr('ui.msg.notService', 'Put the cursor on a service in svc:///.'), 1);
@@ -231,7 +187,7 @@ begin
   Id := UTF8String(cPluginId);
   Item := UTF8String(AId);
   Caption := UTF8String(Tr(AKey, ADefault));
-  GHost.RegisterMenuItem(PAnsiChar(Id), 'Plugins', PAnsiChar(Item), PAnsiChar(Caption),
+  GHostApi.RegisterMenuItem(PAnsiChar(Id), 'Plugins', PAnsiChar(Item), PAnsiChar(Caption),
     @CmdService, Pointer(NativeInt(Ord(AAction))), APriority);
 end;
 
@@ -243,7 +199,7 @@ begin
   Item := UTF8String(AId);
   Caption := UTF8String(Tr(AKey, ADefault));
   Uri := UTF8String(AUri);
-  GHost.RegisterDriveItem(PAnsiChar(Id), PAnsiChar(Item), PAnsiChar(Caption), PAnsiChar(Uri), APriority);
+  GHostApi.RegisterDriveItem(PAnsiChar(Id), PAnsiChar(Item), PAnsiChar(Caption), PAnsiChar(Uri), APriority);
 end;
 
 var
@@ -295,7 +251,7 @@ begin
     if (AHostApi = nil) or (AHostApi.AbiVersion < 4) or
        not Assigned(AHostApi.RegisterVfsSchemeV2) then
       Exit;
-    GHost := AHostApi;
+    SdkAttach(AHostApi, cPluginId);
     GLock := TCriticalSection.Create;
     Id := UTF8String(cPluginId);
     GCallbacks := WinSysVfsCallbacks;
@@ -343,7 +299,7 @@ end;
 procedure mtn_plugin_shutdown; cdecl;
 begin
   GOnServiceColors := nil;
-  GHost := nil;
+  SdkDetach;
 end;
 
 exports

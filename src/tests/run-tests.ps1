@@ -41,6 +41,13 @@ $Fixtures = @{
         (Join-Path $Tests 'plugins\SamplePlugin.dpr'),
         (Join-Path $Src 'plugins\mtn.7z\SevenZipPlugin.dpr'),
         (Join-Path $Src 'plugins\mtn.tmp\TmpPanelPlugin.dpr'),
+        (Join-Path $Src 'plugins\mtn.checksums\ChecksumsPlugin.dpr'),
+        (Join-Path $Src 'plugins\mtn.splitfile\SplitFilePlugin.dpr'),
+        (Join-Path $Src 'plugins\mtn.archivetools\ArchiveToolsPlugin.dpr'),
+        (Join-Path $Src 'plugins\mtn.multirename\MultiRenamePlugin.dpr'),
+        (Join-Path $Src 'plugins\mtn.exportlist\ExportListPlugin.dpr'),
+        (Join-Path $Src 'plugins\mtn.describe\DescribePlugin.dpr'),
+        (Join-Path $Src 'plugins\mtn.thumbs\ThumbsPlugin.dpr'),
         (Join-Path $Src 'plugins\mtn.net\NetPlugin.dpr'))
 }
 
@@ -122,7 +129,7 @@ if ($Groups | Where-Object Name -eq 'plugins') {
     }
 }
 
-$UnitPath = @('Core', 'plugins\mtn.screensaver\savers\sharks', 'plugins\mtn.screensaver\savers\sharks\tests', 'Platform\Windows', 'Hosts\Ansi', 'Hosts\Common', 'Hosts\Sdl', 'plugins\mtn.7z', 'plugins\mtn.7z\Windows', 'plugins\mtn.thumbs', 'plugins\mtn.tmp', 'plugins\mtn.logfilter', 'plugins\mtn.checksums', 'plugins\mtn.splitfile', 'plugins\mtn.multirename', 'plugins\mtn.exportlist', 'plugins\mtn.archivetools', 'plugins\mtn.lua', 'plugins\mtn.csv', 'plugins\mtn.screensaver', 'plugins\mtn.docview', 'plugins\mtn.pdf', 'plugins\mtn.git', 'plugins\mtn.net', 'plugins\mtn.winsys', 'plugins\mtn.winsys\Windows', 'plugins\mtn.docker', 'plugins\mtn.rclone', 'plugins\mtn.everything', 'plugins\mtn.ripgrep', 'plugins\mtn.bridge', 'plugins\mtn.jtree', 'plugins\mtn.meta', 'plugins\mtn.diskmap', 'plugins\mtn.meta\Windows', 'tests\common' |
+$UnitPath = @('Core', 'plugins\mtn.screensaver\savers\sharks', 'plugins\mtn.screensaver\savers\sharks\tests', 'Platform\Windows', 'Hosts\Ansi', 'Hosts\Common', 'Hosts\Sdl', 'plugins\mtn.7z', 'plugins\mtn.7z\Windows', 'plugins\mtn.thumbs', 'plugins\mtn.thumbs\Windows', 'plugins\mtn.tmp', 'plugins\mtn.logfilter', 'plugins\mtn.checksums', 'plugins\mtn.splitfile', 'plugins\mtn.multirename', 'plugins\mtn.exportlist', 'plugins\mtn.archivetools', 'plugins\mtn.lua', 'plugins\mtn.csv', 'plugins\mtn.screensaver', 'plugins\mtn.docview', 'plugins\mtn.pdf', 'plugins\mtn.git', 'plugins\mtn.net', 'plugins\mtn.winsys', 'plugins\mtn.winsys\Windows', 'plugins\mtn.docker', 'plugins\mtn.rclone', 'plugins\mtn.everything', 'plugins\mtn.ripgrep', 'plugins\mtn.bridge', 'plugins\mtn.jtree', 'plugins\mtn.meta', 'plugins\mtn.diskmap', 'plugins\mtn.meta\Windows', 'tests\common' |
     ForEach-Object { Join-Path $Src $_ }) -join ';'
 
 $Throttle = if ($Jobs -gt 0) { $Jobs } else { $Groups.Count }

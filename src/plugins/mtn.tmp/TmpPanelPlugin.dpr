@@ -9,6 +9,7 @@ library TmpPanelPlugin;
 uses
   System.SysUtils, System.Classes, System.JSON, System.SyncObjs, System.Math,
   uPluginHostAbi in '..\..\Core\uPluginHostAbi.pas',
+  uPluginSdk in '..\..\Core\uPluginSdk.pas',
   uVfsTypes in '..\..\Core\uVfsTypes.pas',
   uTmpPanelStore in 'uTmpPanelStore.pas',
   uTmpPanelCollect in 'uTmpPanelCollect.pas',
@@ -38,7 +39,6 @@ var
   GBusy: Boolean;
   // Set on the main thread when the user cancels the host job; read by the worker.
   GCancel: Integer;
-  GHostApi: THostApiTable;
   GVfsCallbacks: TVfsCallbacksCdecl;
 
 function WriteUtf8Buf(const AData: UTF8String; ABuf: PAnsiChar; ABufSize: Int64;
@@ -87,33 +87,6 @@ begin
   PublishReload;
 end;
 
-function Tr(const AKey, ADefault: string): string;
-var
-  Id, Key, Def: UTF8String;
-  Buf: array[0..255] of AnsiChar;
-  Len: Int64;
-begin
-  Result := ADefault;
-  if not Assigned(GHostApi.Translate) then
-    Exit;
-  Id := UTF8String(cPluginId);
-  Key := UTF8String(AKey);
-  Def := UTF8String(ADefault);
-  Len := GHostApi.Translate(PAnsiChar(Id), PAnsiChar(Key), PAnsiChar(Def), @Buf[0], SizeOf(Buf));
-  if (Len >= 0) and (Len < SizeOf(Buf)) then
-    Result := UTF8ToString(PAnsiChar(@Buf[0]));
-end;
-
-procedure Notice(const AText: string; AKind: Int64);
-var
-  Text: UTF8String;
-begin
-  if not Assigned(GHostApi.ShowMessage) then
-    Exit;
-  Text := UTF8String(AText);
-  GHostApi.ShowMessage(PAnsiChar(Text), AKind);
-end;
-
 const
   cProgressIntervalMs = 200;
 
@@ -159,33 +132,6 @@ begin
     GHostApi.JobEnd(PAnsiChar(Plugin), PAnsiChar(Id))
   else if Assigned(GHostApi.ProgressEnd) then
     GHostApi.ProgressEnd(PAnsiChar(Plugin), PAnsiChar(Id));
-end;
-
-function GetSettingText(const AKey: string): string;
-var
-  Plugin, Key: UTF8String;
-  Buf: array[0..1023] of AnsiChar;
-begin
-  Result := '';
-  if not Assigned(GHostApi.GetSetting) then
-    Exit;
-  Plugin := UTF8String(cPluginId);
-  Key := UTF8String(AKey);
-  Buf[0] := #0;
-  if GHostApi.GetSetting(PAnsiChar(Plugin), PAnsiChar(Key), @Buf[0], SizeOf(Buf)) >= 0 then
-    Result := UTF8ToString(PAnsiChar(@Buf[0]));
-end;
-
-procedure SetSettingText(const AKey, AValue: string);
-var
-  Plugin, Key, Value: UTF8String;
-begin
-  if not Assigned(GHostApi.SetSetting) then
-    Exit;
-  Plugin := UTF8String(cPluginId);
-  Key := UTF8String(AKey);
-  Value := UTF8String(AValue);
-  GHostApi.SetSetting(PAnsiChar(Plugin), PAnsiChar(Key), PAnsiChar(Value));
 end;
 
 { Folder shown by the active file panel as a local path; '' when the active
@@ -656,7 +602,7 @@ var
 begin
   if AHostApi = nil then
     Exit(-1);
-  GHostApi := AHostApi^;
+  SdkAttach(AHostApi, cPluginId);
 
   FillChar(GVfsCallbacks, SizeOf(GVfsCallbacks), 0);
   GVfsCallbacks.ListDirectory := @TmpListDirectory;
@@ -707,7 +653,7 @@ end;
 procedure mtn_plugin_shutdown; cdecl;
 begin
   TmpPanelClear;
-  FillChar(GHostApi, SizeOf(GHostApi), 0);
+  SdkDetach;
 end;
 
 exports

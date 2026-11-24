@@ -1,0 +1,18 @@
+{
+  "menu": {
+    "test": "测试压缩包",
+    "pack": "逐项打包"
+  },
+  "dlg": {
+    "testTitle": "测试压缩包",
+    "packTitle": "逐项打包",
+    "close": "关闭"
+  },
+  "msg": {
+    "oneZip": "请选择磁盘上的一个 ZIP 压缩包",
+    "noSources": "请选择磁盘上的文件或文件夹",
+    "testOk": "%d 个文件正常",
+    "testFailed": "%d/%d 个文件已损坏：",
+    "packDone": "已创建 %d 个压缩包"
+  }
+}

@@ -60,6 +60,13 @@ if (-not $Group -or $Group -contains 'plugins') {
     Build-PluginLibrary (Join-Path $Tests 'plugins\SamplePlugin.dpr') "$Src\Core;$Src\Platform\Posix"
     Build-PluginLibrary (Join-Path $Src 'plugins\mtn.7z\SevenZipPlugin.dpr') "$Src\Core;$Src\Platform\Posix;$Src\plugins\mtn.7z;$Src\plugins\mtn.7z\Posix"
     Build-PluginLibrary (Join-Path $Src 'plugins\mtn.tmp\TmpPanelPlugin.dpr') "$Src\Core;$Src\Platform\Posix;$Src\plugins\mtn.tmp"
+    Build-PluginLibrary (Join-Path $Src 'plugins\mtn.checksums\ChecksumsPlugin.dpr') "$Src\Core;$Src\Platform\Posix;$Src\plugins\mtn.checksums"
+    Build-PluginLibrary (Join-Path $Src 'plugins\mtn.splitfile\SplitFilePlugin.dpr') "$Src\Core;$Src\Platform\Posix;$Src\plugins\mtn.splitfile"
+    Build-PluginLibrary (Join-Path $Src 'plugins\mtn.archivetools\ArchiveToolsPlugin.dpr') "$Src\Core;$Src\Platform\Posix;$Src\plugins\mtn.archivetools"
+    Build-PluginLibrary (Join-Path $Src 'plugins\mtn.multirename\MultiRenamePlugin.dpr') "$Src\Core;$Src\Platform\Posix;$Src\plugins\mtn.multirename"
+    Build-PluginLibrary (Join-Path $Src 'plugins\mtn.exportlist\ExportListPlugin.dpr') "$Src\Core;$Src\Platform\Posix;$Src\plugins\mtn.exportlist"
+    Build-PluginLibrary (Join-Path $Src 'plugins\mtn.describe\DescribePlugin.dpr') "$Src\Core;$Src\Platform\Posix;$Src\plugins\mtn.describe"
+    Build-PluginLibrary (Join-Path $Src 'plugins\mtn.thumbs\ThumbsPlugin.dpr') "$Src\Core;$Src\Platform\Posix;$Src\plugins\mtn.thumbs;$Src\plugins\mtn.thumbs\Posix;$Src\Hosts\Sdl"
     & (Join-Path $Src 'tools\fetch-wasmtime.ps1') -Linux | Out-Null
 }
 $WasmtimeLib = Join-Path $Src 'tools\wasmtime\linux64\libwasmtime.so'

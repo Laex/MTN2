@@ -1,0 +1,13 @@
+{
+  "dlg": {
+    "ok": "OK",
+    "cancel": "Abbrechen",
+    "copy": "Kopieren",
+    "save": "Speichern",
+    "close": "Schließen"
+  },
+  "msg": {
+    "localOnly": "Nur für Dateien und Ordner auf der Festplatte",
+    "none": "(leer)"
+  }
+}

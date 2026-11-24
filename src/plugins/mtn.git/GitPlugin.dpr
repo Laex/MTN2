@@ -8,6 +8,7 @@ library GitPlugin;
 uses
   System.SysUtils, System.Classes, System.SyncObjs,
   uPluginHostAbi in '..\..\Core\uPluginHostAbi.pas',
+  uPluginSdk in '..\..\Core\uPluginSdk.pas',
   uVfsTypes in '..\..\Core\uVfsTypes.pas',
   uGitStatus in 'uGitStatus.pas',
   uGitSettings in 'uGitSettings.pas',
@@ -43,7 +44,6 @@ type
   end;
 
 var
-  GHostApi: THostApiTable;
   GLock: TCriticalSection;
   GActiveUri: string;
   GPendingText: string;
@@ -86,38 +86,6 @@ begin
     Text := UTF8String(AText);
     GHostApi.SetStatusSegment(PAnsiChar(Id), PAnsiChar(Seg), PAnsiChar(Text));
   end;
-end;
-
-function Tr(const AKey, ADefault: string): string;
-var
-  Id, Key, Def: UTF8String;
-  Buf: array[0..255] of AnsiChar;
-  Len: Int64;
-begin
-  Result := ADefault;
-  if not Assigned(GHostApi.Translate) then
-    Exit;
-  Id := UTF8String(cPluginId);
-  Key := UTF8String(AKey);
-  Def := UTF8String(ADefault);
-  Len := GHostApi.Translate(PAnsiChar(Id), PAnsiChar(Key), PAnsiChar(Def), @Buf[0], SizeOf(Buf));
-  if (Len >= 0) and (Len < SizeOf(Buf)) then
-    Result := UTF8ToString(PAnsiChar(@Buf[0]));
-end;
-
-function GetSettingText(const AKey: string): string;
-var
-  Id, Key: UTF8String;
-  Buf: array[0..127] of AnsiChar;
-begin
-  Result := '';
-  if not Assigned(GHostApi.GetSetting) then
-    Exit;
-  Id := UTF8String(cPluginId);
-  Key := UTF8String(AKey);
-  Buf[0] := #0;
-  if GHostApi.GetSetting(PAnsiChar(Id), PAnsiChar(Key), @Buf[0], SizeOf(Buf)) >= 0 then
-    Result := UTF8ToString(PAnsiChar(@Buf[0]));
 end;
 
 procedure PutSettingText(const AKey, AValue: string);
@@ -212,33 +180,6 @@ begin
   end;
 end;
 
-procedure ShowNotice(const AText: string; AKind: Int64);
-var
-  Text: UTF8String;
-begin
-  if not Assigned(GHostApi.ShowMessage) then
-    Exit;
-  Text := UTF8String(AText);
-  GHostApi.ShowMessage(PAnsiChar(Text), AKind);
-end;
-
-function ReadPanelInfo: string;
-var
-  Buf: UTF8String;
-  Len: Int64;
-begin
-  Result := '';
-  if not Assigned(GHostApi.PanelInfo) then
-    Exit;
-  Len := GHostApi.PanelInfo(nil, 0);
-  if Len <= 0 then
-    Exit;
-  SetLength(Buf, Len + 1);
-  Len := GHostApi.PanelInfo(PAnsiChar(Buf), Length(Buf));
-  if (Len > 0) and (Len < Length(Buf)) then
-    Result := UTF8ToString(PAnsiChar(Buf));
-end;
-
 function HostHasJobs: Boolean;
 begin
   Result := (GHostApi.AbiVersion >= cJobsAbi) and Assigned(GHostApi.JobBegin) and
@@ -280,7 +221,7 @@ end;
 { Main thread: the diff is ready - open it in the built-in viewer. }
 procedure MainShowDiff(AUserData: Pointer); cdecl;
 var
-  FileName, Notice: string;
+  FileName, NoticeText: string;
   Uri: UTF8String;
 begin
   try
@@ -295,13 +236,13 @@ begin
       finally
         GLock.Leave;
       end;
-      ShowNotice(Tr('msg.cancelled', 'Cancelled.'), 0);
+      Notice(Tr('msg.cancelled', 'Cancelled.'), 0);
       Exit;
     end;
     GLock.Enter;
     try
       FileName := GDiffFile;
-      Notice := GDiffNotice;
+      NoticeText := GDiffNotice;
       GDiffFile := '';
       GDiffNotice := '';
       GDiffBusy := False;
@@ -312,10 +253,10 @@ begin
     begin
       Uri := UTF8String(PathToFileUri(FileName));
       if GHostApi.OpenDocument(PAnsiChar(Uri), 0) <> 0 then
-        ShowNotice(Tr('msg.openFailed', 'The diff could not be shown.'), 1);
+        Notice(Tr('msg.openFailed', 'The diff could not be shown.'), 1);
     end
-    else if Notice <> '' then
-      ShowNotice(Notice, 0);
+    else if NoticeText <> '' then
+      Notice(NoticeText, 0);
   except
   end;
 end;
@@ -349,11 +290,11 @@ end;
 
 procedure TGitDiffThread.Execute;
 var
-  Text, FileName, Notice: string;
+  Text, FileName, NoticeText: string;
   R: TGitDiffResult;
 begin
   FileName := '';
-  Notice := '';
+  NoticeText := '';
   try
     if FBlame then
       R := ReadGitBlame(FPath,
@@ -373,18 +314,18 @@ begin
           FileName := WriteBlameFile(FName, Text)
         else
           FileName := WriteDiffFile(FName, Text);
-      gdNoChanges: Notice := FNoChanges;
-      gdNotRepo: Notice := FNoRepo;
+      gdNoChanges: NoticeText := FNoChanges;
+      gdNotRepo: NoticeText := FNoRepo;
     else
-      Notice := FError;
+      NoticeText := FError;
     end;
   except
-    Notice := FError;
+    NoticeText := FError;
   end;
   GLock.Enter;
   try
     GDiffFile := FileName;
-    GDiffNotice := Notice;
+    GDiffNotice := NoticeText;
   finally
     GLock.Leave;
   end;
@@ -402,13 +343,13 @@ begin
   try
     if (GHostApi.AbiVersion < cOpenDocumentAbi) or not Assigned(GHostApi.OpenDocument) then
     begin
-      ShowNotice(Tr('msg.needNewer', 'This needs a newer MTN2.'), 1);
+      Notice(Tr('msg.needNewer', 'This needs a newer MTN2.'), 1);
       Exit;
     end;
-    if not ActivePanelCursor(ReadPanelInfo, Uri, IsDir) or not Uri.StartsWith('file:', True) or
+    if not ActivePanelCursor(HostText(GHostApi.PanelInfo), Uri, IsDir) or not Uri.StartsWith('file:', True) or
        (ABlame and IsDir) then
     begin
-      ShowNotice(Tr('msg.noFile', 'Put the cursor on a file or folder of a local git folder.'), 0);
+      Notice(Tr('msg.noFile', 'Put the cursor on a file or folder of a local git folder.'), 0);
       Exit;
     end;
     GLock.Enter;
@@ -710,7 +651,7 @@ var
 begin
   if AHostApi = nil then
     Exit(-1);
-  GHostApi := AHostApi^;
+  SdkAttach(AHostApi, cPluginId);
   if not (Assigned(GHostApi.SetStatusSegment) and Assigned(GHostApi.PanelInfo) and
      Assigned(GHostApi.PostToMain) and Assigned(GHostApi.Subscribe)) then
     Exit(-1);
@@ -769,7 +710,7 @@ begin
   end;
   SetSegment('', '');
   FreeAndNil(GLock);
-  FillChar(GHostApi, SizeOf(GHostApi), 0);
+  SdkDetach;
 end;
 
 exports

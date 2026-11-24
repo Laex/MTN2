@@ -1,0 +1,42 @@
+{
+  "menu": {
+    "run": "导出列表..."
+  },
+  "col": {
+    "name": "名称(&N)",
+    "path": "路径",
+    "size": "大小(&S)",
+    "modified": "修改时间",
+    "created": "创建时间",
+    "accessed": "访问时间",
+    "type": "类型(&T)"
+  },
+  "dlg": {
+    "title": "保存列表",
+    "prompt": "将列表保存到文件:",
+    "format": "格式:",
+    "fmtAuto": "自动(按扩展名)(&U)",
+    "fmtText": "纯文本(&I)",
+    "fmtMd": "Markdown(&K)",
+    "fmtCsv": "CSV(&V)",
+    "header": "标题行(&H)",
+    "fields": "字段:",
+    "fName": "名称(&N)",
+    "fPath": "完整路径(&F)",
+    "fExt": "扩展名(&E)",
+    "fSize": "大小(&S)",
+    "fModified": "修改日期(&M)",
+    "fCreated": "创建日期(&C)",
+    "fAccessed": "访问日期(&A)",
+    "fType": "类型(&T)",
+    "fAttr": "属性(&B)",
+    "ok": "  确定  ",
+    "cancel": "取消"
+  },
+  "msg": {
+    "nothing": "没有可保存的内容",
+    "noFields": "请至少选择一个字段",
+    "saved": "已保存 %d 项: %s",
+    "failed": "无法保存列表"
+  }
+}

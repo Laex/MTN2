@@ -1,0 +1,23 @@
+{
+  "menu": {
+    "run": "Teilen / Zusammenfügen..."
+  },
+  "dlg": {
+    "title": "Teilen / Zusammenfügen",
+    "splitTitle": "Datei teilen",
+    "combineTitle": "Dateien zusammenfügen",
+    "partsFolder": "Teile in Ordner:",
+    "partSize": "Teilgröße (z. B. 700M, 1.44M, 4G, 65536):",
+    "resultFile": "Zieldatei:",
+    "split": "Teilen",
+    "combine": "Zusammenfügen",
+    "cancel": "Abbrechen"
+  },
+  "msg": {
+    "oneFile": "Eine Datei auf dem Datenträger wählen",
+    "noDest": "Zielangabe fehlt",
+    "badSize": "Teilgröße: Zahl mit K, M oder G, mindestens 1K",
+    "splitDone": "%d Teile erstellt",
+    "combineDone": "%s erstellt"
+  }
+}

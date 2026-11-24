@@ -28,6 +28,7 @@ This file describes what changes for the user from version to version: new featu
 
 ### Fixed
 
+- German and Chinese texts of the dialogs and messages of the plugins that took over checksums, split, archive tools, multi-rename, list export, descriptions and thumbnails are back; texts without a translation show in English.
 - Both panels refresh after a plugin job (checksums, split, test archive, pack each item, multi-rename) instead of one.
 - Multi-rename "In editor": starting the command again no longer stays blocked after the editor was closed, and unloading the plugin drops the pending edit.
 - Plugin jobs and thumbnail decoding stop cleanly when the plugin is unloaded or the program closes.

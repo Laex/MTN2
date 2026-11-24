@@ -8,6 +8,7 @@ library DockerPlugin;
 uses
   System.SysUtils, System.Classes, System.JSON, System.SyncObjs,
   uPluginHostAbi in '..\..\Core\uPluginHostAbi.pas',
+  uPluginSdk in '..\..\Core\uPluginSdk.pas',
   uDockerFormat in 'uDockerFormat.pas',
   uDockerVfs in 'uDockerVfs.pas';
 
@@ -31,47 +32,19 @@ type
   end;
 
 var
-  GHost: PHostApiTable;
   GLock: TCriticalSection;
   GColorsUri: string;
   GColorsJson: string;
   GCallbacks: TVfsCallbacksCdeclV2;
 
-function Tr(const AKey, ADefault: string): string;
-var
-  Id, Key, Def: UTF8String;
-  Buf: array[0..511] of AnsiChar;
-  Len: Int64;
-begin
-  Result := ADefault;
-  if (GHost = nil) or not Assigned(GHost.Translate) then
-    Exit;
-  Id := UTF8String(cPluginId);
-  Key := UTF8String(AKey);
-  Def := UTF8String(ADefault);
-  Len := GHost.Translate(PAnsiChar(Id), PAnsiChar(Key), PAnsiChar(Def), @Buf[0], SizeOf(Buf));
-  if (Len >= 0) and (Len < SizeOf(Buf)) then
-    Result := UTF8ToString(PAnsiChar(@Buf[0]));
-end;
-
-procedure Notice(const AText: string; AKind: Int64);
-var
-  Text: UTF8String;
-begin
-  if (GHost = nil) or not Assigned(GHost.ShowMessage) then
-    Exit;
-  Text := UTF8String(AText);
-  GHost.ShowMessage(PAnsiChar(Text), AKind);
-end;
-
 procedure PostToMain(ACallback: THostMainCallback; AData: Pointer);
 var
   Id: UTF8String;
 begin
-  if (GHost = nil) or not Assigned(GHost.PostToMain) then
+  if not Assigned(GHostApi.PostToMain) then
     Exit;
   Id := UTF8String(cPluginId);
-  GHost.PostToMain(PAnsiChar(Id), ACallback, AData);
+  GHostApi.PostToMain(PAnsiChar(Id), ACallback, AData);
 end;
 
 { row colors of the container and pod lists }
@@ -81,7 +54,7 @@ var
   Uri, Json: string;
   UriU, JsonU, Id: UTF8String;
 begin
-  if (GHost = nil) or not Assigned(GHost.SetRowDecorations) then
+  if not Assigned(GHostApi.SetRowDecorations) then
     Exit;
   GLock.Enter;
   try
@@ -95,7 +68,7 @@ begin
   Id := UTF8String(cPluginId);
   UriU := UTF8String(Uri);
   JsonU := UTF8String(Json);
-  GHost.SetRowDecorations(PAnsiChar(Id), PAnsiChar(UriU), PAnsiChar(JsonU));
+  GHostApi.SetRowDecorations(PAnsiChar(Id), PAnsiChar(UriU), PAnsiChar(JsonU));
 end;
 
 procedure OnRowColors(const AFolderUri, AJson: string);
@@ -111,23 +84,6 @@ begin
 end;
 
 { container commands }
-
-function ReadPanelInfo: string;
-var
-  Buf: UTF8String;
-  Len: Int64;
-begin
-  Result := '';
-  if (GHost = nil) or not Assigned(GHost.PanelInfo) then
-    Exit;
-  Len := GHost.PanelInfo(nil, 0);
-  if Len <= 0 then
-    Exit;
-  SetLength(Buf, Len + 1);
-  Len := GHost.PanelInfo(PAnsiChar(Buf), Length(Buf));
-  if (Len > 0) and (Len < Length(Buf)) then
-    Result := UTF8ToString(PAnsiChar(Buf));
-end;
 
 // The address of the row under the cursor in the active panel.
 function ActiveCursorUri(const APanelInfo: string): string;
@@ -160,8 +116,8 @@ begin
       Notice(Format(Tr('ui.msg.done', 'Container %s: done.'), [R.Name]), 0)
     else
       Notice(Format(Tr('ui.msg.failed', 'Container %s: %s'), [R.Name, R.Error]), 1);
-    if Assigned(GHost.PanelRefresh) then
-      GHost.PanelRefresh;
+    if Assigned(GHostApi.PanelRefresh) then
+      GHostApi.PanelRefresh;
   finally
     R.Free;
   end;
@@ -172,7 +128,7 @@ var
   Addr: TDockerAddr;
   Name: string;
 begin
-  if not ParseDockerUri(ActiveCursorUri(ReadPanelInfo), Addr) or (Addr.Backend <> dbDocker) or
+  if not ParseDockerUri(ActiveCursorUri(HostText(GHostApi.PanelInfo)), Addr) or (Addr.Backend <> dbDocker) or
      (Addr.Node <> dnItem) then
   begin
     Notice(Tr('ui.msg.notContainer', 'Put the cursor on a container in docker:///containers.'), 1);
@@ -215,7 +171,7 @@ begin
   Id := UTF8String(cPluginId);
   Item := UTF8String(AId);
   Caption := UTF8String(Tr(AKey, ADefault));
-  GHost.RegisterMenuItem(PAnsiChar(Id), 'Plugins', PAnsiChar(Item), PAnsiChar(Caption),
+  GHostApi.RegisterMenuItem(PAnsiChar(Id), 'Plugins', PAnsiChar(Item), PAnsiChar(Caption),
     @CmdContainer, Pointer(NativeInt(AVerb)), APriority);
 end;
 
@@ -250,7 +206,7 @@ begin
     if (AHostApi = nil) or (AHostApi.AbiVersion < 4) or
        not Assigned(AHostApi.RegisterVfsSchemeV2) then
       Exit;
-    GHost := AHostApi;
+    SdkAttach(AHostApi, cPluginId);
     GLock := TCriticalSection.Create;
     Id := UTF8String(cPluginId);
     GCallbacks := DockerVfsCallbacks;
@@ -291,7 +247,7 @@ end;
 procedure mtn_plugin_shutdown; cdecl;
 begin
   GOnRowColors := nil;
-  GHost := nil;
+  SdkDetach;
 end;
 
 exports

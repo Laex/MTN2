@@ -1,0 +1,42 @@
+{
+  "menu": {
+    "run": "Liste speichern..."
+  },
+  "col": {
+    "name": "&Name",
+    "path": "Pfad",
+    "size": "&Größe",
+    "modified": "Geändert",
+    "created": "Erstellt",
+    "accessed": "Zugriff",
+    "type": "&Typ"
+  },
+  "dlg": {
+    "title": "Liste speichern",
+    "prompt": "Liste in Datei speichern:",
+    "format": "Format:",
+    "fmtAuto": "A&uto (nach Endung)",
+    "fmtText": "Nur Te&xt",
+    "fmtMd": "Mar&kdown",
+    "fmtCsv": "CS&V",
+    "header": "&Überschriften",
+    "fields": "Felder:",
+    "fName": "&Name",
+    "fPath": "&Pfad",
+    "fExt": "E&rweiterung",
+    "fSize": "&Größe",
+    "fModified": "Ä&nderungsdatum",
+    "fCreated": "&Erstellungsdatum",
+    "fAccessed": "&Zugriffsdatum",
+    "fType": "&Typ",
+    "fAttr": "Attri&bute",
+    "ok": "  OK  ",
+    "cancel": "Abbrechen"
+  },
+  "msg": {
+    "nothing": "Nichts zu speichern",
+    "noFields": "Mindestens ein Feld wählen",
+    "saved": "%d Einträge gespeichert: %s",
+    "failed": "Liste konnte nicht gespeichert werden"
+  }
+}

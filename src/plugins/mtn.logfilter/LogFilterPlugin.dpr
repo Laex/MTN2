@@ -8,6 +8,7 @@ library LogFilterPlugin;
 uses
   System.SysUtils, System.Classes, System.JSON, System.IOUtils,
   uPluginHostAbi in '..\..\Core\uPluginHostAbi.pas',
+  uPluginSdk in '..\..\Core\uPluginSdk.pas',
   uVfsTypes in '..\..\Core\uVfsTypes.pas',
   uLogFilter in 'uLogFilter.pas';
 
@@ -22,81 +23,8 @@ const
   cKeepDays = 1;
 
 var
-  GHostApi: THostApiTable;
   GDocPath: string;
   GTempFiles: TArray<string>;
-
-function Tr(const AKey, ADefault: string): string;
-var
-  Id, Key, Def: UTF8String;
-  Buf: array[0..255] of AnsiChar;
-  Len: Int64;
-begin
-  Result := ADefault;
-  if not Assigned(GHostApi.Translate) then
-    Exit;
-  Id := UTF8String(cPluginId);
-  Key := UTF8String(AKey);
-  Def := UTF8String(ADefault);
-  Len := GHostApi.Translate(PAnsiChar(Id), PAnsiChar(Key), PAnsiChar(Def), @Buf[0], SizeOf(Buf));
-  if (Len >= 0) and (Len < SizeOf(Buf)) then
-    Result := UTF8ToString(PAnsiChar(@Buf[0]));
-end;
-
-procedure Notice(const AText: string; AKind: Int64);
-var
-  Text: UTF8String;
-begin
-  if not Assigned(GHostApi.ShowMessage) then
-    Exit;
-  Text := UTF8String(AText);
-  GHostApi.ShowMessage(PAnsiChar(Text), AKind);
-end;
-
-function GetSettingText(const AKey: string): string;
-var
-  Plugin, Key: UTF8String;
-  Buf: array[0..1023] of AnsiChar;
-begin
-  Result := '';
-  if not Assigned(GHostApi.GetSetting) then
-    Exit;
-  Plugin := UTF8String(cPluginId);
-  Key := UTF8String(AKey);
-  Buf[0] := #0;
-  if GHostApi.GetSetting(PAnsiChar(Plugin), PAnsiChar(Key), @Buf[0], SizeOf(Buf)) >= 0 then
-    Result := UTF8ToString(PAnsiChar(@Buf[0]));
-end;
-
-procedure SetSettingText(const AKey, AValue: string);
-var
-  Plugin, Key, Value: UTF8String;
-begin
-  if not Assigned(GHostApi.SetSetting) then
-    Exit;
-  Plugin := UTF8String(cPluginId);
-  Key := UTF8String(AKey);
-  Value := UTF8String(AValue);
-  GHostApi.SetSetting(PAnsiChar(Plugin), PAnsiChar(Key), PAnsiChar(Value));
-end;
-
-{ A text result of the host (DocInfo and the like): '' when it is not available. }
-function HostText(AFn: THostTextOutFn): string;
-var
-  Buf: UTF8String;
-  Len: Int64;
-begin
-  Result := '';
-  if not Assigned(AFn) then
-    Exit;
-  Len := AFn(nil, 0);
-  if Len <= 0 then
-    Exit;
-  SetLength(Buf, Len + 1);
-  Len := AFn(PAnsiChar(Buf), Length(Buf));
-  if (Len > 0) and (Len < Length(Buf)) then
-    Result := UTF8ToString(PAnsiChar(Buf));
-end;
 
 function DocumentText: string;
 var
@@ -380,7 +308,7 @@ begin
      not Assigned(AHostApi.OpenDocument) or not Assigned(AHostApi.ShowDialog) or
      not Assigned(AHostApi.RegisterCommand) then
     Exit(-1);
-  GHostApi := AHostApi^;
+  SdkAttach(AHostApi, cPluginId);
   RemoveOldTempFiles;
   PluginId := UTF8String(cPluginId);
   CommandId := UTF8String(cCommandId);
@@ -405,7 +333,7 @@ begin
       // Still open in a tab: removed by the next start.
     end;
   GTempFiles := nil;
-  FillChar(GHostApi, SizeOf(GHostApi), 0);
+  SdkDetach;
 end;
 
 exports

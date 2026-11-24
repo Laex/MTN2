@@ -43,6 +43,7 @@ uses
   TestTmpPanelCollect in 'TestTmpPanelCollect.pas',
   TestChecksums in 'TestChecksums.pas',
   TestPluginSdk in 'TestPluginSdk.pas',
+  TestMovedPlugins in 'TestMovedPlugins.pas',
   TestFileSplit in 'TestFileSplit.pas',
   TestMultiRename in 'TestMultiRename.pas',
   TestListExport in 'TestListExport.pas',

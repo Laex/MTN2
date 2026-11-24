@@ -1,0 +1,23 @@
+{
+  "menu": {
+    "run": "分割 / 合并..."
+  },
+  "dlg": {
+    "title": "分割 / 合并",
+    "splitTitle": "分割文件",
+    "combineTitle": "合并文件",
+    "partsFolder": "分卷保存到文件夹：",
+    "partSize": "分卷大小（例如 700M、1.44M、4G、65536）：",
+    "resultFile": "结果文件：",
+    "split": "分割",
+    "combine": "合并",
+    "cancel": "取消"
+  },
+  "msg": {
+    "oneFile": "请选择磁盘上的一个文件",
+    "noDest": "请指定结果的保存位置",
+    "badSize": "分卷大小：数字加 K、M 或 G，至少 1K",
+    "splitDone": "已创建 %d 个分卷",
+    "combineDone": "已创建 %s"
+  }
+}

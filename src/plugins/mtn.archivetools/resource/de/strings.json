@@ -1,0 +1,18 @@
+{
+  "menu": {
+    "test": "Archiv prüfen",
+    "pack": "Jedes Element packen"
+  },
+  "dlg": {
+    "testTitle": "Archiv prüfen",
+    "packTitle": "Jedes Element packen",
+    "close": "Schließen"
+  },
+  "msg": {
+    "oneZip": "Ein ZIP-Archiv auf dem Datenträger wählen",
+    "noSources": "Dateien oder Ordner auf dem Datenträger wählen",
+    "testOk": "%d Dateien in Ordnung",
+    "testFailed": "%d von %d Dateien beschädigt:",
+    "packDone": "%d Archive erstellt"
+  }
+}

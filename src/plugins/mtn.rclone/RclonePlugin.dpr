@@ -7,6 +7,7 @@ library RclonePlugin;
 uses
   System.SysUtils,
   uPluginHostAbi in '..\..\Core\uPluginHostAbi.pas',
+  uPluginSdk in '..\..\Core\uPluginSdk.pas',
   uRcloneFormat in 'uRcloneFormat.pas',
   uRcloneVfs in 'uRcloneVfs.pas';
 
@@ -21,25 +22,7 @@ const
     '"Shift+F4":"","Shift+F5":"","Shift+F6":""}}';
 
 var
-  GHost: PHostApiTable;
   GCallbacks: TVfsCallbacksCdeclV2;
-
-function Tr(const AKey, ADefault: string): string;
-var
-  Id, Key, Def: UTF8String;
-  Buf: array[0..511] of AnsiChar;
-  Len: Int64;
-begin
-  Result := ADefault;
-  if (GHost = nil) or not Assigned(GHost.Translate) then
-    Exit;
-  Id := UTF8String(cPluginId);
-  Key := UTF8String(AKey);
-  Def := UTF8String(ADefault);
-  Len := GHost.Translate(PAnsiChar(Id), PAnsiChar(Key), PAnsiChar(Def), @Buf[0], SizeOf(Buf));
-  if (Len >= 0) and (Len < SizeOf(Buf)) then
-    Result := UTF8ToString(PAnsiChar(@Buf[0]));
-end;
 
 function mtn_plugin_get_abi_version: Int64; cdecl;
 begin
@@ -55,7 +38,7 @@ begin
     if (AHostApi = nil) or (AHostApi.AbiVersion < 4) or
        not Assigned(AHostApi.RegisterVfsSchemeV2) then
       Exit;
-    GHost := AHostApi;
+    SdkAttach(AHostApi, cPluginId);
     Id := UTF8String(cPluginId);
     GCallbacks := RcloneVfsCallbacks;
     AHostApi.RegisterVfsSchemeV2(PAnsiChar(Id), PAnsiChar(cScheme), @GCallbacks, nil, 60);
@@ -79,7 +62,7 @@ end;
 
 procedure mtn_plugin_shutdown; cdecl;
 begin
-  GHost := nil;
+  SdkDetach;
 end;
 
 exports

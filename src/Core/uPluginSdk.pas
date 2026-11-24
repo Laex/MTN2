@@ -28,7 +28,7 @@ procedure SdkRunWorker(const AProc: TProc);
 function SdkPostToMain(ACallback: THostMainCallback; AUserData: Pointer = nil): Boolean;
 
 function Tr(const AKey, ADefault: string): string;
-procedure Notice(const AText: string; AKind: Int64);
+procedure Notice(const AText: string; AKind: Int64 = 0);
 function GetSettingText(const AKey: string): string;
 procedure SetSettingText(const AKey, AValue: string);
 function HostText(AFn: THostTextOutFn): string;

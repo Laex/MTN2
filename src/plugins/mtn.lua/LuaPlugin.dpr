@@ -12,6 +12,7 @@ uses
   System.Generics.Collections, System.RegularExpressions, System.Character, System.NetEncoding,
   {$IFDEF MSWINDOWS}Winapi.Windows,{$ENDIF}
   uPluginHostAbi in '..\..\Core\uPluginHostAbi.pas',
+  uPluginSdk in '..\..\Core\uPluginSdk.pas',
   uVfsTypes in '..\..\Core\uVfsTypes.pas',
   uLuaApi in 'uLuaApi.pas',
   uLuaHostFns in 'uLuaHostFns.pas',
@@ -35,7 +36,6 @@ type
   end;
 
 var
-  GHostApi: THostApiTable;
   GMacrosDir: string;
   GLoadError: string;
   GRecording: Boolean;
@@ -56,33 +56,6 @@ var
   GPending: TStringList;
   GPendingArea: string;
   GDialogMacro: string;
-
-function Tr(const AKey, ADefault: string): string;
-var
-  Id, Key, Def: UTF8String;
-  Buf: array[0..511] of AnsiChar;
-  Len: Int64;
-begin
-  Result := ADefault;
-  if not Assigned(GHostApi.Translate) then
-    Exit;
-  Id := UTF8String(cPluginId);
-  Key := UTF8String(AKey);
-  Def := UTF8String(ADefault);
-  Len := GHostApi.Translate(PAnsiChar(Id), PAnsiChar(Key), PAnsiChar(Def), @Buf[0], SizeOf(Buf));
-  if (Len >= 0) and (Len < SizeOf(Buf)) then
-    Result := UTF8ToString(PAnsiChar(@Buf[0]));
-end;
-
-procedure Notice(const AText: string; AKind: Integer = 0);
-var
-  Raw: UTF8String;
-begin
-  if not Assigned(GHostApi.ShowMessage) then
-    Exit;
-  Raw := UTF8String(AText);
-  GHostApi.ShowMessage(PAnsiChar(Raw), AKind);
-end;
 
 { Why macros are off, with the way to fix it for this platform. }
 function NoLuaText: string;
@@ -111,33 +84,6 @@ begin
     Result := UTF8ToString(PAnsiChar(@Buf[0]));
   if Result.StartsWith('macro.run.') then
     Result := '';
-end;
-
-function GetSettingText(const AKey: string): string;
-var
-  Plugin, Key: UTF8String;
-  Buf: array[0..1023] of AnsiChar;
-begin
-  Result := '';
-  if not Assigned(GHostApi.GetSetting) then
-    Exit;
-  Plugin := UTF8String(cPluginId);
-  Key := UTF8String(AKey);
-  Buf[0] := #0;
-  if GHostApi.GetSetting(PAnsiChar(Plugin), PAnsiChar(Key), @Buf[0], SizeOf(Buf)) >= 0 then
-    Result := UTF8ToString(PAnsiChar(@Buf[0]));
-end;
-
-procedure SetSettingText(const AKey, AValue: string);
-var
-  Plugin, Key, Value: UTF8String;
-begin
-  if not Assigned(GHostApi.SetSetting) then
-    Exit;
-  Plugin := UTF8String(cPluginId);
-  Key := UTF8String(AKey);
-  Value := UTF8String(AValue);
-  GHostApi.SetSetting(PAnsiChar(Plugin), PAnsiChar(Key), PAnsiChar(Value));
 end;
 
 function PluginFolder: string;
@@ -1357,7 +1303,7 @@ begin
   if (AHostApi = nil) or (AHostApi.AbiVersion < 8) or not Assigned(AHostApi.RegisterCommand) or
      not Assigned(AHostApi.SendKey) or not Assigned(AHostApi.Subscribe) then
     Exit(-1);
-  GHostApi := AHostApi^;
+  SdkAttach(AHostApi, cPluginId);
   GRecorded := TStringList.Create;
   GPending := TStringList.Create;
   GListIds := TStringList.Create;
@@ -1419,7 +1365,7 @@ begin
   FreeAndNil(GMenuIds);
   FreeAndNil(GDisabled);
   LuaUnload;
-  FillChar(GHostApi, SizeOf(GHostApi), 0);
+  SdkDetach;
 end;
 
 exports

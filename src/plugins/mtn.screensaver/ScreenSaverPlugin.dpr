@@ -9,6 +9,7 @@ library ScreenSaverPlugin;
 uses
   System.SysUtils, System.Classes, System.Generics.Collections, System.JSON,
   uPluginHostAbi in '..\..\Core\uPluginHostAbi.pas',
+  uPluginSdk in '..\..\Core\uPluginSdk.pas',
   uSaverModules in 'uSaverModules.pas';
 
 const
@@ -27,26 +28,8 @@ type
   end;
 
 var
-  GHostApi: THostApiTable;
   GSlots: TObjectList<TSaverSlot>;
   GCallbacks: TSaverCallbacks;
-
-function Tr(const AKey, ADefault: string): string;
-var
-  Id, Key, Def: UTF8String;
-  Buf: array[0..255] of AnsiChar;
-  Len: Int64;
-begin
-  Result := ADefault;
-  if not Assigned(GHostApi.Translate) then
-    Exit;
-  Id := UTF8String(cPluginId);
-  Key := UTF8String(AKey);
-  Def := UTF8String(ADefault);
-  Len := GHostApi.Translate(PAnsiChar(Id), PAnsiChar(Key), PAnsiChar(Def), @Buf[0], SizeOf(Buf));
-  if (Len >= 0) and (Len < SizeOf(Buf)) then
-    Result := UTF8ToString(PAnsiChar(@Buf[0]));
-end;
 
 function CbTickMs(AUserData: Pointer): Int64; cdecl;
 begin
@@ -356,7 +339,7 @@ begin
   if (AHostApi = nil) or (AHostApi.AbiVersion < cMinHostAbi) or
      not Assigned(AHostApi.RegisterSaver) then
     Exit(-1);
-  GHostApi := AHostApi^;
+  SdkAttach(AHostApi, cPluginId);
   GSlots := TObjectList<TSaverSlot>.Create(True);
   GCallbacks.TickMs := CbTickMs;
   GCallbacks.Prepare := CbPrepare;
@@ -386,7 +369,7 @@ end;
 procedure mtn_plugin_shutdown; cdecl;
 begin
   FreeAndNil(GSlots);
-  FillChar(GHostApi, SizeOf(GHostApi), 0);
+  SdkDetach;
 end;
 
 exports

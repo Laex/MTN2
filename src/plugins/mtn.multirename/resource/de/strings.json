@@ -1,0 +1,42 @@
+{
+  "menu": {
+    "run": "Mehrfach umbenennen..."
+  },
+  "dlg": {
+    "title": "Mehrfach umbenennen",
+    "nameMask": "Namensmaske:",
+    "extMask": "Erweiterung:",
+    "search": "Suchen:",
+    "replace": "Ersetzen:",
+    "counter": "Zähler ab:",
+    "step": "Schritt:",
+    "digits": "Stellen:",
+    "matchCase": "&Groß-/Kleinschreibung",
+    "letterCase": "Buchstabenart:",
+    "caseKeep": "Unverändert",
+    "caseLower": "Kleinbuchstaben",
+    "caseUpper": "GROSSBUCHSTABEN",
+    "caseFirst": "Erster Buchstabe groß",
+    "caseWords": "Jedes Wort Groß",
+    "regex": "Regulärer &Ausdruck",
+    "tokens": "Token: [N] [E] [C] [Date] [Time] [Year] [Month] [Day] [Parent] [Size] [Dim] [Camera] [Artist] [Title]",
+    "colOld": "Alt",
+    "colNew": "Neu",
+    "colNote": "Hinweis",
+    "undo": "&Rückgängig",
+    "editor": "Im &Editor",
+    "ok": "&Umbenennen",
+    "cancel": "Abbrechen"
+  },
+  "msg": {
+    "nothingSelected": "Zuerst Dateien oder Ordner auswählen",
+    "oneFolder": "Elemente eines Ordners auswählen",
+    "status": "%d umzubenennen, %d unverändert, %d mit Problem",
+    "blocked": "Zuerst die mit ! markierten Namen korrigieren",
+    "linesChanged": "Die Zeilenzahl muss %d bleiben: ein neuer Name je Element",
+    "problemEmpty": "leerer Name",
+    "problemInvalid": "ungültiger Name",
+    "problemDuplicate": "Name doppelt",
+    "problemExists": "Name bereits vergeben"
+  }
+}

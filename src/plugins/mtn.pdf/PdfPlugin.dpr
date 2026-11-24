@@ -11,6 +11,7 @@ uses
   System.SysUtils, System.Classes, System.IOUtils, System.Hash,
   System.Generics.Collections, System.JSON,
   uPluginHostAbi in '..\..\Core\uPluginHostAbi.pas',
+  uPluginSdk in '..\..\Core\uPluginSdk.pas',
   uVfsTypes in '..\..\Core\uVfsTypes.pas',
   uPdfium in 'uPdfium.pas',
   uPdfView in 'uPdfView.pas';
@@ -49,7 +50,6 @@ type
   end;
 
 var
-  GHostApi: THostApiTable;
   GContexts: TList<TPdfContext>;
   // Quick View settings: show the rendered first page always, or only for a
   // document without extractable text (a scan).
@@ -61,23 +61,6 @@ begin
   View.Free;
   Doc.Free;
   inherited;
-end;
-
-function Tr(const AKey, ADefault: string): string;
-var
-  Id, Key, Def: UTF8String;
-  Buf: array[0..255] of AnsiChar;
-  Len: Int64;
-begin
-  Result := ADefault;
-  if not Assigned(GHostApi.Translate) then
-    Exit;
-  Id := UTF8String(cPluginId);
-  Key := UTF8String(AKey);
-  Def := UTF8String(ADefault);
-  Len := GHostApi.Translate(PAnsiChar(Id), PAnsiChar(Key), PAnsiChar(Def), @Buf[0], SizeOf(Buf));
-  if (Len >= 0) and (Len < SizeOf(Buf)) then
-    Result := UTF8ToString(PAnsiChar(@Buf[0]));
 end;
 
 { file:///C:/dir/a%20b.pdf -> C:\dir\a b.pdf (file:///home/a%20b.pdf -> /home/a b.pdf
@@ -237,22 +220,6 @@ begin
   if AMode <> cSurfacePanel then
     Redraw(Ctx);
   Result := True;
-end;
-
-{ The text of the first pages as a file in the temp folder; '' when there is none. }
-function GetSettingText(const AKey: string): string;
-var
-  Id, Key: UTF8String;
-  Buf: array[0..63] of AnsiChar;
-begin
-  Result := '';
-  if not Assigned(GHostApi.GetSetting) then
-    Exit;
-  Id := UTF8String(cPluginId);
-  Key := UTF8String(AKey);
-  Buf[0] := #0;
-  if GHostApi.GetSetting(PAnsiChar(Id), PAnsiChar(Key), @Buf[0], SizeOf(Buf)) >= 0 then
-    Result := UTF8ToString(PAnsiChar(@Buf[0]));
 end;
 
 procedure PutSettingText(const AKey, AValue: string);
@@ -520,7 +487,7 @@ begin
   if (AHostApi = nil) or (AHostApi.AbiVersion < 2) or
      not Assigned(AHostApi.RegisterDocumentProvider) then
     Exit(-1);
-  GHostApi := AHostApi^;
+  SdkAttach(AHostApi, cPluginId);
   GContexts := TList<TPdfContext>.Create;
   RemoveOldTempFiles;
   LoadSettings;
@@ -547,7 +514,7 @@ begin
     FreeAndNil(GContexts);
   end;
   PdfiumShutdown;
-  FillChar(GHostApi, SizeOf(GHostApi), 0);
+  SdkDetach;
 end;
 
 exports
