@@ -62,6 +62,10 @@ function BuildPaletteEntries(AMenu: TTopMenuController;
 /// -1 when it does not match. Every word of the query must match: the start
 /// of a word of the caption is best, then the inside of the caption, the
 /// initials of the caption's words, an alias, the category.</summary>
+/// <summary>One-line explanation of a menu item in the current language: the
+/// string table's 'menu.hint.<key>' or the English hint of menu.json.</summary>
+function MenuItemHint(const AItem: TSubmenuItem): string;
+
 function PaletteMatchScore(const AQuery: string; const AEntry: TPaletteEntry): Integer;
 
 /// <summary>Indexes into AEntries that match AQuery, best first. Ties go to
@@ -146,6 +150,7 @@ begin
   if AUser.TryGetValue(AEntry.Key, Extra) then
     Result := Result + ', ' + Extra;
 end;
+
 function CleanTitle(const ACaption: string): string;
 begin
   Result := StringReplace(ACaption, '&', '', [rfReplaceAll]);
@@ -157,6 +162,11 @@ begin
     Result := 'plugin:' + AItem.PluginId + ':' + AItem.Caption
   else
     Result := GetEnumName(TypeInfo(TTopMenuAction), Ord(AItem.Action));
+end;
+
+function MenuItemHint(const AItem: TSubmenuItem): string;
+begin
+  Result := T('menu.hint.' + ItemKey(AItem), AItem.Hint);
 end;
 
 // The plugin commands that no plugin menu item runs (a command bound to a key

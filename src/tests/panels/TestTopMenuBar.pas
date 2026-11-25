@@ -19,6 +19,7 @@ type
     [Test] procedure TestASampleOfKnownMappings;
     [Test] procedure TestHandleClickRouting;
     [Test] procedure TestF9OpensTheMenuOfTheActivePanel;
+    [Test] procedure TestCurrentItemFollowsTheOpenSubmenu;
     [Test] procedure TestItemLettersActOnlyInTheOpenSubmenu;
     [Test] procedure TestMenuLettersAreUniquePerDropdown;
     [Test] procedure TestHomeEndPageKeysMoveInsideTheMenu;
@@ -141,6 +142,25 @@ begin
     C.ActivateMenu(0, True);
     Assert.IsTrue(C.HandleClick(5, 3), 'a submenu-row click while open is handled');
     Assert.IsTrue(not C.Active, 'clicking outside the submenu''s bounds closes it');
+  finally
+    C.Free;
+  end;
+end;
+
+procedure TestCurrentItemFollowsTheOpenSubmenu;
+var
+  C: TTopMenuController;
+  Item: TSubmenuItem;
+begin
+  C := MakeController;
+  try
+    Assert.IsFalse(C.CurrentItem(Item), 'closed menu has no current item');
+    C.ActivateMenu(1, False);
+    Assert.IsFalse(C.CurrentItem(Item), 'category only: no submenu, no item');
+    C.ActivateMenu(1, True);
+    Assert.IsTrue(C.CurrentItem(Item), 'open submenu: the item under the cursor');
+    Assert.IsFalse(Item.IsSeparator, 'never a separator');
+    Assert.IsTrue(Item.Caption <> '', 'caption filled');
   finally
     C.Free;
   end;
@@ -413,6 +433,11 @@ end;
 procedure TTestTopMenuBar.TestHandleClickRouting;
 begin
   TestTopMenuBar.TestHandleClickRouting;
+end;
+
+procedure TTestTopMenuBar.TestCurrentItemFollowsTheOpenSubmenu;
+begin
+  TestTopMenuBar.TestCurrentItemFollowsTheOpenSubmenu;
 end;
 
 procedure TTestTopMenuBar.TestF9OpensTheMenuOfTheActivePanel;

@@ -1621,7 +1621,7 @@ type
 implementation
 
 uses
-  uFindRouter,
+  uCommandPalette, uFindRouter,
   uPlatformInfo, uPlatformProcess, uPlatformFolders, uPlatformPaths, uImageInfo, uFileClip, uWinFileDragDrop, uStrings, uFileHistory, uChromeRows,
   uExternalTools, uEnvProfiles, uDialogHistory, uCloudFiles, uKeyChord, uConsoleSettings, uZipVfs,
   uCharWidth, uConfigMode, uPluginChrome, uColorPickerControl, uRenameJournal, uConfigLocation,
@@ -14087,11 +14087,18 @@ end;
 
 procedure TDualPanelWindow.DrawAppStatusLine(AY, AWidth: Integer);
 var
+  Item: TSubmenuItem;
   Segs: TArray<string>;
   Spans: TArray<TStatusSpans>;
   Span: TStatusSpan;
   I: Integer;
 begin
+  // An open menu explains the item under its cursor instead of the usual segments.
+  if Assigned(FTopMenu) and FTopMenu.CurrentItem(Item) and (MenuItemHint(Item) <> '') then
+  begin
+    DrawAppStatusLineRow(Buffer, Theme, AY, AWidth, [MenuItemHint(Item)], cMenuFg, cMenuBg, nil);
+    Exit;
+  end;
   Segs := BuildPanelStatusSegments;
   if ActiveWorkspace.Kind = wkPanels then
     Spans := PluginStatusSpans(Length(Segs))

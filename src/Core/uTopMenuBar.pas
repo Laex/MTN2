@@ -298,6 +298,9 @@ type
     /// <summary>The whole menu as a flat list, for searching it: every item
     /// that is not a separator, with the title of its category.</summary>
     procedure ListItems(const AOnItem: TProc<string, TSubmenuItem>);
+    /// <summary>The item under the cursor of the open submenu; False while no
+    /// submenu is open.</summary>
+    function CurrentItem(out AItem: TSubmenuItem): Boolean;
     /// <summary>Whether the item can run now (separators never).</summary>
     function CanRunItem(const AItem: TSubmenuItem): Boolean;
     /// <summary>Runs the item as if it was chosen in the open menu; False when
@@ -782,6 +785,17 @@ begin
     for J := 0 to High(FCategories[I].Items) do
       if not FCategories[I].Items[J].IsSeparator then
         AOnItem(FCategories[I].Title, FCategories[I].Items[J]);
+end;
+
+function TTopMenuController.CurrentItem(out AItem: TSubmenuItem): Boolean;
+begin
+  Result := False;
+  if not (FActive and FSubmenuOpen) or (FCategoryIndex < 0) or (FCategoryIndex > High(FCategories)) then
+    Exit;
+  if (FSubmenuIndex < 0) or (FSubmenuIndex > High(FCategories[FCategoryIndex].Items)) then
+    Exit;
+  AItem := FCategories[FCategoryIndex].Items[FSubmenuIndex];
+  Result := not AItem.IsSeparator;
 end;
 
 function TTopMenuController.CanRunItem(const AItem: TSubmenuItem): Boolean;
