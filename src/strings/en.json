@@ -315,6 +315,11 @@
     },
     "DIALOG_INTERFACE": {
       "$title": "Interface",
+      "grp_fields": "Dialog fields",
+      "hints_focus": "On keyboard focus",
+      "hints_hover": "Under the mouse pointer",
+      "hints_focus_hint": "Shows the description of the field in keyboard focus under the fields of a dialog.",
+      "hints_hover_hint": "Shows the description of the field under the mouse pointer; it takes the place of the focus hint while the pointer is on a field.",
       "grp_language": "Language",
       "grp_popups": "Pop-ups",
       "grp_keys": "Keys",

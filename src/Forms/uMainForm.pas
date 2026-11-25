@@ -1666,6 +1666,8 @@ begin
   Result.EditorAutoWrap := GEditorAutoWrap;
   Result.EditorReflowWidth := GEditorReflowWidth;
   Result.ToastMs := GToastDurationMs;
+  Result.HintsOnFocus := GHintsOnFocus;
+  Result.HintsOnHover := GHintsOnHover;
   Result.ExactSelectionSize := GExactSelectionSize;
   Result.DirSlash := GDirSlash;
   Result.MarkLinks := GMarkLinks;
@@ -1728,6 +1730,8 @@ begin
   FSession.EditorAutoWrap := ASettings.EditorAutoWrap;
   FSession.EditorReflowWidth := ASettings.EditorReflowWidth;
   FSession.ToastMs := ASettings.ToastMs;
+  FSession.HintsOnFocus := ASettings.HintsOnFocus;
+  FSession.HintsOnHover := ASettings.HintsOnHover;
   FSession.ExactSelectionSize := ASettings.ExactSelectionSize;
   FSession.DirSlash := ASettings.DirSlash;
   FSession.MarkLinks := ASettings.MarkLinks;
@@ -1741,6 +1745,8 @@ begin
   GEditorAutoWrap := ASettings.EditorAutoWrap;
   GEditorReflowWidth := ASettings.EditorReflowWidth;
   GToastDurationMs := ClampToastDurationMs(ASettings.ToastMs);
+  GHintsOnFocus := ASettings.HintsOnFocus;
+  GHintsOnHover := ASettings.HintsOnHover;
   GExactSelectionSize := ASettings.ExactSelectionSize;
   GDirSlash := ASettings.DirSlash;
   GMarkLinks := ASettings.MarkLinks;
@@ -1900,6 +1906,8 @@ begin
   GEditorAutoWrap := Sess.EditorAutoWrap;
   GEditorReflowWidth := Sess.EditorReflowWidth;
   GToastDurationMs := ClampToastDurationMs(Sess.ToastMs);
+  GHintsOnFocus := Sess.HintsOnFocus;
+  GHintsOnHover := Sess.HintsOnHover;
   GExactSelectionSize := Sess.ExactSelectionSize;
   GDirSlash := Sess.DirSlash;
   GMarkLinks := Sess.MarkLinks;
@@ -2038,6 +2046,8 @@ begin
   Sess.EditorAutoWrap := GEditorAutoWrap;
   Sess.EditorReflowWidth := GEditorReflowWidth;
   Sess.ToastMs := GToastDurationMs;
+  Sess.HintsOnFocus := GHintsOnFocus;
+  Sess.HintsOnHover := GHintsOnHover;
   Sess.ExactSelectionSize := GExactSelectionSize;
   Sess.DirSlash := GDirSlash;
   Sess.MarkLinks := GMarkLinks;
@@ -2948,6 +2958,8 @@ begin
   FSession.EditorAutoWrap := False;
   FSession.EditorReflowWidth := 72;
   FSession.ToastMs := 2500;
+  FSession.HintsOnFocus := True;
+  FSession.HintsOnHover := True;
   FSession.ExactSelectionSize := False;
   FSession.DirSlash := True;
   FSession.MarkLinks := True;

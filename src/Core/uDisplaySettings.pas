@@ -116,6 +116,9 @@ type
     EditorReflowWidth: Integer;
     /// <summary>uToast.GToastDurationMs.</summary>
     ToastMs: Integer;
+    /// <summary>uDialogHost.GHintsOnFocus / GHintsOnHover.</summary>
+    HintsOnFocus: Boolean;
+    HintsOnHover: Boolean;
     /// <summary>uDisplaySettings.GExactSelectionSize.</summary>
     ExactSelectionSize: Boolean;
     /// <summary>uDisplaySettings.GDirSlash.</summary>
@@ -436,6 +439,8 @@ begin
   Result.EditorAutoWrap := False;
   Result.EditorReflowWidth := 72;
   Result.ToastMs := 2500;
+  Result.HintsOnFocus := True;
+  Result.HintsOnHover := True;
   Result.ExactSelectionSize := False;
   Result.DirSlash := True;
   Result.MarkLinks := True;

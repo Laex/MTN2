@@ -118,6 +118,9 @@ begin
   Result.EditorAutoWrap := True;
   Result.EditorReflowWidth := 66;
   Result.ExactSelectionSize := True;
+  Result.ToastMs := 6000;
+  Result.HintsOnFocus := False;
+  Result.HintsOnHover := False;
   Result.DirSlash := False;
   Result.MarkLinks := False;
   Result.NdnFooter := False;
@@ -172,6 +175,9 @@ begin
     Assert.IsTrue(Loaded.EditorAutoWrap, 'editorAutoWrap saved');
     Assert.AreEqual(66, Loaded.EditorReflowWidth, 'editorReflowWidth saved');
     Assert.IsTrue(Loaded.ExactSelectionSize, 'exactSelectionSize saved');
+    Assert.AreEqual(6000, Loaded.ToastMs, 'toastMs saved');
+    Assert.IsFalse(Loaded.HintsOnFocus, 'hintsOnFocus saved');
+    Assert.IsFalse(Loaded.HintsOnHover, 'hintsOnHover saved');
     Assert.IsTrue(not Loaded.DirSlash, 'dirSlash saved');
     Assert.IsTrue(not Loaded.MarkLinks, 'markLinks saved');
     Assert.IsTrue(not Loaded.NdnFooter, 'ndnFooter saved');
@@ -280,6 +286,15 @@ begin
     Pair := Root.RemovePair('selectFolders');
     if Assigned(Pair) then
       Pair.Free;
+    Pair := Root.RemovePair('toastMs');
+    if Assigned(Pair) then
+      Pair.Free;
+    Pair := Root.RemovePair('hintsOnFocus');
+    if Assigned(Pair) then
+      Pair.Free;
+    Pair := Root.RemovePair('hintsOnHover');
+    if Assigned(Pair) then
+      Pair.Free;
     TFile.WriteAllText(Path, Root.ToJSON, TEncoding.UTF8);
   finally
     Root.Free;
@@ -308,6 +323,8 @@ begin
     Assert.IsFalse(Sess.EditorAutoWrap, 'missing editorAutoWrap -> no auto-wrap');
     Assert.AreEqual(72, Sess.EditorReflowWidth, 'missing editorReflowWidth -> 72');
     Assert.IsTrue(not Sess.ExactSelectionSize, 'missing exactSelectionSize -> short sizes');
+    Assert.AreEqual(2500, Sess.ToastMs, 'missing toastMs -> 2.5 s');
+    Assert.IsTrue(Sess.HintsOnFocus and Sess.HintsOnHover, 'missing hint switches -> both on');
     Assert.IsTrue(Sess.DirSlash, 'missing dirSlash -> slash shown');
     Assert.IsTrue(Sess.MarkLinks, 'missing markLinks -> links marked');
     Assert.IsTrue(Sess.NdnFooter, 'missing ndnFooter -> NDN footer');

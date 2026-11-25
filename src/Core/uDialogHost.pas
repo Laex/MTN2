@@ -79,6 +79,8 @@ type
     /// <summary>Button the left mouse button went down on, else -1. The
     /// command runs on release over the same button.</summary>
     FMouseIndex: Integer;
+    /// <summary>Control with a hint under the mouse pointer, else -1.</summary>
+    FHoverIndex: Integer;
     /// <summary>Input the left mouse button went down on and is dragging a
     /// selection in, else -1.</summary>
     FDragInput: Integer;
@@ -407,6 +409,9 @@ type
     procedure PressButtonThen(const AId: string; const AAction: TProc);
     /// <summary>The dialog frame after the last Draw / layout (grid cells).</summary>
     property Bounds: TRectI read FBounds;
+    /// <summary>Remembers the control with a hint under the pointer; True when it
+    /// changed and the dialog needs a redraw.</summary>
+    function HoverAt(ALocalCol, ALocalRow: Integer): Boolean;
     /// <summary>Index of the button drawn pressed, -1 when none.</summary>
     property PressedButton: Integer read FPressIndex;
     property CursorVisible: Boolean read FCursorVisible;
@@ -430,6 +435,10 @@ const
   cDialogButtonPressMs = 100;
 
 var
+  /// <summary>Settings > Notices: the hint area shows the hint of the control in
+  /// keyboard focus / under the mouse pointer.</summary>
+  GHintsOnFocus: Boolean = True;
+  GHintsOnHover: Boolean = True;
   /// <summary>Starts (or restarts) the one-shot press timer, which calls
   /// FlushDialogButtonPress after cDialogButtonPressMs. Set by the main form.
   /// While nil (tests, DialogDesigner) buttons fire on mouse down and on the
@@ -585,6 +594,7 @@ begin
   FAreaH := 25;
   FPressIndex := -1;
   FMouseIndex := -1;
+  FHoverIndex := -1;
   FDragInput := -1;
   SetLength(FControlBounds, 0);
 end;
@@ -1779,6 +1789,7 @@ begin
   FPendingAction := nil;
   FPressIndex := -1;
   FMouseIndex := -1;
+  FHoverIndex := -1;
   FDragInput := -1;
 end;
 
@@ -1859,6 +1870,23 @@ begin
   Action();
   if Assigned(Done) then
     Done(Self);
+end;
+
+function TDialogHost.HoverAt(ALocalCol, ALocalRow: Integer): Boolean;
+var
+  I, Found: Integer;
+begin
+  Found := -1;
+  if GHintsOnHover and Visible then
+    for I := Min(High(FControlBounds), High(FDecl.Controls)) downto 0 do
+      if (FDecl.Controls[I].Hint <> '') and FControlBounds[I].Contains(ALocalCol, ALocalRow) and
+         not DialogControlHiddenByTab(FDecl.Controls, I) then
+      begin
+        Found := I;
+        Break;
+      end;
+  Result := Found <> FHoverIndex;
+  FHoverIndex := Found;
 end;
 
 function TDialogHost.MouseCaptureMove(ALocalCol, ALocalRow: Integer): Boolean;
@@ -2626,19 +2654,29 @@ var
   Colors: TInputLineColors;
   Shown: string;
   Lines: TArray<string>;
-  I: Integer;
+  I, HintAt: Integer;
 begin
   if (C.Kind = dckLabel) and C.GroupFrame then
     DrawGroupFrame(AGrid, R, C.Text, ALabelFg, ALabelBg)
   else if (C.Kind = dckLabel) and C.HintArea then
   begin
-    if (FFocusIndex >= 0) and (FFocusIndex <= High(FDecl.Controls)) then
-      Lines := TDialogRenderer.WrapLabelLines(FDecl.Controls[FFocusIndex].Hint, R.Width)
+    HintAt := -1;
+    if GHintsOnHover and (FHoverIndex >= 0) and (FHoverIndex <= High(FDecl.Controls)) then
+      HintAt := FHoverIndex
+    else if GHintsOnFocus and (FFocusIndex >= 0) and (FFocusIndex <= High(FDecl.Controls)) then
+      HintAt := FFocusIndex;
+    if HintAt >= 0 then
+      Lines := TDialogRenderer.WrapLabelLines(FDecl.Controls[HintAt].Hint, R.Width)
     else
       Lines := nil;
     for I := 0 to R.Height - 1 do
-      PutGridText(AGrid, R.Left, R.Top + I,
-        PadGridLine(IfThen(I <= High(Lines), Lines[I], ''), R.Width), ALabelFg, ALabelBg);
+    begin
+      if I <= High(Lines) then
+        Shown := Lines[I]
+      else
+        Shown := '';
+      PutGridText(AGrid, R.Left, R.Top + I, PadGridLine(Shown, R.Width), ALabelFg, ALabelBg);
+    end;
   end
   else if (C.Kind = dckLabel) and C.Field then
   begin

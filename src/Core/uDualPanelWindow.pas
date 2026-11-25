@@ -12884,6 +12884,8 @@ begin
   Hover := ChromeHoverAt(ALocalCol, ALocalRow);
   Result := Hover <> FChromeHover;
   FChromeHover := Hover;
+  if DialogVisible and FDialog.HoverAt(ALocalCol, ALocalRow) then
+    Result := True;
 end;
 
 function TDualPanelWindow.IsWindowDragZone(ALocalCol, ALocalRow: Integer): Boolean;

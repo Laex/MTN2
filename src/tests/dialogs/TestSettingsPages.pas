@@ -23,6 +23,7 @@ type
     [Test] procedure TestEveryFieldHasAHint;
     [Test] procedure TestFieldsCarryCaptionHintAndSection;
     [Test] procedure TestHintAreaShowsTheFocusedFieldHint;
+    [Test] procedure TestHintFollowsPointerAndFocusSwitches;
     [Test] procedure TestHintSurvivesJsonRoundTrip;
     [Test] procedure TestEmptyQueryKeepsEverySection;
     [Test] procedure TestQueryMatchesSectionCaption;
@@ -286,6 +287,76 @@ begin
     Text := Text + #10;
   end;
   Assert.IsTrue(Pos(Copy(Want, 1, 20), Text) > 0, 'hint of the focused field is drawn');
+end;
+
+procedure TTestSettingsPages.TestHintFollowsPointerAndFocusSwitches;
+var
+  Pages: TSettingsPages;
+  Decl: TDialogDeclaration;
+  Host: TDialogHost;
+  Grid: TTerminalGrid;
+  Col, Row, Y, P: Integer;
+  Line: string;
+  SavedFocus, SavedHover: Boolean;
+
+  function DrawnText: string;
+  var
+    X, YY: Integer;
+  begin
+    AllocTerminalGrid(Grid, 100, 40);
+    ClearTerminalGrid(Grid, TAlphaColorRec.White, TAlphaColorRec.Navy, ' ');
+    Host.Draw(Grid, 100, 40);
+    Result := '';
+    for YY := 0 to High(Grid) do
+    begin
+      for X := 0 to High(Grid[YY]) do
+        Result := Result + Grid[YY][X].CharValue;
+      Result := Result + #10;
+    end;
+  end;
+
+begin
+  SavedFocus := GHintsOnFocus;
+  SavedHover := GHintsOnHover;
+  Decl := Merge(Pages);
+  Decl.Controls[DialogTabStripIndex(Decl.Controls)].SelectedIndex := Length(Pages.Captions) - 1;
+  Host := TDialogHost.Create(CreateThemeByName('NDN'));
+  try
+    Host.Open(Decl, NoopCommand);
+    Host.FocusControlById('notifications');
+    GHintsOnFocus := True;
+    GHintsOnHover := True;
+    DrawnText;
+    Col := -1;
+    Row := -1;
+    for Y := 0 to High(Grid) do
+    begin
+      Line := '';
+      for P := 0 to High(Grid[Y]) do
+        Line := Line + Grid[Y][P].CharValue;
+      P := Pos('Under the mouse pointer', Line);
+      if P > 0 then
+      begin
+        Col := P - 1;
+        Row := Y;
+      end;
+    end;
+    Assert.IsTrue(Col >= 0, 'pointer switch drawn');
+    Assert.IsTrue(Host.HoverAt(Col, Row), 'pointer on a field with a hint changes the hover');
+    Assert.IsTrue(Pos('field under the mouse', DrawnText) > 0, 'hint of the field under the pointer');
+    Assert.IsFalse(Host.HoverAt(Col, Row), 'same field: no change');
+    GHintsOnHover := False;
+    Assert.IsTrue(Pos('field under the mouse', DrawnText) = 0, 'pointer switch off hides it');
+    GHintsOnHover := True;
+    Assert.IsTrue(Host.HoverAt(0, 0), 'pointer leaves the field');
+    Assert.IsTrue(Pos('field under the mouse', DrawnText) = 0, 'no hover: hint of the focused field');
+    GHintsOnFocus := False;
+    Assert.IsTrue(Pos('Shows', DrawnText) = 0, 'focus switch off: no hint without a pointer');
+  finally
+    GHintsOnFocus := SavedFocus;
+    GHintsOnHover := SavedHover;
+    Host.Free;
+  end;
 end;
 
 procedure TTestSettingsPages.TestHintSurvivesJsonRoundTrip;

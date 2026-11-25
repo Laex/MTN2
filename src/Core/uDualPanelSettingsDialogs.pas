@@ -456,6 +456,8 @@ begin
   DialogSetCheckbox(Result, 'editor_autowrap', ACur.EditorAutoWrap);
   DialogSetInputValue(Result, 'reflow_width', IntToStr(ACur.EditorReflowWidth));
   DialogSetCheckbox(Result, 'exact_sizes', ACur.ExactSelectionSize);
+  DialogSetCheckbox(Result, 'hints_focus', ACur.HintsOnFocus);
+  DialogSetCheckbox(Result, 'hints_hover', ACur.HintsOnHover);
   DialogSetCheckbox(Result, 'dir_slash', ACur.DirSlash);
   DialogSetCheckbox(Result, 'mark_links', ACur.MarkLinks);
   DialogSetCheckbox(Result, 'ndn_footer', ACur.NdnFooter);
@@ -1110,6 +1112,8 @@ begin
   else
     Disp.ToastMs := FOpenDisplay.ToastMs;
   Disp.ExactSelectionSize := FDialog.GetCheckbox('exact_sizes');
+  Disp.HintsOnFocus := FDialog.GetCheckbox('hints_focus');
+  Disp.HintsOnHover := FDialog.GetCheckbox('hints_hover');
   Disp.DirSlash := FDialog.GetCheckbox('dir_slash');
   Disp.MarkLinks := FDialog.GetCheckbox('mark_links');
   Disp.NdnFooter := FDialog.GetCheckbox('ndn_footer');

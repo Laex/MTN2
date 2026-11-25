@@ -716,6 +716,41 @@
       "tab": 6
     },
     {
+      "type": "label",
+      "text": "Dialog fields",
+      "id": "grp_fields",
+      "group": true,
+      "col": 1,
+      "row": 12,
+      "width": 58,
+      "height": 4,
+      "tab": 6
+    },
+    {
+      "type": "checkbox",
+      "id": "hints_focus",
+      "text": "On keyboard focus",
+      "hint": "Shows the description of the field in keyboard focus under the fields of a dialog.",
+      "checked": true,
+      "col": 3,
+      "row": 13,
+      "width": 53,
+      "height": 1,
+      "tab": 6
+    },
+    {
+      "type": "checkbox",
+      "id": "hints_hover",
+      "text": "Under the mouse pointer",
+      "hint": "Shows the description of the field under the mouse pointer; it takes the place of the focus hint while the pointer is on a field.",
+      "checked": true,
+      "col": 3,
+      "row": 14,
+      "width": 53,
+      "height": 1,
+      "tab": 6
+    },
+    {
       "type": "separator",
       "col": 0,
       "row": 16,

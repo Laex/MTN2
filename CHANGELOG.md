@@ -9,6 +9,7 @@ This file describes what changes for the user from version to version: new featu
 ### Changed
 
 - The command palette (Shift+F9) lists the fields of the Settings window: a setting is found by its caption, its section or the word "settings", its description is shown under the list, and Enter opens the Settings window with the focus on that field.
+- The description under the fields of a dialog follows the mouse pointer as well as the keyboard focus; the Notices section of the Settings window has a switch for each of the two.
 - The Settings window has a Notices section: pop-up notifications on/off, how long a notice stays (1.5 to 10 s) and the key hints. A notice stays while the mouse is over it, and a click on it closes it.
 - The Settings window has a Console section: scrollback size, multi-line paste confirmation, trimming of spaces on copy and paste, return to the panels and the background-run time. "Console..." in the Options menu opens the Settings window on this section.
 - The Settings window has an Editor section: auto-indent on Enter (moved from Keyboard), auto-wrap of long lines while typing and the wrap width. Auto-wrap and the width are now kept between runs.

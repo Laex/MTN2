@@ -314,6 +314,11 @@
     },
     "DIALOG_INTERFACE": {
       "$title": "Oberfläche",
+      "grp_fields": "Dialogfelder",
+      "hints_focus": "Bei Tastaturfokus",
+      "hints_hover": "Unter dem Mauszeiger",
+      "hints_focus_hint": "Zeigt unter den Feldern des Dialogs die Beschreibung des Feldes mit dem Tastaturfokus.",
+      "hints_hover_hint": "Zeigt die Beschreibung des Feldes unter dem Mauszeiger; sie ersetzt den Fokushinweis, solange der Zeiger auf einem Feld steht.",
       "grp_language": "Sprache",
       "grp_popups": "Hinweisfenster",
       "grp_keys": "Tasten",
