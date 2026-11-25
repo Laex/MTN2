@@ -24,7 +24,7 @@ If the theme of the saved session is not found, the program says so and uses the
 - **Marked files:** “Text color” – only the letters change colour, as in Far; “Row background” – a background band across the whole row as well.
 <!--interface-->- **User interface...** – the interface language, notifications, the visibility of the window rows, dragging, the menu on Alt, auto-indent and a few more boxes; everything applies without a restart.
 
-Both items open one **Settings** window. The sections (Font, Text, Display, Window, Panels, Behavior, Keyboard, Editor, Console, Notices) are listed on the left; Up and Down switch them. Typing while the list has focus narrows it to the sections whose name or field captions contain the text, Backspace removes the last letter. Under the fields a short description of the field in focus or under the mouse pointer is shown; both sources can be switched off in the Notices section.
+Both items open one **Settings** window. The sections (Font, Text, Display, Window, Panels, Behavior, Keyboard, Editor, Console, Notices) are listed on the left; Up and Down switch them. Typing while the list has focus narrows it to the sections whose name, field captions or field descriptions contain the text, Backspace removes the last letter. Under the fields a short description of the field in focus or under the mouse pointer is shown; both sources can be switched off in the Notices section.
 
 **What it sets**
 - The **interface language** (English / Русский / Deutsch / 简体中文) and pop-up notifications.

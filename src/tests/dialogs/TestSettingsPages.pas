@@ -28,6 +28,7 @@ type
     [Test] procedure TestEmptyQueryKeepsEverySection;
     [Test] procedure TestQueryMatchesSectionCaption;
     [Test] procedure TestQueryMatchesFieldCaptionIgnoringMnemonicAndCase;
+    [Test] procedure TestQueryMatchesFieldDescription;
     [Test] procedure TestQueryWithoutMatchGivesNoSections;
   end;
 
@@ -408,6 +409,17 @@ begin
   Assert.AreEqual<Integer>(1, Length(Found.Captions), 'only the page with the field');
   Assert.AreEqual('Window', Found.Captions[0], 'Window');
   Assert.AreEqual<Integer>(4, Found.Pages[0], 'page of the section is kept');
+end;
+
+procedure TTestSettingsPages.TestQueryMatchesFieldDescription;
+var
+  Pages, Found: TSettingsPages;
+  Decl: TDialogDeclaration;
+begin
+  Decl := Merge(Pages);
+  Assert.IsTrue(SettingsSectionsMatching(Decl, Pages, 'mouse over it holds', Found), 'found by a description');
+  Assert.AreEqual<Integer>(1, Length(Found.Captions), 'only the section with that description');
+  Assert.AreEqual('Notices', Found.Captions[0], 'the Notices section');
 end;
 
 procedure TTestSettingsPages.TestQueryWithoutMatchGivesNoSections;

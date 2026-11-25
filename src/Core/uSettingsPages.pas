@@ -52,8 +52,8 @@ type
 function SettingsFields(const ADecl: TDialogDeclaration;
   const APages: TSettingsPages): TArray<TSettingField>;
 
-/// <summary>The sections whose caption or whose page's captions contain AQuery
-/// (case-insensitive, mnemonic marks ignored). An empty query keeps all of them.</summary>
+/// <summary>The sections whose caption, whose page's captions or whose fields'
+/// descriptions contain AQuery (case-insensitive, mnemonic marks ignored). An empty query keeps all of them.</summary>
 function SettingsSectionsMatching(const ADecl: TDialogDeclaration;
   const APages: TSettingsPages; const AQuery: string;
   out AMatches: TSettingsPages): Boolean;
@@ -238,8 +238,9 @@ begin
     if not Hit then
       for J := 0 to High(ADecl.Controls) do
         if (ADecl.Controls[J].TabPage = APages.Pages[I]) and
-           (ADecl.Controls[J].Kind in [dckLabel, dckCheckbox, dckRadio, dckRadioGroup, dckButton]) and
-           (Pos(Q, PlainText(ADecl.Controls[J].Text)) > 0) then
+           (((ADecl.Controls[J].Kind in [dckLabel, dckCheckbox, dckRadio, dckRadioGroup, dckButton]) and
+             (Pos(Q, PlainText(ADecl.Controls[J].Text)) > 0)) or
+            (Pos(Q, PlainText(ADecl.Controls[J].Hint)) > 0)) then
         begin
           Hit := True;
           Break;
