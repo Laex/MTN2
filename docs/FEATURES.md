@@ -75,7 +75,7 @@ A short overview of the features; details are in the help (F1), the other docume
 
 ## Search and filters
 
-- **File search** – `Alt+F7`: mask, text, hex bytes with `??`, size, date with a calendar, three-state attributes, code page choice with autodetection.
+- **File search** – `Alt+F7`: mask, text, hex bytes with `??`, size, date with a calendar, three-state attributes, code page choice with autodetection; the dialog keeps named presets.
 - **Search in archives** – the "Search in archives" option: zip and plugin archive entries by mask and text; `Enter` opens the archive at the found file.
 - **Background search** – the "Background" button: several searches at once, each with a chip and a counter; results fill the panel as they arrive.
 - **Search through plugins** – the Everything plugin answers name searches from its index, the ripgrep plugin searches file text with `rg`, the Document viewer plugin lets the search look inside `.docx`, `.xlsx`, `.pptx`, `.pdf`, `.svg` and SQLite files; a text search with a selective mask runs as a two-stage pipeline (names, then text), and the Pipeline button of `Alt+F7` chooses for each stage between Auto, the built-in code and a particular plugin.
@@ -90,12 +90,15 @@ A short overview of the features; details are in the help (F1), the other docume
 - **File compare and merge** – `Ctrl+Alt+C`: a full-screen window, lines aligned by similarity, jumps between differences, copying differences both ways, undo and save.
 - **Group comparison** – with several files marked, files with the same names are compared in pairs, and a summary list leads to the differences.
 - **Folder comparison** – `Ctrl+Shift+C` by time, size or contents; contents are compared in the background.
-- **Folder synchronization** – `Ctrl+Alt+S`: an action per file (`->`, `<-`, `--`), conflict resolution, counts of copies and skips; the Mirror mode also deletes files that exist only on the target, after a dry run and a confirmation. A dialog before the comparison picks the mode and leaves out junctions, `.gitignore`-style files, a robocopy `exclude.rcj` and Obsidian ignore filters, adds extra patterns to skip and can limit the run to files matching masks (`*.md;*.txt`, groups such as `@Video`); the comparison shows its progress and can run in the background.
+- **Folder synchronization** – `Ctrl+Alt+S`: an action per file (`->`, `<-`, `--`), conflict resolution, counts of copies and skips; the Mirror mode also deletes files that exist only on the target, after a dry run and a confirmation. A dialog before the comparison picks the mode and leaves out junctions, `.gitignore`-style files, a robocopy `exclude.rcj` and Obsidian ignore filters, adds extra patterns to skip and can limit the run to files matching masks (`*.md;*.txt`, groups such as `@Video`); the comparison shows its progress and can run in the background; modes and options can be saved as named presets.
 
 ## Archives
 
 - **Archives as folders** – ZIP is built in, 7z, RAR and dozens of formats (zst, vhd, msi, deb, rpm, dmg, squashfs, etc.) via 7-Zip; the format is detected by content, not by extension; a folder is unpacked in one pass, which is fast even from a solid archive.
 - **Packing** – `Shift+F1`: zip or 7z, compression level, password and name encryption; adding to an existing archive.
+- **Unpack each archive** – Plugins > Unpack each archive (7-Zip plugin): every selected archive goes into its own folder in the other panel's folder, in the background.
+- **Self-extracting archive** – Plugins > Make self-extracting archive (.exe) (Windows): turns the `.7z` under the cursor into a program that unpacks it without 7-Zip; needs the `7z.sfx` module from 7-Zip or Far ArcLite.
+- **Split archives** – `name.7z.001`, `.002`, ... open like a folder from the first volume through the 7-Zip plugin (Windows).
 - **Archive editing** – copying and moving into an open archive, deleting entries, editing a file inside an archive and saving it back with `F2`.
 - **Encrypted archives** – AES ZIP and 7z with encrypted contents or names; the password is asked once per session.
 - **Large archives** – fast entry into zip files with tens of thousands of entries, large entries are extracted straight to disk.
@@ -104,7 +107,7 @@ A short overview of the features; details are in the help (F1), the other docume
 
 ## Network and virtual file systems
 
-- **Network connections** – FTP, FTPS, SFTP (password, key, agent, fingerprint check), SCP, WebDAV, S3 as panel folders; the connection list is on `Ctrl+Shift+B`, passwords are stored encrypted.
+- **Network connections** – FTP, FTPS, SFTP (password, key, agent, fingerprint check), SCP, WebDAV, S3 as panel folders; the connection list is on `Ctrl+Shift+B`, passwords are stored encrypted; F5 / Shift+F5 copy a saved connection, F6 renames it; a download cut off by a lost connection continues from the partial file on the next attempt.
 - **Network addresses** – `ftp://`, `sftp://`, `dav://`, `s3://` and others can be typed in full; file permissions on the server can be changed over FTP and SFTP.
 - **Rclone** – storages configured in rclone (cloud drives, S3, etc.) open as folders with viewing, editing, copying and deleting.
 - **Everything** – Everything search results (Windows) open as a panel of real files.
@@ -136,7 +139,7 @@ A short overview of the features; details are in the help (F1), the other docume
 - **Quick View** – `Ctrl+Q` in the other panel; `Tab` passes the keyboard to it for scrolling text or an image.
 - **Disk usage map** – with the cursor on a folder, Quick View draws a treemap of the space it takes (the `mtn.diskmap` plugin): it fills in while the folder is scanned, `Tab` moves into the map to pick a tile, zoom into a folder and go to it in the panel; drawn in MTN2 and mtn2-sdl.
 - **Syntax highlighting** – about 70 languages in the viewer and editor; numbers, punctuation and links highlighted in `.txt` and `.log`.
-- **Markdown** – headings, italics, strikethrough, tables, images at their own size, links between files and sections, selection and search over the displayed text.
+- **Markdown** – headings, italics, strikethrough, tables, images at their own size, links between files and sections, Obsidian wiki links (`[[note]]`, `[[note|label]]`), LaTeX formulas as written, selection and search over the displayed text.
 - **Markdown colors** – custom colors and styles for elements, palette import from an Obsidian theme.
 - **PDF** – pages as images with zoom and paging, the document text in Quick View.
 - **Documents and data** – text from `.docx`, `.xlsx`, `.pptx`, `.svg`, the schema and rows of SQLite databases, aligned CSV and TSV tables.
@@ -152,12 +155,13 @@ A short overview of the features; details are in the help (F1), the other docume
 - **Line commands** – sorting, removing duplicates, reflowing paragraphs to width, shifting, alignment, case changes.
 - **Line drawing** – `Ctrl+Alt+D`: the arrows draw single or double frames.
 - **Incremental search** – `Ctrl+Alt+T`.
+- **Hex editing** – bytes edited since the file was opened or saved get a different background in the hex and text columns.
 - **Change tracking** – a change to the file on disk is noticed, and the editor's own save does not trigger a reload.
 
 ## Menus, keys and command palette
 
-- **Main menu** – `F9` or a single `Alt`, a Plugins menu with the commands of all plugins, scrolling for long menus.
-- **Command palette** – `Shift+F9`: search over menu items and keys with synonyms in several languages, command descriptions, `Ctrl+K` changes a command's key, a plugin command's too.
+- **Main menu** – `F9` or a single `Alt`, a Plugins menu with the commands of all plugins, scrolling for long menus; while a menu is open, the status line explains the item under the cursor.
+- **Command palette** – `Shift+F9`: search over menu items and keys with synonyms in several languages, command descriptions, `Ctrl+K` changes a command's key, a plugin command's too; the fields of the Settings window are listed as well, and Enter opens the window on that field.
 - **Key bindings** – Settings → Key Bindings and `keymap.json` for panels, viewer, editor, console and global keys; only changes are stored.
 - **Ready-made keymaps** – Far, Midnight Commander and Total Commander-style samples in `docs/keymap-presets`.
 - **Function key bar** – captions for all modifiers, mouse clicks, only available actions shown.
@@ -181,6 +185,7 @@ A short overview of the features; details are in the help (F1), the other docume
 - **Cursor** – shape and blinking, a Far-style underline cursor.
 - **Shadows and dialog look** – classic, soft or no shadows; buttons press like real ones.
 - **Marked files** – shown by text color or row background.
+- **Folder names** – an optional slash after the names of folders.
 - **Hiding window elements** – the window title bar, menu, function key bar and status line; window buttons move to the menu bar.
 - **Screen saver** – after idle time sharks made of letters swim across the screen.
 
@@ -192,13 +197,13 @@ A short overview of the features; details are in the help (F1), the other docume
 
 ## Settings and configuration
 
-- **Settings dialogs** – "Font / Display" and "Interface" with options for panel, command line and notification behavior; the Interface window is split into the tabs Window, Panels and Behavior.
+- **Settings window** – "Font / Display...", "Interface..." and "Console..." open one window: sections on the left (Font, Text, Display, Window, Panels, Behavior, Keyboard, Editor, Console, Notices), the fields of the chosen section on the right in titled frames; Up and Down switch sections, typing narrows the list to sections whose name, field captions or descriptions contain the text; a short description of the field under the focus or the mouse pointer is shown below the fields. Plugin settings stay in the plugins' own dialogs (Plugins window).
 - **Settings export and import** – a single zip with the session, keys, user menu, folder hotlist, connections and themes.
 - **Settings location** – moving between the user folder and portable mode next to the program; the `MTN2_CONFIG_DIR` variable sets a custom folder.
 - **Command line arguments** – paths open as tabs, `--view` and `--edit`, paths are passed to an already open window.
 - **Information switches** – `--version`, `--paths`, `--list-commands`, `--list-plugins`, `--check-keymap`, `--export-theme`.
 - **Exact size in bytes** – optional, with digit grouping in the footer and status line.
-- **Notifications** – short messages in the lower right corner; dialogs hidden with "Don't show again" come back with one command.
+- **Notifications** – short messages in the lower right corner, with a set duration (1.5 to 10 s); a notice stays while the mouse is over it and a click closes it; dialogs hidden with "Don't show again" come back with one command.
 - **Drag and drop** – files between panels and from other programs.
 - **Fast startup** – plugins load on first use, the shell starts with the first command.
 

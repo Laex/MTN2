@@ -6,6 +6,8 @@ This file describes what changes for the user from version to version: new featu
 
 ## Unreleased
 
+## Dev v0.5.12.41 – 2026-11-25
+
 ### Changed
 
 - The command palette (Shift+F9) lists the fields of the Settings window: a setting is found by its caption, its section or the word "settings", its description is shown under the list, and Enter opens the Settings window with the focus on that field.
@@ -16,6 +18,11 @@ This file describes what changes for the user from version to version: new featu
 - The Settings window has a Console section: scrollback size, multi-line paste confirmation, trimming of spaces on copy and paste, return to the panels and the background-run time. "Console..." in the Options menu opens the Settings window on this section.
 - The Settings window has an Editor section: auto-indent on Enter (moved from Keyboard), auto-wrap of long lines while typing and the wrap width. Auto-wrap and the width are now kept between runs.
 - "Font / Display..." and "User interface..." open one Settings window: a list of sections on the left (Font, Text, Display, Window, Panels, Behavior, Keyboard, Editor, Console, Notices), the fields of the chosen section on the right. Up and Down in the list switch sections, and typing narrows the list to the sections whose name, field captions or field descriptions contain the text; Backspace removes the last letter. A two-line description of the field under the cursor is shown under the fields, a vertical line separates the list of sections from them, and the fields of a section are grouped in frames with titles.
+
+### Added
+
+- Plugins > Unpack each archive (7-Zip plugin): every selected archive is unpacked into its own folder, named after the archive, in the other panel's folder; an existing folder is never reused (`name (2)`), and an archive that cannot be unpacked is listed without leaving a half-filled folder. It runs in the background.
+- A file search for text or bytes (`Alt+F7`) and the checksums command warn when the folder holds cloud-only files (OneDrive, Dropbox and the like), because reading them downloads each one.
 
 ## Dev v0.5.12.32 – 2026-11-25
 

@@ -11,6 +11,7 @@ uses
   uPluginHostAbi in '..\..\Core\uPluginHostAbi.pas',
   uPluginSdk in '..\..\Core\uPluginSdk.pas',
   uVfsTypes in '..\..\Core\uVfsTypes.pas',
+  uCloudFiles in '..\..\Core\uCloudFiles.pas',
   uChecksums in 'uChecksums.pas';
 
 const
@@ -332,7 +333,7 @@ var
   Root, Side: TJSONValue;
   Active, Uri, Panel: string;
   Selected: TJSONArray;
-  I: Integer;
+  I, Cloud: Integer;
   Uris: TArray<string>;
 begin
   Result := False;
@@ -369,6 +370,11 @@ begin
     GPaths[I] := FileUriToPath(Uris[I]);
   end;
   GBaseDir := FileUriToPath(Panel);
+  // Hashing reads every file, which downloads each cloud-only placeholder.
+  Cloud := CountCloudOnlyFiles(GPaths);
+  if Cloud > 0 then
+    Notice(Format(Tr('msg.cloudOnly', '%d cloud-only file(s): they are downloaded first'),
+      [Cloud]), 1);
   Result := True;
 end;
 

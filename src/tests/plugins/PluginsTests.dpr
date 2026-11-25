@@ -49,6 +49,7 @@ uses
   TestListExport in 'TestListExport.pas',
   TestArchiveTest in 'TestArchiveTest.pas',
   TestPackEach in 'TestPackEach.pas',
+  TestUnpackEach in 'TestUnpackEach.pas',
   TestLogFilter in 'TestLogFilter.pas',
   TestLuaMacros in 'TestLuaMacros.pas',
   TestCsvTable in 'TestCsvTable.pas',

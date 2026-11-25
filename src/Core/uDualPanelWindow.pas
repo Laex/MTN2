@@ -395,6 +395,7 @@ type
     procedure HostHideSearchResults;
     function HostCurrentFindSession: string;
     procedure HostSearchLimitReached;
+    procedure HostSearchCloudOnly(ACount: Integer);
     procedure HostSearchBackgroundDone(AFound: Integer);
     function HostOpenFindSession(var ASessionId: string; const ARoot, AMask: string;
       const AHits: TArray<TFindHit>): Boolean;
@@ -3467,6 +3468,12 @@ begin
       'Narrow the mask or the folder.', [cFindMaxResults]));
 end;
 
+procedure TDualPanelWindow.HostSearchCloudOnly(ACount: Integer);
+begin
+  HostWarnJob(T('ui.search.cloudOnly',
+    '%d cloud-only file(s): reading them for the text downloads them', [ACount]));
+end;
+
 procedure TDualPanelWindow.HostSearchBackgroundDone(AFound: Integer);
 var
   Request: TNoticeRequest;
@@ -3998,6 +4005,7 @@ begin
     HostApplyFindResults, FlushDirWatchPending);
   FSearchUi.OnStopRequest := HostRequestSearchStop;
   FSearchUi.OnLimitReached := HostSearchLimitReached;
+  FSearchUi.OnCloudOnly := HostSearchCloudOnly;
   FSearchUi.OnBackgroundDone := HostSearchBackgroundDone;
   FSearchUi.OnHideResults := HostHideSearchResults;
   FSearchUi.OnOpenSession := HostOpenFindSession;

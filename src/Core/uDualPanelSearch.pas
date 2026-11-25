@@ -81,6 +81,7 @@ type
     FOnAfterClose: TProc;
     FOnStopRequest: TProc;
     FOnLimitReached: TProc;
+    FOnCloudOnly: TProc<Integer>;
     FSearch: TSearchState;
     FLife: ILifeFlag;
     // The panel already lists the hits of the running search.
@@ -115,6 +116,7 @@ type
       var AKeyChar: Char);
     procedure HandleSearchInputRunning(var AKey: Word; var AKeyChar: Char);
     procedure HandleSearchInputResults(var AKey: Word; var AKeyChar: Char);
+    procedure WarnCloudOnlyContent(const ARoot: string; const AOpts: TFindOptions);
     procedure QueueFindLimitNotice(AErrorCode: TVfsErrorCode; ATruncated: Boolean;
       const ALife: ILifeFlag);
     procedure ApplyFindWalkDone(AAction: TFindWalkDoneAction; ARunId: Integer;
@@ -181,6 +183,9 @@ type
     /// <summary>Called after a search that ended because it hit the result
     /// limit (cFindMaxResults).</summary>
     property OnLimitReached: TProc read FOnLimitReached write FOnLimitReached;
+    /// <summary>Called when a search that reads file content starts in a folder
+    /// holding cloud-only files; the argument is how many were found.</summary>
+    property OnCloudOnly: TProc<Integer> read FOnCloudOnly write FOnCloudOnly;
     property BackgroundCount: Integer read GetBackgroundCount;
     property OnBackgroundDone: TSearchBackgroundDoneEvent read FOnBackgroundDone
       write FOnBackgroundDone;
@@ -257,7 +262,8 @@ function SearchOverlayTitleForPhase(APhase: TSearchPhase;
 implementation
 
 uses
-  uStrings, uKeyChord, uTextEncoding, uFindArchive, uPluginServices, uFindRouter;
+  uStrings, uKeyChord, uTextEncoding, uFindArchive, uPluginServices, uFindRouter,
+  uCloudFiles;
 
 const
   cCursorFg = TAlphaColor($FF000000);
@@ -591,6 +597,7 @@ begin
   end;
   FSearch.Mask := Mask;
   FSearch.RootPath := Root;
+  WarnCloudOnlyContent(Root, Opts);
 
   Life := FLife;
   Inc(FRunId);
@@ -683,6 +690,26 @@ begin
       if FOnNavigateFindResults(Root, Mask, FSearch.Results, FResultsShown) then
         FResultsShown := True;
     end);
+end;
+
+procedure TSearchController.WarnCloudOnlyContent(const ARoot: string;
+  const AOpts: TFindOptions);
+var
+  Path: string;
+  Count: Integer;
+begin
+  // Looking for text or bytes reads every file, which downloads each
+  // cloud-only placeholder; a name-only search does not touch the content.
+  if not Assigned(FOnCloudOnly) or
+     ((AOpts.ContainingText = '') and (AOpts.HexBytes = '')) then
+    Exit;
+  if SameText(Copy(ARoot, 1, 8), 'file:///') then
+    Path := FileUriToPath(ARoot)
+  else
+    Path := ARoot;
+  Count := CountCloudOnlyFiles([Path]);
+  if Count > 0 then
+    FOnCloudOnly(Count);
 end;
 
 procedure TSearchController.QueueFindLimitNotice(AErrorCode: TVfsErrorCode;

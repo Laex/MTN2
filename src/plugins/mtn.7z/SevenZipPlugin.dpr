@@ -11,6 +11,7 @@ uses
   uSevenZipApi,
   uPlatformProcess, uPlatformInfo,
   uSevenZipVfs in 'uSevenZipVfs.pas',
+  uUnpackEach in 'uUnpackEach.pas',
   uVfsTypes in '..\..\Core\uVfsTypes.pas';
 
 var
@@ -269,6 +270,7 @@ const
   cPluginId = 'mtn.7z';
   cTestCommand = 'sevenzip.test';
   cTestJobKey = 'archive.test';
+  cUnpackCommand = 'sevenzip.unpackeach';
 
 var
   GTestBusy: Integer;
@@ -450,6 +452,159 @@ begin
       GHostApi.JobBegin(PAnsiChar(Plugin), PAnsiChar(Key), PAnsiChar(Title), @OnTestJobCancel, nil);
     end;
     TArchiveTestThread.Create(Local);
+  except
+    TInterlocked.Exchange(GTestBusy, 0);
+  end;
+end;
+
+{ Archive files on disk to unpack: the marked rows of the active panel, or the
+  row under the cursor. ADestDir is the other panel's folder when that is a
+  folder on disk, else ''. }
+function UnpackSources(out ADestDir: string): TArray<string>;
+var
+  Root, Side, Other: TJSONValue;
+  Active, OtherKey, OtherUri, Uri, Path: string;
+  Selected: TJSONArray;
+  IsDir: Boolean;
+  I: Integer;
+begin
+  Result := nil;
+  ADestDir := '';
+  Root := TJSONObject.ParseJSONValue(HostText(GHostApi.PanelInfo));
+  try
+    if not (Root is TJSONObject) or not Root.TryGetValue<string>('active', Active) then
+      Exit;
+    Side := Root.GetValue<TJSONValue>(Active, nil);
+    if not (Side is TJSONObject) then
+      Exit;
+    if Side.TryGetValue<TJSONArray>('selected', Selected) and (Selected.Count > 0) then
+    begin
+      for I := 0 to Selected.Count - 1 do
+      begin
+        Uri := Selected.Items[I].Value;
+        if SameText(Copy(Uri, 1, 8), 'file:///') then
+        begin
+          Path := FileUriToPath(Uri);
+          if TFile.Exists(Path) then
+            Result := Result + [Path];
+        end;
+      end;
+    end
+    else if Side.TryGetValue<string>('cursor', Uri) and (Uri <> '') then
+    begin
+      IsDir := False;
+      Side.TryGetValue<Boolean>('cursorIsDirectory', IsDir);
+      Path := FileUriToPath(Uri);
+      if not IsDir and (Path <> '') and TFile.Exists(Path) then
+        Result := [Path];
+    end;
+    if SameText(Active, 'left') then
+      OtherKey := 'right'
+    else
+      OtherKey := 'left';
+    Other := Root.GetValue<TJSONValue>(OtherKey, nil);
+    if (Other is TJSONObject) and Other.TryGetValue<string>('uri', OtherUri) and
+       SameText(Copy(OtherUri, 1, 8), 'file:///') then
+      ADestDir := ExcludeTrailingPathDelimiter(FileUriToPath(OtherUri));
+  finally
+    Root.Free;
+  end;
+end;
+
+type
+  TArchiveUnpackThread = class(TThread)
+  private
+    FPaths: TArray<string>;
+    FDestDir: string;
+  protected
+    procedure Execute; override;
+  public
+    constructor Create(const APaths: TArray<string>; const ADestDir: string);
+  end;
+
+constructor TArchiveUnpackThread.Create(const APaths: TArray<string>; const ADestDir: string);
+begin
+  FPaths := APaths;
+  FDestDir := ADestDir;
+  FreeOnTerminate := True;
+  inherited Create(False);
+end;
+
+procedure TArchiveUnpackThread.Execute;
+var
+  Unpacked, I: Integer;
+  Failed: TArray<string>;
+  Text: string;
+  Kind: Int64;
+  Finished: Boolean;
+begin
+  Kind := 0;
+  try
+    Finished := UnpackEachArchive(FPaths, FDestDir,
+      function: Boolean
+      begin
+        Result := Terminated or (TInterlocked.CompareExchange(GTestCancel, 0, 0) <> 0);
+      end, Unpacked, Failed);
+    if not Finished then
+      Text := Tr('msg.cancelled', 'Cancelled.')
+    else if Length(Failed) = 0 then
+      Text := Format(Tr('msg.unpackDone', '%d archives unpacked'), [Unpacked])
+    else
+    begin
+      Kind := 1;
+      Text := Format(Tr('msg.unpackFailed', 'Could not unpack %d of %d archives:'),
+        [Length(Failed), Length(FPaths)]);
+      for I := 0 to Min(High(Failed), 9) do
+        Text := Text + sLineBreak + Failed[I];
+      if Length(Failed) > 10 then
+        Text := Text + sLineBreak + '...';
+    end;
+  except
+    Kind := 1;
+    Text := Tr('msg.unpackError', 'Unpacking failed.');
+  end;
+  GTestLock.Enter;
+  try
+    GTestText := Text;
+    GTestKind := Kind;
+  finally
+    GTestLock.Leave;
+  end;
+  if Assigned(GHostApi.PostToMain) then
+    GHostApi.PostToMain(PAnsiChar(UTF8String(cPluginId)), MainTestDone, nil);
+end;
+
+{ The "Unpack each archive" command: unpacks every archive of the selection
+  into its own folder in the other panel's folder, in the background. }
+procedure CmdUnpackEach(AUserData: Pointer); cdecl;
+var
+  Plugin, Key, Title: UTF8String;
+  Paths: TArray<string>;
+  DestDir: string;
+begin
+  try
+    if not Assigned(GHostApi.PostToMain) then
+      Exit;
+    Paths := UnpackSources(DestDir);
+    if Length(Paths) = 0 then
+    begin
+      Notice(Tr('msg.unpackNoFiles', 'Select archive files on disk.'), 0);
+      Exit;
+    end;
+    if (DestDir = '') or not TDirectory.Exists(DestDir) then
+      DestDir := ExcludeTrailingPathDelimiter(ExtractFilePath(Paths[0]));
+    if TInterlocked.CompareExchange(GTestBusy, 1, 0) <> 0 then
+      Exit;
+    TInterlocked.Exchange(GTestCancel, 0);
+    GTestJob := HostHasJobs;
+    if GTestJob then
+    begin
+      Plugin := UTF8String(cPluginId);
+      Key := UTF8String(cTestJobKey);
+      Title := UTF8String(Tr('msg.unpackJob', 'Unpacking archives'));
+      GHostApi.JobBegin(PAnsiChar(Plugin), PAnsiChar(Key), PAnsiChar(Title), @OnTestJobCancel, nil);
+    end;
+    TArchiveUnpackThread.Create(Paths, DestDir);
   except
     TInterlocked.Exchange(GTestBusy, 0);
   end;
@@ -637,6 +792,13 @@ begin
         PAnsiChar(UTF8String(cTestCommand)),
         PAnsiChar(UTF8String(Tr('ui.menu.test', 'Test archive (checksums)'))),
         @CmdTestArchive, nil, 72);
+    AHostApi.RegisterCommand(PAnsiChar(UTF8String(cPluginId)), PAnsiChar(UTF8String(cUnpackCommand)),
+      @CmdUnpackEach, nil);
+    if Assigned(AHostApi.RegisterMenuItem) then
+      AHostApi.RegisterMenuItem(PAnsiChar(UTF8String(cPluginId)), 'Plugins',
+        PAnsiChar(UTF8String(cUnpackCommand)),
+        PAnsiChar(UTF8String(Tr('ui.menu.unpack', 'Unpack each archive'))),
+        @CmdUnpackEach, nil, 71);
 {$IFDEF MSWINDOWS}
     AHostApi.RegisterCommand(PAnsiChar(UTF8String(cPluginId)), PAnsiChar(UTF8String(cSfxCommand)),
       @CmdMakeSfx, nil);
