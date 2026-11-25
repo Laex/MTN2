@@ -1374,6 +1374,7 @@
     "job.renameTitle": "Umbenennen",
     "job.sameFolder": "Der Zielordner ist der Ordner der Elemente: bitte einen anderen wählen",
     "job.cloudOnly": "%d Datei(en) nur in der Cloud: sie werden zuerst heruntergeladen",
+    "search.cloudOnly": "%d Datei(en) nur in der Cloud: das Lesen für die Textsuche lädt sie herunter",
     "job.renameNewName": "Neuer Name:",
     "hotlist.addTitle": "Zur Hotlist hinzufügen",
     "hotlist.namePrompt": "Name:",
