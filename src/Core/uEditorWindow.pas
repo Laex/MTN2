@@ -5427,7 +5427,7 @@ var
     if (AIdx < 0) or (AIdx >= FDoc.LineCount) then
       Exit;
     St := FMdFenceIdx.FenceStateBefore(FDoc, AIdx);
-    if St.InFence then
+    if St.InFence or St.InMath then
       Exit;
     Result := TMarkdownParser.LooksLikePipeTableRow(FDoc.GetLine(AIdx));
   end;
@@ -5443,7 +5443,7 @@ begin
   if FMdLineCache.TryGetValue(ALineIdx, Result) then
     Exit;
   State := FMdFenceIdx.FenceStateBefore(FDoc, ALineIdx);
-  EnteredInFence := State.InFence;
+  EnteredInFence := State.InFence or State.InMath;
   Raw := FDoc.GetLine(ALineIdx);
   Result := TMarkdownParser.ParseLine(Raw, State);
   if (not EnteredInFence) and TMarkdownParser.LooksLikePipeTableRow(Raw) then

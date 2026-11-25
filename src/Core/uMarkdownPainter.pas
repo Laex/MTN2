@@ -51,6 +51,7 @@ var
   I, ColIdx, CharIdx, N, LastChunkChar: Integer;
   St: TResolvedMdStyle;
   Ch: Char;
+  WholeLine: Boolean;
 begin
   for Kind := Low(TMdSpanKind) to High(TMdSpanKind) do
     ATheme.ResolveMarkdownStyleColors(Kind, Styles[Kind].Fg, Styles[Kind].Bg, Styles[Kind].Attr);
@@ -88,6 +89,18 @@ begin
     TrailKind := mskText;
   if not (TrailKind in [mskH1, mskH2, mskH3to6, mskCodeBlock, mskHRule]) then
     TrailKind := mskText;
+  // A code block span that covers only part of the line (a $...$ formula in
+  // a sentence) must not fill the rest of the row.
+  if (TrailKind = mskCodeBlock) and (N > 0) then
+  begin
+    WholeLine := False;
+    for I := 0 to High(ALine.Spans) do
+      if (ALine.Spans[I].Kind = mskCodeBlock) and (ALine.Spans[I].StartCol <= 1) and
+         (ALine.Spans[I].Len >= N) then
+        WholeLine := True;
+    if not WholeLine then
+      TrailKind := mskText;
+  end;
 
   ColIdx := AStartCol;
   CharIdx := AStartCharIndex;

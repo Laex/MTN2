@@ -705,6 +705,7 @@ begin
   if not ReadGuestUtf8(Caller, Vals^[6].Of_.I32, Vals^[7].Of_.I32, ExportName) or (ExportName = '') then
     Exit;
   Prio := Vals^[8].Of_.I32;
+  Caption := PluginTranslate(Inst.PluginId, 'menu.' + ItemId, Caption);
   MenuRegistry.RegisterMenuItem(Inst.PluginId, Parent, ItemId, Caption,
     procedure
     var

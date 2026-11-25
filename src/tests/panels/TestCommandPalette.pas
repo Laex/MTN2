@@ -40,12 +40,13 @@ type
     [Test] procedure TestKeyOnlyCommandRunsItsAction;
     [Test] procedure TestShortcutColumnIsSearched;
     [Test] procedure TestPluginCommandWithoutMenuItemIsListedAndRuns;
+    [Test] procedure TestEveryMenuCommandAndBoundPanelOrGlobalKeyIsListed;
   end;
 
 implementation
 
 uses
-  System.SysUtils, System.Classes, System.IOUtils, System.UITypes,
+  System.SysUtils, System.Classes, System.IOUtils, System.UITypes, System.TypInfo,
   uStrings, uKeymap, uCharWidth, uTopMenuBar, uCommandPalette,
   uDialogHost, uDialogTypes, uDialogBuilders, uDialogRenderer, uDualPanelUiTypes, uDualPanelPaletteDialog,
   uDualPanelKeymapDialog, uCommandRegistry;
@@ -83,6 +84,14 @@ begin
     end;
   if AJson <> '' then
     Assert.IsTrue(Result.LoadMenuFromJson(AJson), 'test menu parses');
+end;
+
+function ItemKeyOf(const AItem: TSubmenuItem): string;
+begin
+  if AItem.IsPluginItem then
+    Result := 'plugin:' + AItem.PluginId + ':' + AItem.Caption
+  else
+    Result := GetEnumName(TypeInfo(TTopMenuAction), Ord(AItem.Action));
 end;
 
 function IndexOfKey(const AEntries: TArray<TPaletteEntry>; const AKey: string): Integer;
@@ -918,6 +927,46 @@ begin
     Assert.IsTrue(not Contains(Keys, 'key:RunInNewTab'), 'another chord is not found');
     Assert.IsTrue(not Contains(RankedKeys(E, 'f'), 'key:RunInBackground'),
       'a letter does not match inside a key name such as Shift');
+  finally
+    M.Free;
+  end;
+end;
+
+procedure TTestCommandPalette.TestEveryMenuCommandAndBoundPanelOrGlobalKeyIsListed;
+var
+  M: TTopMenuController;
+  E: TArray<TPaletteEntry>;
+  Listed: array[TKeymapAction] of Boolean;
+  A: TKeymapAction;
+  Missing: string;
+begin
+  FillChar(Listed, SizeOf(Listed), 0);
+  M := MakeMenu;
+  try
+    E := BuildPaletteEntries(M);
+    AppendKeymapOnlyEntries(M, KeymapActionCaption, E);
+    Missing := '';
+    M.ListItems(
+      procedure(ACategory: string; AItem: TSubmenuItem)
+      begin
+        if (AItem.Action <> tmaNone) and (IndexOfKey(E, ItemKeyOf(AItem)) < 0) then
+          Missing := Missing + ' ' + ItemKeyOf(AItem);
+        if not AItem.IsPluginItem then
+          Listed[TopMenuKeymapAction(AItem.Action)] := True;
+      end);
+    Assert.AreEqual('', Missing, 'every menu command is listed');
+    for A := Succ(Low(TKeymapAction)) to High(TKeymapAction) do
+      if IndexOfKey(E, 'key:' + KeymapActionDisplayName(A)) >= 0 then
+        Listed[A] := True;
+    Missing := '';
+    for A := Succ(Low(TKeymapAction)) to High(TKeymapAction) do
+      if (not Listed[A]) and (KeymapShortcutText(ActiveKeymap, A) <> '') and
+         (KeymapActionContext(A) in [kcPanels, kcGlobal]) and
+         not (A in [kaTopMenu, kaToggleFullscreen, kaReloadKeymap]) then
+        Missing := Missing + ' ' + KeymapActionDisplayName(A);
+    Assert.AreEqual('', Missing, 'every bound panel or global action is listed');
+    Assert.IsTrue(IndexOfKey(E, 'key:' + KeymapActionDisplayName(kaPrevTab)) >= 0,
+      'a global action no menu item runs is listed');
   finally
     M.Free;
   end;

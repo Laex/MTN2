@@ -38,8 +38,8 @@ type
 const
   cPaletteRecentMax = 8;
 
-/// <summary>Adds the bound panel actions that no menu item runs (Ctrl+Enter,
-/// Alt+Shift+Enter, ...) after the menu commands, so the palette lists the
+/// <summary>Adds the bound panel and global actions that no menu item runs
+/// (Ctrl+Enter, Alt+Shift+Enter, previous tab, ...) after the menu commands, so the palette lists the
 /// keys the menu never mentions and shows their shortcuts.</summary>
 procedure AppendKeymapOnlyEntries(AMenu: TTopMenuController;
   const ACaption: TPaletteActionCaption; var AEntries: TArray<TPaletteEntry>);
@@ -245,6 +245,21 @@ begin
   end;
 end;
 
+// Panel and global actions the dual panel window dispatches. The top menu key
+// and full screen are handled before the window sees a palette command, and
+// the keymap reload has a menu item of its own.
+function PaletteListsKeyAction(AAction: TKeymapAction): Boolean;
+begin
+  case KeymapActionContext(AAction) of
+    kcPanels:
+      Result := True;
+    kcGlobal:
+      Result := not (AAction in [kaTopMenu, kaToggleFullscreen, kaReloadKeymap]);
+  else
+    Result := False;
+  end;
+end;
+
 procedure AppendKeymapOnlyEntries(AMenu: TTopMenuController;
   const ACaption: TPaletteActionCaption; var AEntries: TArray<TPaletteEntry>);
 var
@@ -266,7 +281,7 @@ begin
     List.AddRange(AEntries);
     for A := Succ(Low(TKeymapAction)) to High(TKeymapAction) do
     begin
-      if Covered[A] or (KeymapActionContext(A) <> kcPanels) then
+      if Covered[A] or not PaletteListsKeyAction(A) then
         Continue;
       Shortcut := KeymapShortcutText(ActiveKeymap, A);
       if Shortcut = '' then

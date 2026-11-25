@@ -72,8 +72,11 @@ type
     Target: string; // mskLink only: the "(url)" part, not shown
   end;
 
+  /// <summary>What ParseLine carries from one line to the next: an open code
+  /// fence or an open "$$" display formula. Start from Default(TMdFenceState).</summary>
   TMdFenceState = record
     InFence: Boolean;
+    InMath: Boolean;
   end;
 
   TMdLine = record
@@ -622,6 +625,54 @@ var
     Result := True;
   end;
 
+  // $...$ and $$...$$ are LaTeX: the text between the dollars is kept as
+  // written (no emphasis inside) and shown with the code block background,
+  // without the dollars.
+  // The opening '$' must be followed by a non-space and the closing one
+  // preceded by a non-space and not followed by a digit ($$ has no such rule), so "$5 and $10"
+  // stays text. '\$' is a literal dollar.
+  function TryMath: Boolean;
+  var
+    Delim: string;
+    DLen, J, CloseIdx, SpanStart: Integer;
+  begin
+    Result := False;
+    if S[I] <> '$' then
+      Exit;
+    if (I < N) and (S[I + 1] = '$') then
+      Delim := '$$'
+    else
+      Delim := '$';
+    DLen := Length(Delim);
+    if (I + DLen > N) or ((DLen = 1) and ((S[I + DLen] = ' ') or (S[I + DLen] = #9))) then
+      Exit;
+    CloseIdx := 0;
+    J := I + DLen;
+    while J <= N do
+    begin
+      if S[J] = '\' then
+      begin
+        Inc(J, 2);
+        Continue;
+      end;
+      if (Copy(S, J, DLen) = Delim) and (J > I + DLen) and
+         ((DLen = 2) or ((S[J - 1] <> ' ') and (S[J - 1] <> #9))) and
+         ((DLen = 2) or (J = N) or not CharInSet(S[J + 1], ['0'..'9'])) then
+      begin
+        CloseIdx := J;
+        Break;
+      end;
+      Inc(J);
+    end;
+    if CloseIdx = 0 then
+      Exit;
+    SpanStart := Text.Length + 1;
+    Text.Append(Copy(S, I + DLen, CloseIdx - I - DLen));
+    Spans.Add(MakeSpan(SpanStart, Text.Length - SpanStart + 1, mskCodeBlock));
+    I := CloseIdx + DLen;
+    Result := True;
+  end;
+
   function TryLink: Boolean;
   var
     CloseBracket, CloseParen, SpanStart: Integer;
@@ -702,6 +753,13 @@ begin
     while I <= N do
     begin
       if TryMarker('`', '`', mskInlineCode, True) then Continue;
+      if TryMath then Continue;
+      if (S[I] = '\') and (I < N) and (S[I + 1] = '$') then
+      begin
+        Text.Append('$');
+        Inc(I, 2);
+        Continue;
+      end;
       if TryMarker('***', '***', mskBoldItalic, True) then Continue;
       if TryMarker('**', '**', mskBold, True) then Continue;
       if TryMarker('__', '__', mskBold, True, True) then Continue;
@@ -781,6 +839,23 @@ begin
   Result.Spans := nil;
 
   Trimmed := TrimLeft(ARaw);
+
+  // Inside a "$$" formula: the whole line is formula text, shown as code.
+  if AState.InMath then
+  begin
+    Result.Spans := SingleSpan(1, Length(ARaw), mskCodeBlock);
+    if Pos('$$', ARaw) > 0 then
+      AState.InMath := False;
+    Exit;
+  end;
+
+  // A line that opens a "$$" formula (and does not close it on the same line).
+  if (Copy(Trimmed, 1, 2) = '$$') and (Pos('$$', Copy(Trimmed, 3, MaxInt)) = 0) then
+  begin
+    AState.InMath := True;
+    Result.Spans := SingleSpan(1, Length(ARaw), mskCodeBlock);
+    Exit;
+  end;
 
   // Already inside a fence: whole line is code; a closing marker ends it
   // but the delimiter line itself still renders as code (same as opening).

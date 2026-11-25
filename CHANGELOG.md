@@ -29,6 +29,9 @@ This file describes what changes for the user from version to version: new featu
 
 ### Fixed
 
+- LaTeX formulas in Markdown (`$...$`, `$$...$$` blocks) are shown as written: underscores and asterisks inside them no longer turn parts of the formula into emphasis and hide the markup characters.
+- The command palette (Shift+F9) lists the previous-tab and quit keys, which no menu item runs.
+- The Workspace and Clear workspace items of the Commands menu follow the interface language.
 - Unpacking an empty folder from a ZIP archive no longer fails with "Nothing to extract": the folder is created, and empty subfolders of an unpacked folder are kept.
 - A folder-description refresh no longer shows an access-violation dialog when the read finishes after the window has closed.
 - Coloring a long line allocates its spans once, and the comparison of two long files grows its step list by doubling.

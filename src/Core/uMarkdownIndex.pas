@@ -103,7 +103,7 @@ var
   CpIdx: Integer;
   Cp: TCheckpoint;
 begin
-  State.InFence := False;
+  State := Default(TMdFenceState);
   if ALineIdx <= 0 then
     Exit(State);
 

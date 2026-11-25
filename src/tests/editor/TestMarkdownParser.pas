@@ -20,6 +20,8 @@ type
     [Test] procedure TestHeadings;
     [Test] procedure TestAnchorMarkers;
     [Test] procedure TestFences;
+    [Test] procedure TestMathBlockIsLiteral;
+    [Test] procedure TestInlineMathIsLiteral;
     [Test] procedure TestBlockConstructs;
     [Test] procedure TestInline;
     [Test] procedure TestImages;
@@ -117,7 +119,7 @@ var
   L: TMdLine;
   Id, Rest: string;
 begin
-  State.InFence := False;
+  State := Default(TMdFenceState);
 
   Assert.IsTrue(TMarkdownParser.SplitLeadingMarker('  <!-- some-id -->- item', Id, Rest),
     'a leading comment is a marker');
@@ -149,7 +151,7 @@ var
   State: TMdFenceState;
   L: TMdLine;
 begin
-  State.InFence := False;
+  State := Default(TMdFenceState);
 
   L := TMarkdownParser.ParseLine('# Title', State);
   Assert.IsTrue(L.DisplayText = 'Title', 'H1: leading "# " stripped');
@@ -192,7 +194,7 @@ var
   State: TMdFenceState;
   L: TMdLine;
 begin
-  State.InFence := False;
+  State := Default(TMdFenceState);
 
   L := TMarkdownParser.ParseLine('```python', State);
   Assert.IsTrue(State.InFence, 'opening ``` sets InFence');
@@ -212,11 +214,86 @@ begin
   Assert.IsTrue(IsSingleFullSpan(L, mskH1), 'heading parsing resumes once fence is closed');
 
   // Tilde fences and an unterminated fence running to EOF must not crash.
-  State.InFence := False;
+  State := Default(TMdFenceState);
   TMarkdownParser.ParseLine('~~~', State);
   Assert.IsTrue(State.InFence, '~~~ also opens a fence');
   TMarkdownParser.ParseLine('still open at EOF', State);
   Assert.IsTrue(State.InFence, 'unterminated fence stays open (caller just stops calling ParseLine)');
+end;
+
+{ ---- ParseLine: LaTeX formulas ----------------------------------------------- }
+
+procedure TestMathBlockIsLiteral;
+var
+  State: TMdFenceState;
+  L: TMdLine;
+begin
+  State := Default(TMdFenceState);
+
+  L := TMarkdownParser.ParseLine('$$', State);
+  Assert.IsTrue(State.InMath, 'a line with only $$ opens a formula');
+  Assert.IsTrue(IsSingleFullSpan(L, mskCodeBlock), 'the opening line is one block span');
+
+  L := TMarkdownParser.ParseLine('\overline{K}_{\text{a}} = \lim_{n} \frac{x}{y}_z _q_', State);
+  Assert.IsTrue(State.InMath, 'still inside the formula');
+  Assert.AreEqual('\overline{K}_{\text{a}} = \lim_{n} \frac{x}{y}_z _q_', L.DisplayText,
+    'formula text is verbatim: underscores are not emphasis');
+  Assert.IsTrue(IsSingleFullSpan(L, mskCodeBlock), 'formula line is one block span');
+
+  L := TMarkdownParser.ParseLine('$$', State);
+  Assert.IsFalse(State.InMath, 'the closing $$ ends the formula');
+
+  L := TMarkdownParser.ParseLine('# back to normal', State);
+  Assert.IsTrue(IsSingleFullSpan(L, mskH1), 'parsing resumes after the formula');
+
+  // One-line $$...$$ and a fence inside a formula.
+  State := Default(TMdFenceState);
+  L := TMarkdownParser.ParseLine('$$ a_1 + b_2 $$', State);
+  Assert.IsFalse(State.InMath, 'a one-line formula does not stay open');
+  Assert.AreEqual(' a_1 + b_2 ', L.DisplayText, 'one-line formula keeps its text');
+  Assert.IsTrue(IsSingleFullSpan(L, mskCodeBlock), 'one-line formula is one span');
+
+  State := Default(TMdFenceState);
+  TMarkdownParser.ParseLine('$$ x_1', State);
+  Assert.IsTrue(State.InMath, 'text after the opening $$ starts the formula');
+  L := TMarkdownParser.ParseLine('```', State);
+  Assert.IsTrue(State.InMath, 'a fence marker inside a formula is formula text');
+  Assert.IsFalse(State.InFence, 'and opens no fence');
+end;
+
+procedure TestInlineMathIsLiteral;
+var
+  State: TMdFenceState;
+  L: TMdLine;
+begin
+  State := Default(TMdFenceState);
+
+  L := TMarkdownParser.ParseLine('see $a_{b} + c_{d}$ and _it_', State);
+  Assert.AreEqual('see a_{b} + c_{d} and it', L.DisplayText,
+    'dollars are dropped, the formula keeps its underscores, outside text is parsed');
+  Assert.AreEqual(2, Integer(Length(L.Spans)), 'one formula span and one italic span');
+  Assert.AreEqual(Ord(mskCodeBlock), Ord(L.Spans[0].Kind));
+  Assert.AreEqual(5, L.Spans[0].StartCol);
+  Assert.AreEqual(13, L.Spans[0].Len, 'the span covers the formula only');
+  Assert.AreEqual(Ord(mskItalic), Ord(L.Spans[1].Kind));
+
+  L := TMarkdownParser.ParseLine('E.g. $' + #92 + 'omega_0$', State);
+  Assert.AreEqual('E.g. ' + #92 + 'omega_0', L.DisplayText, 'a formula at the end of the line');
+  Assert.AreEqual(1, Integer(Length(L.Spans)), 'is one span');
+  Assert.AreEqual(Ord(mskCodeBlock), Ord(L.Spans[0].Kind));
+  Assert.AreEqual(6, L.Spans[0].StartCol);
+  Assert.AreEqual(8, L.Spans[0].Len);
+
+  L := TMarkdownParser.ParseLine('costs $5 and $10 total', State);
+  Assert.AreEqual('costs $5 and $10 total', L.DisplayText, 'prices are not a formula');
+  Assert.AreEqual(0, Integer(Length(L.Spans)), 'and carry no span');
+
+  L := TMarkdownParser.ParseLine('a \$b_c\$ d', State);
+  Assert.AreEqual('a $b_c$ d', L.DisplayText, 'an escaped dollar is a plain dollar');
+
+  L := TMarkdownParser.ParseLine('$$x_1 * y_2 * z$$ tail', State);
+  Assert.AreEqual('x_1 * y_2 * z tail', L.DisplayText, 'inline $$..$$ is literal too');
+  Assert.IsFalse(State.InMath, 'a closed inline $$ formula opens no block');
 end;
 
 { ---- ParseLine: blockquote / lists / hr ------------------------------------- }
@@ -226,7 +303,7 @@ var
   State: TMdFenceState;
   L: TMdLine;
 begin
-  State.InFence := False;
+  State := Default(TMdFenceState);
 
   L := TMarkdownParser.ParseLine('> a quote', State);
   Assert.IsTrue(HasSpan(L, 1, 1, mskQuote), 'blockquote: leading ">" is a 1-char mskQuote span');
@@ -261,7 +338,7 @@ var
   State: TMdFenceState;
   L: TMdLine;
 begin
-  State.InFence := False;
+  State := Default(TMdFenceState);
 
   L := TMarkdownParser.ParseLine('**bold** and *italic* and `code`', State);
   Assert.IsTrue(L.DisplayText = 'bold and italic and code',
@@ -354,7 +431,7 @@ var
   State: TMdFenceState;
   L: TMdLine;
 begin
-  State.InFence := False;
+  State := Default(TMdFenceState);
 
   L := TMarkdownParser.ParseLine('![a cat](images/cat.png)', State);
   Assert.IsTrue(L.IsImage, '![alt](path) on its own line is IsImage');
@@ -423,7 +500,7 @@ var
   Block: TArray<string>;
   H, S, B, L: TMdLine;
 begin
-  State.InFence := False;
+  State := Default(TMdFenceState);
 
   Assert.IsTrue(TMarkdownParser.LooksLikePipeTableRow('| a | b |'), 'pipe row is detected');
   Assert.IsTrue(TMarkdownParser.LooksLikePipeTableRow('foo | bar'), 'outer pipes are optional');
@@ -876,7 +953,7 @@ begin
   Spec.MdAttrs[mskBold] := [ccaItalic];
   Spec.MdAttrs[mskLink] := [];
   Theme := CreateThemeFromSpec(Spec);
-  State.InFence := False;
+  State := Default(TMdFenceState);
   L := TMarkdownParser.ParseLine('ab **bold** `code`', State);
   Row := MakeRow(20);
   TMarkdownPainter.DrawLine(Row, 1, 20, L, Theme);
@@ -902,7 +979,7 @@ var
   AllHRule: Boolean;
 begin
   Theme := TFakeTheme.Create;
-  State.InFence := False;
+  State := Default(TMdFenceState);
 
   // Horizontal rule renders as an actual ruled line (chBoxH), not the
   // literal '-'/'*'/'_' source characters, across the FULL painted width -
@@ -963,6 +1040,16 @@ begin
   Assert.IsTrue((Row[Length(L.DisplayText) + 1].FgColor and $FF) = Cardinal(Ord(mskText)),
     'padding after a line that ends on inline code is mskText, not code bg');
 
+  // A $...$ formula at the end of a sentence has the code block background
+  // but must not fill the padded tail.
+  L := TMarkdownParser.ParseLine('so $a_1$', State);
+  Row := MakeRow(30);
+  TMarkdownPainter.DrawLine(Row, 1, 30, L, Theme);
+  Assert.IsTrue((Row[Length(L.DisplayText)].FgColor and $FF) = Cardinal(Ord(mskCodeBlock)),
+    'the formula cell has the code block style');
+  Assert.IsTrue((Row[Length(L.DisplayText) + 1].FgColor and $FF) = Cardinal(Ord(mskText)),
+    'padding after a trailing formula is mskText');
+
   // Headings still shade the rest of the row (whole-line kind).
   L := TMarkdownParser.ParseLine('# Title', State);
   Row := MakeRow(20);
@@ -972,7 +1059,7 @@ begin
 
   // An empty line inside a code fence keeps the code block style across the
   // whole row, so the block has no gaps.
-  State.InFence := False;
+  State := Default(TMdFenceState);
   TMarkdownParser.ParseLine('```', State);
   L := TMarkdownParser.ParseLine('', State);
   Assert.IsTrue(State.InFence, 'the fence is still open after an empty line');
@@ -982,7 +1069,7 @@ begin
     'an empty line in a fence is painted as code block');
   Assert.IsTrue((Row[20].FgColor and $FF) = Cardinal(Ord(mskCodeBlock)),
     'an empty line in a fence is code block out to the painted width');
-  State.InFence := False;
+  State := Default(TMdFenceState);
   L := TMarkdownParser.ParseLine('', State);
   Row := MakeRow(20);
   TMarkdownPainter.DrawLine(Row, 1, 20, L, Theme);
@@ -1109,6 +1196,16 @@ end;
 procedure TTestMarkdownParser.TestAnchorMarkers;
 begin
   TestMarkdownParser.TestAnchorMarkers;
+end;
+
+procedure TTestMarkdownParser.TestMathBlockIsLiteral;
+begin
+  TestMarkdownParser.TestMathBlockIsLiteral;
+end;
+
+procedure TTestMarkdownParser.TestInlineMathIsLiteral;
+begin
+  TestMarkdownParser.TestInlineMathIsLiteral;
 end;
 
 procedure TTestMarkdownParser.TestFences;
