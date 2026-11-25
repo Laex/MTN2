@@ -15,6 +15,8 @@ uses
 const
   cToastDurationMs = 2500;
   cToastWarningDurationMs = 3500;
+  /// <summary>Choices of the "Notice time" setting, in milliseconds.</summary>
+  cToastDurationChoices: array[0..4] of Integer = (1500, 2500, 4000, 6000, 10000);
 
 type
   // TToastKind (tkInfo / tkWarning) lives in uNotice, the host-free entry
@@ -30,6 +32,7 @@ type
     FHint: string;
     FTag: string;
     FOnChanged: TProc;
+    FHovered: Boolean;
     procedure TimerTick(Sender: TObject);
     procedure Changed;
   public
@@ -45,6 +48,12 @@ type
     /// ARequest.Always shows it even while GShowToasts is off.</summary>
     procedure ShowRequest(const ARequest: TNoticeRequest);
     procedure Hide;
+    /// <summary>True when the cell lies on the notice as it was last drawn, shadow
+    /// included.</summary>
+    function Contains(ACol, ARow: Integer): Boolean;
+    /// <summary>While the mouse is over the notice its countdown is paused; when the
+    /// mouse leaves, the countdown starts again from the full time.</summary>
+    procedure SetHovered(AValue: Boolean);
     /// <summary>Hide, but only if the notice on screen was shown with ATag.</summary>
     procedure HideTag(const ATag: string);
     /// <summary>AAvoid: an area that must stay uncovered (an open dialog);
@@ -66,6 +75,14 @@ var
   /// <summary>Display dialog "Show notifications"; persisted in session.json
   /// (showNotifications).</summary>
   GShowToasts: Boolean = True;
+  /// <summary>How long a notice stays ("Notice time"); a warning stays 1.4 times
+  /// as long. Persisted in session.json (toastMs).</summary>
+  GToastDurationMs: Integer = cToastDurationMs;
+
+/// <summary>The offered time nearest to AMs.</summary>
+function ClampToastDurationMs(AMs: Integer): Integer;
+/// <summary>Index of ClampToastDurationMs(AMs) in cToastDurationChoices.</summary>
+function ToastDurationIndexOf(AMs: Integer): Integer;
 
 /// <summary>ATemplate with AArg in its %s, at most AMaxLen chars: AArg is
 /// shortened in the middle first (paths keep drive and tail), the whole text
@@ -161,6 +178,27 @@ begin
   Result := TRectI.Make(Right - BoxW + 1, Bottom - 1 - ALines, Right, Bottom);
 end;
 
+function ClampToastDurationMs(AMs: Integer): Integer;
+var
+  I: Integer;
+begin
+  Result := cToastDurationChoices[0];
+  for I := 1 to High(cToastDurationChoices) do
+    if Abs(cToastDurationChoices[I] - AMs) < Abs(Result - AMs) then
+      Result := cToastDurationChoices[I];
+end;
+
+function ToastDurationIndexOf(AMs: Integer): Integer;
+var
+  I: Integer;
+begin
+  Result := 0;
+  AMs := ClampToastDurationMs(AMs);
+  for I := 0 to High(cToastDurationChoices) do
+    if cToastDurationChoices[I] = AMs then
+      Exit(I);
+end;
+
 { TToast }
 
 constructor TToast.Create(const AOnChanged: TProc);
@@ -206,20 +244,40 @@ begin
   if ARequest.DurationMs > 0 then
     FTimer.Interval := ARequest.DurationMs
   else if ARequest.Kind = tkWarning then
-    FTimer.Interval := cToastWarningDurationMs
+    FTimer.Interval := GToastDurationMs * 7 div 5
   else
-    FTimer.Interval := cToastDurationMs;
-  FTimer.Enabled := True;
+    FTimer.Interval := GToastDurationMs;
+  FTimer.Enabled := not FHovered;
   Changed;
 end;
 
 procedure TToast.Hide;
 begin
   FTimer.Enabled := False;
+  FHovered := False;
   if not FVisible then
     Exit;
   FVisible := False;
   Changed;
+end;
+
+function TToast.Contains(ACol, ARow: Integer): Boolean;
+begin
+  Result := FVisible and (FDrawn.Width > 0) and (FDrawn.Height > 0) and
+    (ACol >= FDrawn.Left) and (ACol <= FDrawn.Right) and
+    (ARow >= FDrawn.Top) and (ARow <= FDrawn.Bottom);
+end;
+
+procedure TToast.SetHovered(AValue: Boolean);
+begin
+  if AValue = FHovered then
+    Exit;
+  FHovered := AValue;
+  if not FVisible then
+    Exit;
+  // Restarting the timer starts the full interval again.
+  FTimer.Enabled := False;
+  FTimer.Enabled := not FHovered;
 end;
 
 procedure TToast.HideTag(const ATag: string);

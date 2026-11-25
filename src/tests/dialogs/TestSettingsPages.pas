@@ -61,15 +61,15 @@ var
   Strip: Integer;
 begin
   Decl := Merge(Pages);
-  Assert.AreEqual<Integer>(9, Length(Pages.Captions),
-    'Font, Text, Display, Window, Panels, Behavior, Keyboard, Editor, Console');
+  Assert.AreEqual<Integer>(10, Length(Pages.Captions),
+    'Font, Text, Display, Window, Panels, Behavior, Keyboard, Editor, Console, Notices');
   Assert.AreEqual('Font', Pages.Captions[0], 'first');
-  Assert.AreEqual('Console', Pages.Captions[8], 'last');
-  Assert.AreEqual<Integer>(9, Pages.Pages[8], 'pages count on');
+  Assert.AreEqual('Notices', Pages.Captions[9], 'last');
+  Assert.AreEqual<Integer>(10, Pages.Pages[9], 'pages count on');
   Strip := DialogTabStripIndex(Decl.Controls);
   Assert.IsTrue(Strip >= 0, 'strip');
   Assert.IsTrue(Decl.Controls[Strip].Vertical, 'vertical strip');
-  Assert.AreEqual<Integer>(9, Length(Decl.Controls[Strip].Items), 'strip captions');
+  Assert.AreEqual<Integer>(10, Length(Decl.Controls[Strip].Items), 'strip captions');
   Assert.AreEqual<Integer>(4, Decl.Controls[IndexOfId(Decl, 'show_title_bar')].TabPage,
     'the Window page of Interface comes after the three of Display');
 end;
@@ -310,9 +310,9 @@ var
 begin
   Decl := Merge(Pages);
   Assert.IsTrue(SettingsSectionsMatching(Decl, Pages, '', Found), 'matches');
-  Assert.AreEqual<Integer>(9, Length(Found.Captions), 'all sections');
+  Assert.AreEqual<Integer>(10, Length(Found.Captions), 'all sections');
   Assert.IsTrue(SettingsSectionsMatching(Decl, Pages, '  ', Found), 'blanks are no query');
-  Assert.AreEqual<Integer>(9, Length(Found.Captions), 'all sections for blanks');
+  Assert.AreEqual<Integer>(10, Length(Found.Captions), 'all sections for blanks');
 end;
 
 procedure TTestSettingsPages.TestQueryMatchesSectionCaption;

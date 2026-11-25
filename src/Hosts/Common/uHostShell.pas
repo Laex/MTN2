@@ -228,6 +228,7 @@ begin
   FSession.EditorAutoIndent := True;
   FSession.EditorAutoWrap := False;
   FSession.EditorReflowWidth := 72;
+  FSession.ToastMs := 2500;
   FSession.ExactSelectionSize := False;
   FSession.DirSlash := True;
   FSession.MarkLinks := True;
@@ -425,6 +426,7 @@ begin
   Result.EditorAutoIndent := GEditorAutoIndent;
   Result.EditorAutoWrap := GEditorAutoWrap;
   Result.EditorReflowWidth := GEditorReflowWidth;
+  Result.ToastMs := GToastDurationMs;
   Result.ExactSelectionSize := GExactSelectionSize;
   Result.DirSlash := GDirSlash;
   Result.MarkLinks := GMarkLinks;
@@ -486,6 +488,7 @@ begin
   FSession.EditorAutoIndent := ASettings.EditorAutoIndent;
   FSession.EditorAutoWrap := ASettings.EditorAutoWrap;
   FSession.EditorReflowWidth := ASettings.EditorReflowWidth;
+  FSession.ToastMs := ASettings.ToastMs;
   FSession.ExactSelectionSize := ASettings.ExactSelectionSize;
   FSession.DirSlash := ASettings.DirSlash;
   FSession.MarkLinks := ASettings.MarkLinks;
@@ -498,6 +501,7 @@ begin
   GEditorAutoIndent := ASettings.EditorAutoIndent;
   GEditorAutoWrap := ASettings.EditorAutoWrap;
   GEditorReflowWidth := ASettings.EditorReflowWidth;
+  GToastDurationMs := ClampToastDurationMs(ASettings.ToastMs);
   GExactSelectionSize := ASettings.ExactSelectionSize;
   GDirSlash := ASettings.DirSlash;
   GMarkLinks := ASettings.MarkLinks;

@@ -195,7 +195,7 @@ implementation
 
 uses
   System.Math, uDialogResources, uColorCoding, uColorPickerControl, uConsoleSettings,
-  uShellProfileOptions, uColumnSets, uMaskGroups, uDialogTabs, uKeyChord;
+  uShellProfileOptions, uColumnSets, uMaskGroups, uDialogTabs, uKeyChord, uToast;
 
 // Drops the controls that only matter when the host draws with a font of its own.
 procedure RemoveFontControls(var ADecl: TDialogDeclaration);
@@ -420,7 +420,7 @@ end;
 function TSettingsDialogController.BuildInterfaceSource(
   const ACur: TDisplaySettings): TDialogDeclaration;
 var
-  LanguageNames: TArray<string>;
+  LanguageNames, ToastItems: TArray<string>;
   LanguageIdx, I: Integer;
 begin
   FLanguageCodes := DisplayLanguageItems;
@@ -459,6 +459,12 @@ begin
   DialogSetCheckbox(Result, 'dir_slash', ACur.DirSlash);
   DialogSetCheckbox(Result, 'mark_links', ACur.MarkLinks);
   DialogSetCheckbox(Result, 'ndn_footer', ACur.NdnFooter);
+  for I := 0 to High(cToastDurationChoices) do
+  begin
+    SetLength(ToastItems, I + 1);
+    ToastItems[I] := FormatFloat('0.#', cToastDurationChoices[I] / 1000) + ' s';
+  end;
+  DialogSetListItems(Result, 'toast_time', ToastItems, ToastDurationIndexOf(ACur.ToastMs));
   DialogSetListItems(Result, 'scrollback', ScrollbackItems,
     ScrollbackIndexOf(GConsoleSettings.ScrollbackLines));
   DialogSetCheckbox(Result, 'confirm_paste', GConsoleSettings.ConfirmMultiLinePaste);
@@ -1067,7 +1073,7 @@ end;
 procedure TSettingsDialogController.ReadInterfaceFields(var ADisp: TDisplaySettings);
 var
   Disp: TDisplaySettings;
-  LanguageIdx: Integer;
+  LanguageIdx, I: Integer;
 begin
   Disp := ADisp;
   Disp.ShowNotifications := FDialog.GetCheckbox('notifications');
@@ -1098,6 +1104,11 @@ begin
   Disp.EditorAutoWrap := FDialog.GetCheckbox('editor_autowrap');
   Disp.EditorReflowWidth := EnsureRange(StrToIntDef(Trim(FDialog.GetInputValue('reflow_width')),
     FOpenDisplay.EditorReflowWidth), cEditorReflowMin, cEditorReflowMax);
+  I := FDialog.GetListSelectedIndex('toast_time');
+  if (I >= 0) and (I <= High(cToastDurationChoices)) then
+    Disp.ToastMs := cToastDurationChoices[I]
+  else
+    Disp.ToastMs := FOpenDisplay.ToastMs;
   Disp.ExactSelectionSize := FDialog.GetCheckbox('exact_sizes');
   Disp.DirSlash := FDialog.GetCheckbox('dir_slash');
   Disp.MarkLinks := FDialog.GetCheckbox('mark_links');

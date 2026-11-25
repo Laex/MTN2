@@ -548,10 +548,11 @@ begin
     Text := DrawnText(0);
     Assert.IsTrue(Pos('Language', Text) > 0, 'language row drawn');
     Assert.IsTrue(Pos('Russian', Text) > 0, 'saved language shown');
-    Assert.IsTrue(Pos('Show pop-up notifications', Text) > 0, 'notifications checkbox drawn');
     Assert.IsTrue(Pos('Open menu on a single Alt press', Text) = 0, 'Alt menu is on another page');
     Assert.IsTrue(Pos('OK', Text) > 0, 'buttons drawn');
     Assert.IsTrue(Pos('Font', Text) = 0, 'no font controls');
+    Text := DrawnText(6);
+    Assert.IsTrue(Pos('Show pop-up notifications', Text) > 0, 'notifications checkbox drawn');
     Text := DrawnText(2);
     Assert.IsTrue(Pos('Open menu on a single Alt press', Text) > 0, 'Alt menu checkbox drawn');
     Text := DrawnText(4);

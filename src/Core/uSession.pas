@@ -77,6 +77,7 @@ type
     EditorAutoIndent: Boolean;
     EditorAutoWrap: Boolean;
     EditorReflowWidth: Integer;
+    ToastMs: Integer;
     ExactSelectionSize: Boolean;
     /// <summary>uDisplaySettings.GDirSlash.</summary>
     DirSlash: Boolean;
@@ -647,6 +648,7 @@ begin
       Root.AddPair('editorAutoIndent', TJSONBool.Create(ASession.EditorAutoIndent));
       Root.AddPair('editorAutoWrap', TJSONBool.Create(ASession.EditorAutoWrap));
       Root.AddPair('editorReflowWidth', TJSONNumber.Create(ASession.EditorReflowWidth));
+      Root.AddPair('toastMs', TJSONNumber.Create(ASession.ToastMs));
       Root.AddPair('exactSelectionSize', TJSONBool.Create(ASession.ExactSelectionSize));
       Root.AddPair('dirSlash', TJSONBool.Create(ASession.DirSlash));
       Root.AddPair('markLinks', TJSONBool.Create(ASession.MarkLinks));
@@ -754,6 +756,7 @@ begin
   ASession.EditorAutoIndent := True;
   ASession.EditorAutoWrap := False;
   ASession.EditorReflowWidth := 72;
+  ASession.ToastMs := 2500;
   ASession.ExactSelectionSize := False;
   ASession.DirSlash := True;
   ASession.MarkLinks := True;
@@ -885,6 +888,7 @@ begin
       ASession.EditorAutoIndent := JsonBool(Root, 'editorAutoIndent', True);
       ASession.EditorAutoWrap := JsonBool(Root, 'editorAutoWrap', False);
       ASession.EditorReflowWidth := JsonInt(Root, 'editorReflowWidth', 72);
+      ASession.ToastMs := JsonInt(Root, 'toastMs', 2500);
       ASession.ExactSelectionSize := JsonBool(Root, 'exactSelectionSize', False);
       ASession.DirSlash := JsonBool(Root, 'dirSlash', True);
       ASession.MarkLinks := JsonBool(Root, 'markLinks', True);

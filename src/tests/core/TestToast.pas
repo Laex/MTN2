@@ -16,6 +16,8 @@ type
     [Test] procedure TestBounds;
     [Test] procedure TestClearOfDialog;
     [Test] procedure TestAlwaysNoticeDraws;
+    [Test] procedure TestDurationChoices;
+    [Test] procedure TestContainsDrawnBox;
   end;
 
 implementation
@@ -158,6 +160,45 @@ begin
   end;
 end;
 
+procedure TestDurationChoices;
+begin
+  Assert.AreEqual<Integer>(2500, ClampToastDurationMs(2400), 'nearest choice');
+  Assert.AreEqual<Integer>(1500, ClampToastDurationMs(0), 'below range');
+  Assert.AreEqual<Integer>(10000, ClampToastDurationMs(99999), 'above range');
+  Assert.AreEqual<Integer>(1, ToastDurationIndexOf(2500), 'default index');
+  Assert.AreEqual<Integer>(4, ToastDurationIndexOf(10000), 'last index');
+end;
+
+procedure TestContainsDrawnBox;
+var
+  Toast: TToast;
+  Grid: TTerminalGrid;
+  Saved: Boolean;
+  B: TRectI;
+begin
+  Saved := GShowToasts;
+  GShowToasts := True;
+  Toast := TToast.Create(nil);
+  try
+    Assert.IsTrue(not Toast.Contains(0, 0), 'nothing shown');
+    Toast.Show('Path copied');
+    AllocTerminalGrid(Grid, 100, 30);
+    ClearTerminalGrid(Grid, TAlphaColorRec.White, TAlphaColorRec.Navy, ' ');
+    Toast.Draw(Grid, nil, 100, 30);
+    B := Toast.DrawnBounds;
+    Assert.IsTrue(B.Width > 0, 'drawn');
+    Assert.IsTrue(Toast.Contains(B.Left, B.Top), 'top-left cell');
+    Assert.IsTrue(not Toast.Contains(B.Left - 1, B.Top), 'outside');
+    Toast.SetHovered(True);
+    Assert.IsTrue(Toast.Visible, 'hover keeps it');
+    Toast.SetHovered(False);
+    Assert.IsTrue(Toast.Visible, 'leaving restarts the countdown');
+  finally
+    GShowToasts := Saved;
+    Toast.Free;
+  end;
+end;
+
 { TTestToast }
 
 procedure TTestToast.TestFitText;
@@ -178,6 +219,16 @@ end;
 procedure TTestToast.TestAlwaysNoticeDraws;
 begin
   TestToast.TestAlwaysNoticeDraws;
+end;
+
+procedure TTestToast.TestDurationChoices;
+begin
+  TestToast.TestDurationChoices;
+end;
+
+procedure TTestToast.TestContainsDrawnBox;
+begin
+  TestToast.TestContainsDrawnBox;
 end;
 
 initialization

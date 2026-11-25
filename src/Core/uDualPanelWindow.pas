@@ -15101,6 +15101,14 @@ begin
     FSaverSwallowUp := True;
     Exit(True);
   end;
+  // A click on a notice closes it and goes no further.
+  if Assigned(FToast) and FToast.Contains(ALocalCol, ALocalRow) then
+  begin
+    FToast.Hide;
+    FSaverSwallowClick := True;
+    FSaverSwallowUp := True;
+    Exit(True);
+  end;
   if DiffViewVisible then
     Exit(FDiffView.HandleMouseDown(ALocalCol, ALocalRow, AShift));
   if HelpVisible then
@@ -15420,6 +15428,9 @@ var
 begin
   if Assigned(FSaver) and FSaver.WakeByMove then
     Exit(True);
+  // The countdown of a notice waits while the mouse is over it.
+  if Assigned(FToast) then
+    FToast.SetHovered(FToast.Contains(ALocalCol, ALocalRow));
   if DiffViewVisible then
     Exit(True);
   if HelpVisible then

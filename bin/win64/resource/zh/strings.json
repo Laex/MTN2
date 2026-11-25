@@ -313,6 +313,11 @@
     },
     "DIALOG_INTERFACE": {
       "$title": "界面",
+      "grp_language": "语言",
+      "grp_popups": "弹出通知",
+      "grp_keys": "按键",
+      "lbl_toast_time": "显示时间",
+      "toast_time_hint": "通知停留的时间。鼠标停在上面时保持显示,单击则关闭。",
       "grp_console": "历史与剪贴板",
       "grp_console_run": "命令",
       "lbl_scrollback": "回滚行数",
@@ -333,7 +338,6 @@
       "editor_autowrap_hint": "输入超过换行宽度时在最后一个空格处断行。",
       "reflow_width_hint": "自动换行的列位置，也是“格式化文本”的初始值。",
       "grp_window": "元素",
-      "grp_messages": "消息与语言",
       "grp_columns": "列",
       "grp_names": "名称与标记",
       "grp_mouse": "菜单与鼠标",
@@ -378,7 +382,8 @@
         "Behavior": "行为",
         "Keyboard": "键盘",
         "Editor": "编辑器",
-        "Console": "控制台"
+        "Console": "控制台",
+        "Notices": "通知"
       },
       "lbl_language": "语言",
       "show_title_bar": "显示窗口标题栏(&T)",

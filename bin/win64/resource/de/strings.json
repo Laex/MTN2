@@ -314,6 +314,11 @@
     },
     "DIALOG_INTERFACE": {
       "$title": "Oberfläche",
+      "grp_language": "Sprache",
+      "grp_popups": "Hinweisfenster",
+      "grp_keys": "Tasten",
+      "lbl_toast_time": "Anzeigedauer",
+      "toast_time_hint": "Wie lange ein Hinweis sichtbar bleibt. Die Maus darüber hält ihn, ein Klick schließt ihn.",
       "grp_console": "Verlauf und Zwischenablage",
       "grp_console_run": "Befehle",
       "lbl_scrollback": "Scrollback",
@@ -334,7 +339,6 @@
       "editor_autowrap_hint": "Beim Tippen über die Umbruchbreite hinaus wird die Zeile am letzten Leerzeichen umbrochen.",
       "reflow_width_hint": "Spalte, an der der Umbruch erfolgt; auch Startwert für „Text formatieren“.",
       "grp_window": "Elemente",
-      "grp_messages": "Meldungen und Sprache",
       "grp_columns": "Spalten",
       "grp_names": "Namen und Markierungen",
       "grp_mouse": "Menü und Maus",
@@ -379,7 +383,8 @@
         "Behavior": "Verhalten",
         "Keyboard": "Tastatur",
         "Editor": "Editor",
-        "Console": "Konsole"
+        "Console": "Konsole",
+        "Notices": "Hinweise"
       },
       "lbl_language": "Sprache",
       "show_title_bar": "&Titelleiste anzeigen",

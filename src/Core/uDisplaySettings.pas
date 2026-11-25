@@ -114,6 +114,8 @@ type
     EditorAutoWrap: Boolean;
     /// <summary>uDisplaySettings.GEditorReflowWidth.</summary>
     EditorReflowWidth: Integer;
+    /// <summary>uToast.GToastDurationMs.</summary>
+    ToastMs: Integer;
     /// <summary>uDisplaySettings.GExactSelectionSize.</summary>
     ExactSelectionSize: Boolean;
     /// <summary>uDisplaySettings.GDirSlash.</summary>
@@ -433,6 +435,7 @@ begin
   Result.EditorAutoIndent := True;
   Result.EditorAutoWrap := False;
   Result.EditorReflowWidth := 72;
+  Result.ToastMs := 2500;
   Result.ExactSelectionSize := False;
   Result.DirSlash := True;
   Result.MarkLinks := True;

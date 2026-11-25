@@ -315,6 +315,11 @@
     },
     "DIALOG_INTERFACE": {
       "$title": "Interface",
+      "grp_language": "Language",
+      "grp_popups": "Pop-ups",
+      "grp_keys": "Keys",
+      "lbl_toast_time": "Show for",
+      "toast_time_hint": "How long a notice stays. The mouse over it holds it; a click closes it.",
       "grp_console": "History and clipboard",
       "grp_console_run": "Commands",
       "lbl_scrollback": "Scrollback",
@@ -335,7 +340,6 @@
       "editor_autowrap_hint": "Typing past the wrap width breaks the line at the last space.",
       "reflow_width_hint": "Column where auto-wrap breaks lines; also the start value of Format text.",
       "grp_window": "Elements",
-      "grp_messages": "Messages and language",
       "grp_columns": "Columns",
       "grp_names": "Names and marks",
       "grp_mouse": "Menu and mouse",
@@ -380,7 +384,8 @@
         "Behavior": "Behavior",
         "Keyboard": "Keyboard",
         "Editor": "Editor",
-        "Console": "Console"
+        "Console": "Console",
+        "Notices": "Notices"
       },
       "lbl_language": "Language",
       "show_title_bar": "Show window &title bar",

@@ -24,7 +24,7 @@ If the theme of the saved session is not found, the program says so and uses the
 - **Marked files:** “Text color” – only the letters change colour, as in Far; “Row background” – a background band across the whole row as well.
 <!--interface-->- **User interface...** – the interface language, notifications, the visibility of the window rows, dragging, the menu on Alt, auto-indent and a few more boxes; everything applies without a restart.
 
-Both items open one **Settings** window. The sections (Font, Text, Display, Window, Panels, Behavior, Keyboard, Editor, Console) are listed on the left; Up and Down switch them. Typing while the list has focus narrows it to the sections whose name or field captions contain the text, Backspace removes the last letter. Under the fields a short description of the field in focus is shown.
+Both items open one **Settings** window. The sections (Font, Text, Display, Window, Panels, Behavior, Keyboard, Editor, Console, Notices) are listed on the left; Up and Down switch them. Typing while the list has focus narrows it to the sections whose name or field captions contain the text, Backspace removes the last letter. Under the fields a short description of the field in focus is shown.
 
 **What it sets**
 - The **interface language** (English / Русский / Deutsch / 简体中文) and pop-up notifications.
@@ -164,7 +164,7 @@ Commands that change nothing on screen confirm themselves with a short notice in
 - **Ctrl+Alt+D** – the folder added to the hotlist;
 - selection by mask (**Gray +/−**, **Ctrl+Gray +/−**, **Alt+Gray +/−**) that changed nothing – shown in red.
 
-Notices are turned off in **Options → User interface...** (“Show pop-up notifications”). The update-check notice is the exception: it has its own checkbox (see [Updates](updates.md)).
+Notices are turned off in **Options → User interface...** (“Show pop-up notifications”), where the **Show for** time is also set. A notice stays while the mouse is over it; a click closes it. The update-check notice is the exception: it has its own checkbox (see [Updates](updates.md)).
 
 ### Updates
 
