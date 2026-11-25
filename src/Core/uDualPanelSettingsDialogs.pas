@@ -435,6 +435,7 @@ begin
   DialogSetCheckbox(Result, 'show_key_bar', ACur.ShowKeyBar);
   DialogSetCheckbox(Result, 'show_status_line', ACur.ShowStatusLine);
   DialogSetCheckbox(Result, 'alt_menu', ACur.AltOpensMenu);
+  DialogSetCheckbox(Result, 'confirm_exit', ACur.ConfirmExit);
   DialogSetCheckbox(Result, 'file_drag', ACur.FileDrag);
   DialogSetCheckbox(Result, 'select_folders', ACur.SelectFolders);
   DialogSetCheckbox(Result, 'pack_same_panel', ACur.PackInSamePanel);
@@ -1085,6 +1086,7 @@ begin
   Disp.ShowKeyBar := FDialog.GetCheckbox('show_key_bar');
   Disp.ShowStatusLine := FDialog.GetCheckbox('show_status_line');
   Disp.AltOpensMenu := FDialog.GetCheckbox('alt_menu');
+  Disp.ConfirmExit := FDialog.GetCheckbox('confirm_exit');
   Disp.FileDrag := FDialog.GetCheckbox('file_drag');
   Disp.SelectFolders := FDialog.GetCheckbox('select_folders');
   Disp.PackInSamePanel := FDialog.GetCheckbox('pack_same_panel');

@@ -114,6 +114,7 @@ begin
   Result.PassiveCursor := False;
   Result.ColumnSeparators := True;
   Result.AltOpensMenu := False;
+  Result.ConfirmExit := True;
   Result.EditorAutoIndent := False;
   Result.EditorAutoWrap := True;
   Result.EditorReflowWidth := 66;
@@ -171,6 +172,7 @@ begin
     Assert.IsTrue(not Loaded.PassiveCursor, 'passiveCursor saved');
     Assert.IsTrue(Loaded.ColumnSeparators, 'columnSeparators saved');
     Assert.IsTrue(not Loaded.AltOpensMenu, 'altOpensMenu saved');
+    Assert.IsTrue(Loaded.ConfirmExit, 'confirmExit saved');
     Assert.IsTrue(not Loaded.EditorAutoIndent, 'editorAutoIndent saved');
     Assert.IsTrue(Loaded.EditorAutoWrap, 'editorAutoWrap saved');
     Assert.AreEqual(66, Loaded.EditorReflowWidth, 'editorReflowWidth saved');
@@ -295,6 +297,9 @@ begin
     Pair := Root.RemovePair('hintsOnHover');
     if Assigned(Pair) then
       Pair.Free;
+    Pair := Root.RemovePair('confirmExit');
+    if Assigned(Pair) then
+      Pair.Free;
     TFile.WriteAllText(Path, Root.ToJSON, TEncoding.UTF8);
   finally
     Root.Free;
@@ -319,6 +324,7 @@ begin
     Assert.IsTrue(Sess.PassiveCursor, 'missing passiveCursor -> shown');
     Assert.IsTrue(not Sess.ColumnSeparators, 'missing columnSeparators -> no rules');
     Assert.IsTrue(Sess.AltOpensMenu, 'missing altOpensMenu -> a bare Alt opens the menu');
+    Assert.IsFalse(Sess.ConfirmExit, 'missing confirmExit -> exit without a question');
     Assert.IsTrue(Sess.EditorAutoIndent, 'missing editorAutoIndent -> auto-indent on');
     Assert.IsFalse(Sess.EditorAutoWrap, 'missing editorAutoWrap -> no auto-wrap');
     Assert.AreEqual(72, Sess.EditorReflowWidth, 'missing editorReflowWidth -> 72');

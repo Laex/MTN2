@@ -107,9 +107,11 @@ type
     FContextHoldShown: Boolean;
     FPrevWndProc: Pointer;
     FSystemShutdown: Boolean;
+    FQuitConfirmed: Boolean;
     /// <summary>Settings were imported: PersistSession keeps the imported files.</summary>
     FSettingsImported: Boolean;
     procedure PrepareForSystemShutdown;
+    function ConsoleBusyLines: TArray<string>;
     procedure ReleaseTaskbarButton;
     procedure UpdateTaskbarProgress;
     procedure BlinkTick(Sender: TObject);
@@ -1093,10 +1095,30 @@ begin
     Invalidate;
 end;
 
+function TMainForm.ConsoleBusyLines: TArray<string>;
+begin
+  Result := nil;
+  if Assigned(FConsole) and FConsole.ShellBusy then
+    Result := [T('ui.exit.console', 'A command runs in the panel console')];
+end;
+
 function TMainForm.CloseQuery: Boolean;
 begin
   if FSystemShutdown then
     Exit(True);
+  if GConfirmExit and not FQuitConfirmed and Assigned(FDualPanel) and
+     not FDualPanel.QuitUnasked then
+  begin
+    // The question is an in-window dialog: it answers later, so this close
+    // is refused and repeated by the Yes.
+    if FDualPanel.AskQuit(ConsoleBusyLines,
+         procedure
+         begin
+           FQuitConfirmed := True;
+           Close;
+         end) then
+      Exit(False);
+  end;
   Result := inherited CloseQuery;
 end;
 
@@ -1662,6 +1684,7 @@ begin
   Result.ShowMenuBar := GShowMenuBar;
   Result.FileDrag := GFileDragEnabled;
   Result.AltOpensMenu := GAltOpensMenu;
+  Result.ConfirmExit := GConfirmExit;
   Result.EditorAutoIndent := GEditorAutoIndent;
   Result.EditorAutoWrap := GEditorAutoWrap;
   Result.EditorReflowWidth := GEditorReflowWidth;
@@ -1726,6 +1749,8 @@ begin
   GFileDragEnabled := ASettings.FileDrag;
   FSession.AltOpensMenu := ASettings.AltOpensMenu;
   GAltOpensMenu := ASettings.AltOpensMenu;
+  FSession.ConfirmExit := ASettings.ConfirmExit;
+  GConfirmExit := ASettings.ConfirmExit;
   FSession.EditorAutoIndent := ASettings.EditorAutoIndent;
   FSession.EditorAutoWrap := ASettings.EditorAutoWrap;
   FSession.EditorReflowWidth := ASettings.EditorReflowWidth;
@@ -1902,6 +1927,7 @@ begin
     Sess.FeatureTipShown);
   GFileDragEnabled := Sess.FileDrag;
   GAltOpensMenu := Sess.AltOpensMenu;
+  GConfirmExit := Sess.ConfirmExit;
   GEditorAutoIndent := Sess.EditorAutoIndent;
   GEditorAutoWrap := Sess.EditorAutoWrap;
   GEditorReflowWidth := Sess.EditorReflowWidth;
@@ -2042,6 +2068,7 @@ begin
   Sess.ShowMenuBar := GShowMenuBar;
   Sess.FileDrag := GFileDragEnabled;
   Sess.AltOpensMenu := GAltOpensMenu;
+  Sess.ConfirmExit := GConfirmExit;
   Sess.EditorAutoIndent := GEditorAutoIndent;
   Sess.EditorAutoWrap := GEditorAutoWrap;
   Sess.EditorReflowWidth := GEditorReflowWidth;
@@ -2954,6 +2981,7 @@ begin
   FSession.ShowMenuBar := True;
   FSession.FileDrag := True;
   FSession.AltOpensMenu := True;
+  FSession.ConfirmExit := False;
   FSession.EditorAutoIndent := True;
   FSession.EditorAutoWrap := False;
   FSession.EditorReflowWidth := 72;

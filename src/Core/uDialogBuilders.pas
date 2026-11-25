@@ -10,6 +10,10 @@ uses
   uDialogTypes, uFileFind;
 
 function BuildConfirmDialog(const ATitle, AMessage: string): TDialogDeclaration;
+/// <summary>The exit question: AQuestion, then one line per thing the exit ends
+/// (ALines). With lines the dialog takes the warning color.</summary>
+function BuildExitDialog(const ATitle, AQuestion: string;
+  const ALines: TArray<string>): TDialogDeclaration;
 function BuildDeleteDialog(const ATitle, AMessage, AOkText: string;
   AWarning: Boolean = False): TDialogDeclaration;
 /// <summary>The delete confirmation for one item: APrefix, AName (accent
@@ -304,6 +308,40 @@ begin
           Inc(Result.Controls[I].Col, Delta div 2);
       end;
   end;
+end;
+
+function BuildExitDialog(const ATitle, AQuestion: string;
+  const ALines: TArray<string>): TDialogDeclaration;
+var
+  I, N, Shift, Delta, TextW: Integer;
+begin
+  Result := BuildConfirmDialog(ATitle, AQuestion);
+  N := Length(ALines);
+  if N = 0 then
+    Exit;
+  TextW := 0;
+  for I := 0 to N - 1 do
+    TextW := Max(TextW, Length(ALines[I]));
+  Delta := Min(Max(0, TextW + 4 - Result.Width), 100 - Result.Width);
+  Shift := N + 1;
+  Result.IsWarning := True;
+  Result.Width := Result.Width + Delta;
+  Result.Height := Result.Height + Shift;
+  for I := 0 to High(Result.Controls) do
+    case Result.Controls[I].Kind of
+      dckLabel:
+        Result.Controls[I].BoxW := Result.Width - 4;
+      dckButton:
+        begin
+          Inc(Result.Controls[I].Row, Shift);
+          Inc(Result.Controls[I].Col, Delta div 2);
+        end;
+    end;
+  SetLength(Result.Controls, Length(Result.Controls) + N);
+  for I := 0 to N - 1 do
+    Result.Controls[Length(Result.Controls) - N + I] :=
+      WithControlBox(MakeLabel(ALines[I], 'exit_line' + IntToStr(I)), 1, 3 + I,
+        Result.Width - 4, 1);
 end;
 
 function BuildDeleteDialog(const ATitle, AMessage, AOkText: string;

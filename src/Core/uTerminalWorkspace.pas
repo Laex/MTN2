@@ -50,6 +50,11 @@ type
     /// full-screen program owns the screen and nothing is typed on the
     /// input line.</summary>
     function  IsIdle: Boolean;
+    /// <summary>A program runs in the shell: a child process, or a full-screen
+    /// application owns the screen. Typed-but-unsent input does not count.</summary>
+    function  HasRunningProgram: Boolean;
+    /// <summary>The shell profile's display name.</summary>
+    function  ProfileCaption: string;
     /// <summary>Changes the shell to ACwd, then runs ACommand there. Only
     /// meant for an idle shell.</summary>
     procedure RunInDir(const ACwd, ACommand: string);
@@ -222,6 +227,17 @@ begin
   Result := Running and Assigned(FPty) and FPty.IsRunning and
     not FPty.HasChildProcess and not AltScreenActive and
     (Trim(FHistory.GetInputAfterPrompt) = '');
+end;
+
+function TTerminalWorkspaceWindow.HasRunningProgram: Boolean;
+begin
+  Result := Running and Assigned(FPty) and FPty.IsRunning and
+    (FPty.HasChildProcess or AltScreenActive);
+end;
+
+function TTerminalWorkspaceWindow.ProfileCaption: string;
+begin
+  Result := ShellProfileTitle(ProfileId);
 end;
 
 procedure TTerminalWorkspaceWindow.RunInDir(const ACwd, ACommand: string);

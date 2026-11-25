@@ -225,6 +225,7 @@ begin
   FSession.ShowKeyBar := True;
   FSession.ShowStatusLine := True;
   FSession.AltOpensMenu := True;
+  FSession.ConfirmExit := False;
   FSession.EditorAutoIndent := True;
   FSession.EditorAutoWrap := False;
   FSession.EditorReflowWidth := 72;
@@ -425,6 +426,7 @@ begin
   Result.ShowMenuBar := GShowMenuBar;
   Result.FileDrag := GFileDragEnabled;
   Result.AltOpensMenu := GAltOpensMenu;
+  Result.ConfirmExit := GConfirmExit;
   Result.EditorAutoIndent := GEditorAutoIndent;
   Result.EditorAutoWrap := GEditorAutoWrap;
   Result.EditorReflowWidth := GEditorReflowWidth;
@@ -489,6 +491,8 @@ begin
   FSession.EdgeBorders := ASettings.EdgeBorders;
   FSession.AltOpensMenu := ASettings.AltOpensMenu;
   GAltOpensMenu := ASettings.AltOpensMenu;
+  FSession.ConfirmExit := ASettings.ConfirmExit;
+  GConfirmExit := ASettings.ConfirmExit;
   FSession.EditorAutoIndent := ASettings.EditorAutoIndent;
   FSession.EditorAutoWrap := ASettings.EditorAutoWrap;
   FSession.EditorReflowWidth := ASettings.EditorReflowWidth;

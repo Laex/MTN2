@@ -33,6 +33,7 @@ type
     [Test] procedure TestRussian;
     [Test] procedure TestGerman;
     [Test] procedure TestChinese;
+    [Test] procedure TestExitDialogWarnsOnlyWithRunningWork;
   end;
 
 implementation
@@ -312,6 +313,9 @@ begin
       Add(CheckDeclaration('administrator confirmation',
         BuildConfirmDialog(T('ui.admin.title', 'Administrator rights'),
           T('ui.admin.confirm', 'Access denied. Repeat as administrator?'))));
+      Add(CheckDeclaration('exit with running programs',
+        BuildExitDialog('Exit', 'Exit the program?',
+          ['File operations: 2', 'Terminal with a running program: PowerShell'])));
       Add(CheckDeclaration('update message, one button',
         BuildUpdateMessageDialog('Message', 'Details', '', False)));
     finally
@@ -326,6 +330,18 @@ end;
 procedure TTestDialogButtonLayout.TestEnglish;
 begin
   CheckAll('');
+end;
+
+procedure TTestDialogButtonLayout.TestExitDialogWarnsOnlyWithRunningWork;
+var
+  Plain, Busy: TDialogDeclaration;
+begin
+  Plain := BuildExitDialog('Exit', 'Exit the program?', nil);
+  Busy := BuildExitDialog('Exit', 'Exit the program?', ['one', 'two']);
+  Assert.IsFalse(Plain.IsWarning, 'nothing runs: plain dialog');
+  Assert.IsTrue(Busy.IsWarning, 'work runs: warning dialog');
+  Assert.AreEqual(Length(Plain.Controls) + 2, Length(Busy.Controls), 'one label per line');
+  Assert.AreEqual(Plain.Height + 3, Busy.Height, 'a row per line plus a gap');
 end;
 
 procedure TTestDialogButtonLayout.TestRussian;

@@ -101,6 +101,7 @@ type
     FOnShellContextMenu: TShellContextMenuEvent;
     FOnLaunchConsoleFile: TLaunchConsoleFileEvent;
     FOnQuitRequest: TQuitRequestEvent;
+    FQuitUnasked: Boolean;
     FOnOpenUpdates: TQuitRequestEvent;
     /// <summary>Row of the Plugins list to come back to when the settings dialog of
     /// that plugin is closed; -1 = none.</summary>
@@ -1258,6 +1259,13 @@ type
       const AOnChange: TFunc<string, string> = nil): Boolean;
     /// <summary>A copy/move/delete job is running or waiting on the user.</summary>
     function HasBusyJob: Boolean;
+    /// <summary>Asks whether to exit, naming what the exit ends (running jobs,
+    /// open terminals); AOnYes runs on a yes. False when another dialog is open
+    /// and nothing was asked.</summary>
+    function AskQuit(const AExtraBusy: TArray<string>; const AOnYes: TProc): Boolean;
+    /// <summary>True while a queued "close when done" action quits: the exit
+    /// question is skipped.</summary>
+    property QuitUnasked: Boolean read FQuitUnasked;
     /// <summary>States of every job that is not idle, for the taskbar button.</summary>
     function JobStates: TArray<TPanelJobState>;
     procedure RebuildBuffer; override;
@@ -3455,7 +3463,14 @@ begin
     qaShutdown: Ok := PlatformShutdownSystem;
     qaClose:
       if Assigned(FOnQuitRequest) then
-        FOnQuitRequest(Self);
+      begin
+        FQuitUnasked := True;
+        try
+          FOnQuitRequest(Self);
+        finally
+          FQuitUnasked := False;
+        end;
+      end;
   end;
   if not Ok then
     FToast.Show(T('ui.queue.failed', 'The system did not accept the request.'), '', tkWarning);
@@ -9992,6 +10007,39 @@ begin
   FDialog.Open(ADecl, DialogCommand);
   HostDialogChanged;
   NotifyChanged;
+end;
+
+function TDualPanelWindow.AskQuit(const AExtraBusy: TArray<string>;
+  const AOnYes: TProc): Boolean;
+var
+  Lines: TArray<string>;
+  Job: TPanelJobState;
+  Info: TPluginJobInfo;
+  Caption: string;
+  Copies: Integer;
+begin
+  Lines := nil;
+  Copies := 0;
+  for Job in JobStates do
+    if Job.Kind <> pjkPlugin then
+      Inc(Copies);
+  if Copies > 0 then
+    Lines := Lines + [T('ui.exit.fileJobs', 'File operations: %d', [Copies])];
+  for Info in PluginJobSnapshot do
+    Lines := Lines + [T('ui.exit.pluginJob', 'Plugin job: %s', [Info.Title])];
+  if Assigned(FWork) then
+    for Caption in FWork.BusyTerminalCaptions do
+      Lines := Lines + [T('ui.exit.terminal', 'Terminal with a running program: %s', [Caption])];
+  for Caption in AExtraBusy do
+    Lines := Lines + [Caption];
+  Result := ShowHostDialog(
+    BuildExitDialog(T('ui.exit.title', 'Exit'),
+      T('ui.exit.question', 'Exit the program?'), Lines),
+    procedure(AControlId, AValuesJson: string)
+    begin
+      if DialogCmdIsAccept(AControlId) then
+        AOnYes();
+    end);
 end;
 
 function TDualPanelWindow.HasBusyJob: Boolean;

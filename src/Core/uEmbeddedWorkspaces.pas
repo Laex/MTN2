@@ -56,6 +56,9 @@ type
     procedure DetachDocument(AId: Cardinal);
     procedure DetachTerminal(AId: Cardinal);
     procedure ShutdownTerminals;
+    function TerminalCount: Integer;
+    /// <summary>Captions of the terminals that run a program right now.</summary>
+    function BusyTerminalCaptions: TArray<string>;
     procedure OpenBuiltIn(const AURI: string; AViewOnly: Boolean;
       const ATheme: IThemeRenderer);
     function OpenSurface(AHandle: Integer; const ATheme: IThemeRenderer): Boolean;
@@ -213,6 +216,26 @@ begin
   Term.OnContentChanged := nil;
   FTerminals.Remove(AId);
   QueueFree(Term);
+end;
+
+function TEmbeddedWorkspaces.BusyTerminalCaptions: TArray<string>;
+var
+  Term: TTerminalWorkspaceWindow;
+begin
+  Result := nil;
+  if not Assigned(FTerminals) then
+    Exit;
+  for Term in FTerminals.Values do
+    if Term.HasRunningProgram then
+      Result := Result + [Term.ProfileCaption];
+end;
+
+function TEmbeddedWorkspaces.TerminalCount: Integer;
+begin
+  if Assigned(FTerminals) then
+    Result := FTerminals.Count
+  else
+    Result := 0;
 end;
 
 procedure TEmbeddedWorkspaces.ShutdownTerminals;

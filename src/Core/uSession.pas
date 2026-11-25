@@ -74,6 +74,7 @@ type
     ShowMenuBar: Boolean;
     FileDrag: Boolean;
     AltOpensMenu: Boolean;
+    ConfirmExit: Boolean;
     EditorAutoIndent: Boolean;
     EditorAutoWrap: Boolean;
     EditorReflowWidth: Integer;
@@ -647,6 +648,7 @@ begin
       Root.AddPair('showMenuBar', TJSONBool.Create(ASession.ShowMenuBar));
       Root.AddPair('fileDrag', TJSONBool.Create(ASession.FileDrag));
       Root.AddPair('altOpensMenu', TJSONBool.Create(ASession.AltOpensMenu));
+      Root.AddPair('confirmExit', TJSONBool.Create(ASession.ConfirmExit));
       Root.AddPair('editorAutoIndent', TJSONBool.Create(ASession.EditorAutoIndent));
       Root.AddPair('editorAutoWrap', TJSONBool.Create(ASession.EditorAutoWrap));
       Root.AddPair('editorReflowWidth', TJSONNumber.Create(ASession.EditorReflowWidth));
@@ -757,6 +759,7 @@ begin
   ASession.ShowMenuBar := True;
   ASession.FileDrag := True;
   ASession.AltOpensMenu := True;
+  ASession.ConfirmExit := False;
   ASession.EditorAutoIndent := True;
   ASession.EditorAutoWrap := False;
   ASession.EditorReflowWidth := 72;
@@ -891,6 +894,7 @@ begin
       ASession.ShowMenuBar := JsonBool(Root, 'showMenuBar', True);
       ASession.FileDrag := JsonBool(Root, 'fileDrag', True);
       ASession.AltOpensMenu := JsonBool(Root, 'altOpensMenu', True);
+      ASession.ConfirmExit := JsonBool(Root, 'confirmExit', False);
       ASession.EditorAutoIndent := JsonBool(Root, 'editorAutoIndent', True);
       ASession.EditorAutoWrap := JsonBool(Root, 'editorAutoWrap', False);
       ASession.EditorReflowWidth := JsonInt(Root, 'editorReflowWidth', 72);

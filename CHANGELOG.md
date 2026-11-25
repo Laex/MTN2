@@ -6,6 +6,12 @@ This file describes what changes for the user from version to version: new featu
 
 ## Unreleased
 
+## Dev v0.5.12.42 – 2026-11-25
+
+### New
+
+- The Interface settings have an option to confirm before exiting. With it on, F10, the Exit command and the window close button ask first, naming the running jobs and open terminals the exit would end. Off by default.
+
 ## Dev v0.5.12.41 – 2026-11-25
 
 ### Changed

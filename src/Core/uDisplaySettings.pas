@@ -35,6 +35,8 @@ const
 var
   /// <summary>A bare press of Alt opens the menu bar when it is released.</summary>
   GAltOpensMenu: Boolean = True;
+  /// <summary>Quitting (F10, Exit, the window close button) asks first.</summary>
+  GConfirmExit: Boolean = False;
   /// <summary>Enter in the editor starts the new line with the indent of the line it
   /// continues.</summary>
   GEditorAutoIndent: Boolean = True;
@@ -108,6 +110,8 @@ type
     /// <summary>Pressing and releasing Alt on its own opens the menu bar
     /// (uDisplaySettings.GAltOpensMenu).</summary>
     AltOpensMenu: Boolean;
+    /// <summary>uDisplaySettings.GConfirmExit.</summary>
+    ConfirmExit: Boolean;
     /// <summary>uDisplaySettings.GEditorAutoIndent.</summary>
     EditorAutoIndent: Boolean;
     /// <summary>uDisplaySettings.GEditorAutoWrap.</summary>
@@ -435,6 +439,7 @@ begin
   Result.ShowStatusLine := True;
   Result.FileDrag := True;
   Result.AltOpensMenu := True;
+  Result.ConfirmExit := False;
   Result.EditorAutoIndent := True;
   Result.EditorAutoWrap := False;
   Result.EditorReflowWidth := 72;
