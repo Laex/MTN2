@@ -18,13 +18,16 @@ type
     [Test] procedure DropDownFieldOpensAndCloses;
     [Test] procedure OpenDropDownClickOutsideClosesThenHitsControl;
     [Test] procedure ListClickSelectsRow;
+    [Test] procedure HelpMarkClickOpensHelp;
+    [Test] procedure HelpMarkHiddenWhenNoHelpAvailable;
   end;
 
 implementation
 
 uses
   System.SysUtils, System.Classes, System.UITypes,
-  uDialogHost, uDialogTypes, uDialogJson, uTerminalTypes, uThemeTypes;
+  uDialogHost, uDialogTypes, uDialogJson, uTerminalTypes, uThemeTypes,
+  uThemeDrawing;
 
 const
   cClick =
@@ -195,6 +198,58 @@ begin
     Assert.IsTrue(Host.HandleClick(R.Left, R.Top + 1), 'second row click');
     Assert.AreEqual(1, Host.GetListSelectedIndex('files'));
     Assert.AreEqual('files', Host.FocusedControlId);
+  finally
+    Host.Free;
+  end;
+end;
+
+procedure TTestDialogClickRouting.HelpMarkClickOpensHelp;
+var
+  Host: TDialogHost;
+  Opened: Integer;
+  B: TRectI;
+  Grid: TTerminalGrid;
+begin
+  Opened := 0;
+  Host := TDialogHost.Create(nil);
+  try
+    Assert.IsTrue(Host.OpenJson(cClick, nil));
+    Host.OnHelp := procedure begin Inc(Opened); end;
+    AllocTerminalGrid(Grid, 60, 20);
+    ClearTerminalGrid(Grid, TAlphaColorRec.White, TAlphaColorRec.Navy, ' ');
+    Host.Draw(Grid, 60, 20);
+    B := Host.Bounds;
+    Assert.AreEqual('[', string(Grid[B.Top][B.Right - cHelpMarkOffset].CharValue));
+    Assert.AreEqual('?', string(Grid[B.Top][B.Right - cHelpMarkOffset + 1].CharValue));
+    Assert.AreEqual(']', string(Grid[B.Top][B.Right - cHelpMarkOffset + 2].CharValue));
+    Assert.IsTrue(Host.HandleClick(B.Right - cHelpMarkOffset + 1, B.Top), 'mark click is handled');
+    Assert.AreEqual(1, Opened, 'the click opens the help');
+    Assert.IsTrue(Host.Visible, 'the dialog stays open');
+  finally
+    Host.Free;
+  end;
+end;
+
+procedure TTestDialogClickRouting.HelpMarkHiddenWhenNoHelpAvailable;
+var
+  Host: TDialogHost;
+  Opened: Integer;
+  B: TRectI;
+  Grid: TTerminalGrid;
+begin
+  Opened := 0;
+  Host := TDialogHost.Create(nil);
+  try
+    Assert.IsTrue(Host.OpenJson(cClick, nil));
+    Host.OnHelp := procedure begin Inc(Opened); end;
+    Host.OnHelpAvailable := function: Boolean begin Result := False; end;
+    AllocTerminalGrid(Grid, 60, 20);
+    ClearTerminalGrid(Grid, TAlphaColorRec.White, TAlphaColorRec.Navy, ' ');
+    Host.Draw(Grid, 60, 20);
+    B := Host.Bounds;
+    Assert.AreNotEqual('?', string(Grid[B.Top][B.Right - cHelpMarkOffset + 1].CharValue));
+    Host.HandleClick(B.Right - cHelpMarkOffset + 1, B.Top);
+    Assert.AreEqual(0, Opened, 'no help without a topic');
   finally
     Host.Free;
   end;

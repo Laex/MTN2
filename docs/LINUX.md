@@ -170,7 +170,7 @@ In the window the font size changes with `Ctrl` and the wheel, `Ctrl+Plus`, `Ctr
 - Docker and Kubernetes (the `mtn.docker` plugin): containers, images and pods as `docker:///` folders with copying files back and forth, viewing logs and starting/stopping containers from the "Plugins" menu. The `docker` program (and `kubectl` for pods) must be in `PATH`.
 - Metadata of the file under the cursor in the status line (the `mtn.meta` plugin): images, MP3. Executable file versions are Windows only.
 - Document viewing (the `mtn.docview` plugin: docx, xlsx, pptx, svg, SQLite), CSV tables (the `mtn.csv` plugin) and PDF (the `mtn.pdf` plugin): F3 and Quick View. PDF is rendered by the PDFium library (`plugins/mtn.pdf/libpdfium.so` is included in the archive and the packages; when building yourself it is placed by `src/tools/fetch-pdfium.ps1 -Linux`). Without the library the PDF plugin gives way to the text view of the documents plugin.
-- The Windows registry, processes and services (the `mtn.winsys` plugin) are not built on Linux.
+- Processes and systemd services (the `mtn.winsys` plugin) open as folders with the same panels as on Windows. The Windows registry does not exist on Linux, so `reg://` is not registered.
 - Images (png, jpeg, gif, bmp, webp and others that `chafa` understands) are shown in Quick View as colored blocks:
   the program calls `chafa --format=symbols` and outputs the result into the panel cells. The `chafa` package is needed; without it a hint
   appears in place of the image. An image from an archive or from a server (SFTP and others) is first copied to a temporary file (up to 32 MB).

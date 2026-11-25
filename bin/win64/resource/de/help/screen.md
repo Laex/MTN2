@@ -23,7 +23,7 @@ Der Fenstertitel zeigt **[Administrator]**, wenn MTN2 selbst als Administrator g
 - Der Buchstabe funktioniert auch bei einer anderen Tastaturbelegung: „Überspringen“ mit hervorgehobenem S reagiert sowohl auf S als auch auf den kyrillischen Buchstaben auf derselben Taste.
 - Die Standardschaltfläche (in spitzen Klammern) und die Abbrechen-Schaltfläche brauchen keinen Buchstaben – Enter und Esc erledigen das.
 
-**F1** – Hilfe zu dem, was auf dem Bildschirm steht (Panels, Viewer, der offene Dialog oder das Menü); **F1** in der Hilfe – der Inhalt. **F10** – beenden.
+**F1** – Hilfe zu dem, was auf dem Bildschirm steht (Panels, Viewer, der offene Dialog oder das Menü); **F1** in der Hilfe – der Inhalt. Ein Dialog mit Hilfeseite zeigt außerdem in der oberen Rahmenzeile links vom Schließen-Zeichen die Marke **[?]**; ein Klick darauf öffnet dieselbe Seite. **F10** – beenden.
 
 ---
 

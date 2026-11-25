@@ -34,6 +34,11 @@ type
     /// from a mask field (it is not offered inside the editor itself).</summary>
     FOnMaskGroupsAvailable: TFunc<Boolean>;
     FOnEditMaskGroups: TProc;
+    FOnHelp: TProc;
+    FOnHelpAvailable: TFunc<Boolean>;
+    /// <summary>The '[?]' mark was drawn in the last frame paint, so a click on
+    /// it opens the help.</summary>
+    FHelpMarkShown: Boolean;
     /// <summary>Of the open history list: how many rows are history entries (the
     /// rest are mask groups and the editor row) and whether the last row opens
     /// the mask groups editor.</summary>
@@ -131,6 +136,8 @@ type
     function MouseCaptureMove(ALocalCol, ALocalRow: Integer): Boolean;
     procedure MouseCaptureRelease(ALocalCol, ALocalRow: Integer);
     procedure FireCancel;
+    function FireHelp: Boolean;
+    procedure DrawHelpMark(const AGrid: TTerminalGrid);
     function FindDefaultButtonIndex: Integer;
     procedure FireDefault;
     procedure FireAccept;
@@ -296,6 +303,12 @@ type
     property OnEditMaskGroups: TProc read FOnEditMaskGroups write FOnEditMaskGroups;
     property OnMaskGroupsAvailable: TFunc<Boolean> read FOnMaskGroupsAvailable
       write FOnMaskGroupsAvailable;
+    /// <summary>Opens the help of the dialog. The frame shows a '[?]' mark left
+    /// of the close mark while OnHelp is set and OnHelpAvailable (when set)
+    /// answers True; a click on it calls OnHelp.</summary>
+    property OnHelp: TProc read FOnHelp write FOnHelp;
+    property OnHelpAvailable: TFunc<Boolean> read FOnHelpAvailable
+      write FOnHelpAvailable;
     function Visible: Boolean;
     /// <summary>Help topic the open dialog asks F1 to show ('' = none).</summary>
     function HelpTopic: string;
@@ -2729,6 +2742,43 @@ begin
   end;
 end;
 
+function TDialogHost.FireHelp: Boolean;
+begin
+  Result := FHelpMarkShown and Assigned(FOnHelp);
+  if Result then
+    FOnHelp();
+end;
+
+procedure TDialogHost.DrawHelpMark(const AGrid: TTerminalGrid);
+var
+  Y, X, X0: Integer;
+  Row: TArray<TCharCell>;
+  Fg, Bg, Accent: TAlphaColor;
+begin
+  FHelpMarkShown := False;
+  if not Assigned(FOnHelp) or
+     (Assigned(FOnHelpAvailable) and not FOnHelpAvailable()) then
+    Exit;
+  Y := FBounds.Top;
+  X0 := FBounds.Right - cHelpMarkOffset;
+  if (Y < 0) or (Y > High(AGrid)) or (X0 - 1 <= FBounds.Left + 1) or
+     (FBounds.Right > High(AGrid[Y])) then
+    Exit;
+  Row := AGrid[Y];
+  // Only plain frame cells are overwritten: a title that reaches this far
+  // keeps its text and the mark stays out.
+  for X := X0 - 1 to X0 + cHelpMarkW - 1 do
+    if Row[X].CharValue <> Row[X0 - 1].CharValue then
+      Exit;
+  // Same colours as the close mark: border for the brackets, accent for the glyph.
+  Fg := Row[FBounds.Right - 3].FgColor;
+  Accent := Row[FBounds.Right - 2].FgColor;
+  Bg := Row[FBounds.Right - 3].BgColor;
+  PutGridText(AGrid, X0, Y, '[ ]', Fg, Bg);
+  DrawGridChar(AGrid, X0 + 1, Y, '?', Accent, Bg);
+  FHelpMarkShown := True;
+end;
+
 procedure TDialogHost.DrawDialogChrome(const AGrid: TTerminalGrid);
 begin
   // FAR-style modal dim: darken the already-painted scene, then paint chrome.
@@ -2740,6 +2790,7 @@ begin
   else
     FillGridRect(AGrid, FBounds.Left, FBounds.Top, FBounds.Right, FBounds.Bottom,
       ' ', TAlphaColor($FF000000), TAlphaColor($FFFFFFFF));
+  DrawHelpMark(AGrid);
   DrawDialogShadow(AGrid, FBounds);
   if FContentH > FBounds.Height - 2 then
     DrawDialogScrollBar(AGrid, FBounds.Right, FBounds.Top + 1, FBounds.Bottom - 1,
@@ -3286,6 +3337,7 @@ begin
   Result.NotifyChanged := NotifyChanged;
   Result.FireAccept := FireAccept;
   Result.FireCancel := FireCancel;
+  Result.FireHelp := FireHelp;
   Result.FireCommand := FireCommand;
   Result.CloseDropDown := CloseDropDown;
   Result.CommitDropDown := KeyCommitDropDown;

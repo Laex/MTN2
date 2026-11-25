@@ -98,7 +98,7 @@ A short overview of the features; details are in the help (F1), the other docume
 - **Packing** – `Shift+F1`: zip or 7z, compression level, password and name encryption; adding to an existing archive.
 - **Unpack each archive** – Plugins > Unpack each archive (7-Zip plugin): every selected archive goes into its own folder in the other panel's folder, in the background.
 - **Self-extracting archive** – Plugins > Make self-extracting archive (.exe) (Windows): turns the `.7z` under the cursor into a program that unpacks it without 7-Zip; needs the `7z.sfx` module from 7-Zip or Far ArcLite.
-- **Split archives** – `name.7z.001`, `.002`, ... open like a folder from the first volume through the 7-Zip plugin (Windows).
+- **Split archives** – `name.7z.001`, `.002`, ... open like a folder from the first volume through the 7-Zip plugin.
 - **Archive editing** – copying and moving into an open archive, deleting entries, editing a file inside an archive and saving it back with `F2`.
 - **Encrypted archives** – AES ZIP and 7z with encrypted contents or names; the password is asked once per session.
 - **Large archives** – fast entry into zip files with tens of thousands of entries, large entries are extracted straight to disk.

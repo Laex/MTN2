@@ -44,6 +44,8 @@ Derselbe Dialog enthält die übrigen Dateiattribute: **Komprimiert**, **Verschl
 
 Nur für Dateien und Ordner auf der Festplatte: Archive, SFTP, Papierkorb und Suchergebnisse haben kein Windows-Menü.
 
+<!--multi-rename-->**Mehrfach-Umbenennen (Ctrl+Alt+N).** Dateien > Mehrfach-Umbenennen... benennt die ausgewählten Elemente eines Ordners in einem Zug um. Die Masken für Name und Erweiterung verstehen `[N]` (alter Name), `[E]` (alte Erweiterung), `[C]` (Zähler mit Start, Schritt und Stellenzahl), `[Date]`, `[Time]`, `[Year]`, `[Month]`, `[Day]`, `[Parent]`, `[Size]` sowie die Metadatenwerte `[Dim]`, `[Camera]`, `[Artist]`, `[Title]`; anderer Text bleibt wie getippt. Suchen und Ersetzen (wahlweise als regulärer Ausdruck mit `$1`, `$2`) und die Groß-/Kleinschreibung gelten für den neuen Namen. Die Liste unter den Feldern zeigt beim Tippen die Paare „alt -> neu“; ein leerer, ungültiger, doppelter oder bereits belegter Name wird mit `!` markiert, und **Umbenennen** tut nichts, solange einer übrig ist. Das Umbenennen läuft als Hintergrundauftrag.
+
 <!--copy-->Im Dialog Kopieren/Verschieben lassen sich alle Zeitstempel beibehalten, nur neuere Dateien kopieren, der Inhalt symbolischer Links kopieren und eine Ausschlussmaske festlegen. Bei einem Namenskonflikt fragt das Programm, was zu tun ist (überschreiben, überspringen, umbenennen, für alle…).
 
 ---

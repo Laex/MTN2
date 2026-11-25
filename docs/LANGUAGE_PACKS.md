@@ -77,4 +77,16 @@ The F1 topics are Markdown files; the layout is [`bin/win64/resource/en/help`](.
 
 An archive with the pack folder (`uk\locale.json`, `uk\strings.json`, optionally `uk\help\`) is enough: the recipient unpacks it into `resource\`. Plugins are translated separately, with `plugins\<id>\resource\<code>\` packs of the same layout ([PLUGIN_DEVELOPMENT.md](PLUGIN_DEVELOPMENT.md)).
 
+## Installing a pack by hand
+
+1. No restart is needed. Unpack the archive (or copy the folder) so that the pack lands next to `MTN2.exe`:
+   - the program's own strings: `resource\<code>\`;
+   - a plugin's strings, one folder per plugin that should be translated: `plugins\<id>\resource\<code>\` (for example `plugins\mtn.git\resource\uk\`). A plugin without a pack in the chosen language stays in English.
+2. Open the language list in the settings (it is read each time it opens) and choose the new language.
+3. Check the result with `MTN2.exe --self-check`.
+
+To remove a language, delete its folders from `resource\` and from the plugin folders; if it was the current language, the program falls back to English.
+
+In Linux the same folders are `resource/<code>/` and `plugins/<id>/resource/<code>/` next to the program.
+
 A pack can also be added to the repository (`bin/win64/resource/<code>/`) and then ships with the program; agree on the language in the issue first so the work is not duplicated.

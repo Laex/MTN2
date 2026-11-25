@@ -9,5 +9,6 @@
     "en": "Serves the text search of Alt+F7 with ripgrep (rg), which is much faster than the built-in walk on large trees. Needs rg in PATH or next to the plugin; without it the built-in search is used.",
     "ru": "Выполняет поиск по тексту файлов в Alt+F7 программой ripgrep (rg), которая заметно быстрее встроенного обхода на больших деревьях. Нужен rg в PATH или рядом с плагином; без него работает встроенный поиск."
   },
-  "author": "MTN2"
+  "author": "MTN2",
+  "help": "help.md"
 }

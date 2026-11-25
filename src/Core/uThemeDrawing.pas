@@ -81,6 +81,19 @@ procedure DrawButtonShadow(const AGrid: TTerminalGrid; const ABounds: TRectI);
 /// </summary>
 function WindowFrameCloseHit(const ABounds: TRectI; AX, AY: Integer): Boolean;
 
+const
+  /// <summary>Cells of the '[?]' help mark in a dialog's top frame row.</summary>
+  cHelpMarkW = 3;
+  /// <summary>Distance of its first cell from the right corner: '[x]' takes the
+  /// three cells before the corner and the help mark sits right against it.</summary>
+  cHelpMarkOffset = 6;
+
+/// <summary>
+/// True if (AX,AY) hits the '[?]' help mark of a dialog frame: top row, three
+/// cells directly left of the '[x]' close mark.
+/// </summary>
+function DialogHelpMarkHit(const ABounds: TRectI; AX, AY: Integer): Boolean;
+
 /// <summary>Blends AColor toward black; ACover = how much black to mix in
 /// (0 = unchanged, 255 = pure black).</summary>
 function BlendTowardBlack(AColor: TAlphaColor; ACover: Byte): TAlphaColor;
@@ -407,6 +420,12 @@ begin
   if BtnX <= ABounds.Left + 2 then
     Exit; // no room - theme skips the mark
   Result := (AX >= BtnX) and (AX < BtnX + cCloseW);
+end;
+
+function DialogHelpMarkHit(const ABounds: TRectI; AX, AY: Integer): Boolean;
+begin
+  Result := (AY = ABounds.Top) and (AX >= ABounds.Right - cHelpMarkOffset) and
+    (AX < ABounds.Right - cHelpMarkOffset + cHelpMarkW);
 end;
 
 end.

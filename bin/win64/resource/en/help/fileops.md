@@ -44,6 +44,8 @@ The same dialog has the other file flags: **Compressed**, **Encrypted**, **Not i
 
 Only for files and folders on disk: archives, SFTP, the Recycle Bin and search results have no Windows menu.
 
+<!--multi-rename-->**Multi-rename (Ctrl+Alt+N).** Files > Multi-rename... renames the selected items of one folder in one go. The name and extension masks understand `[N]` (old name), `[E]` (old extension), `[C]` (counter with start, step and digits), `[Date]`, `[Time]`, `[Year]`, `[Month]`, `[Day]`, `[Parent]`, `[Size]` and the metadata values `[Dim]`, `[Camera]`, `[Artist]`, `[Title]`; other text stays as typed. Search and Replace (optionally a regular expression with `$1`, `$2`) and the letter case apply to the new name. The list under the fields shows the “old -> new” pairs as you type; a name that is empty, invalid, used twice or already taken is marked with `!`, and **Rename** does nothing while any is left. The renaming runs as a background job.
+
 <!--copy-->The copy/move dialog lets you keep all timestamps, copy only newer files, copy the contents of symbolic links and set an exclusion mask. On a name conflict the program asks what to do (overwrite, skip, rename, for all…).
 
 ---

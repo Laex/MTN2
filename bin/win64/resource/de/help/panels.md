@@ -17,6 +17,8 @@
 | Ctrl+U | die Panels tauschen |
 | Ctrl+] | passives Panel := Ordner des aktiven |
 | Ctrl+[ | aktives Panel := Ordner des passiven |
+| Ctrl+Alt+P | Paarweise Ordner an / aus: Wechsel in einen Unterordner (Enter, Ctrl+PgDn) oder nach oben (`..`, Ctrl+PgUp) in einem Panel wird im anderen wiederholt, wenn dort ein Ordner gleichen Namens (oder ein übergeordneter) existiert; beide Panels müssen gewöhnliche lokale Ordner zeigen; die Einstellung gehört zum Tab und wird beim Neustart des Programms zurückgesetzt; solange der Modus an ist, zeigt die Statuszeile „Paarweise“ (ein Klick darauf schaltet den Modus aus) |
+| Ctrl+Alt+G | Zeilen gruppieren: nach Typ, nach Datum, aus (jeder Druck schaltet weiter) |
 | Ctrl+F1 / Ctrl+F2 | das linke / rechte Panel aus- / einblenden |
 | Ctrl+P | das inaktive Panel aus- / einblenden |
 | Ctrl+L | Infopanel (Laufwerk, Speicher) auf der anderen Seite |
@@ -25,6 +27,10 @@
 | Ctrl+Q | Schnellansicht der Datei im anderen Panel: Bild, Text, Markdown oder Hex |
 | Alt+F10 | Ordnerbaum des Laufwerks über dem aktiven Panel (siehe unten) |
 | Alt+Buchstabe | Schnellsuche nach Name im Panel |
+
+**Paarweise Ordner (Ctrl+Alt+P)** – Beispiel: links `D:\Work1`, rechts `D:\Work2`, beide enthalten `src\Core`. Bei eingeschaltetem Modus öffnet Enter auf `src` im linken Panel sofort `D:\Work1\src` und `D:\Work2\src`, Enter auf `Core` geht in beiden eine Ebene tiefer; `..` in einem Panel geht in beiden nach oben. Hat das andere Panel keinen Ordner dieses Namens (etwa `docs` in `v2`), bleibt es stehen. Praktisch, um zwei Kopien eines Baums Ordner für Ordner zu vergleichen.
+
+**Gruppierung (Ctrl+Alt+G)** – die Zeilen werden zuerst nach Gruppen geordnet, die aktuelle Sortierung gilt innerhalb jeder Gruppe; die erste Zeile einer Gruppe zeigt rechts vom Namen ihre Überschrift, jede zweite Gruppe hat einen leicht getönten Hintergrund. Nach Typ: Ordner, Bilder, Audio, Video, Dokumente, Archive, Programme, Code und Daten, Sonstiges. Nach Datum: heute, gestern, letzte 7 Tage, letzte 30 Tage, letztes Jahr, älter, ohne Datum. Beispiel: im Download-Ordner zweimal Ctrl+Alt+G drücken und nach Größe sortieren – die Dateien jedes Tages stehen zusammen, die größten zuerst. Der Modus gilt je Panel und wird mit der Sitzung gespeichert.
 
 **Ordnerbaum (Alt+F10)** öffnet sich über dem aktiven Panel. Er ist immer nur über einem Panel geöffnet.
 

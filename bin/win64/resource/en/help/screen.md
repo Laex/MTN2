@@ -23,7 +23,7 @@ The window title shows **[Administrator]** when MTN2 itself was started as admin
 - The letter also works from the other keyboard layout: "Skip" with a highlighted S responds both to S and to the Cyrillic letter on the same key.
 - The default button (in angle brackets) and the cancel button need no letter – Enter and Esc do that.
 
-**F1** – help on what is on screen (panels, viewer, the open dialog or menu); **F1** inside the help – the contents. **F10** – quit.
+**F1** – help on what is on screen (panels, viewer, the open dialog or menu); **F1** inside the help – the contents. A dialog with a help page also shows a **[?]** mark in its top frame, left of the close mark; a click on it opens the same page. **F10** – quit.
 
 ---
 

@@ -38,6 +38,9 @@ type
     NotifyChanged: TDialogClickProc;
     FireAccept: TDialogClickProc;
     FireCancel: TDialogClickProc;
+    /// <summary>Opens the help of the dialog; False when the '[?]' mark is not
+    /// shown.</summary>
+    FireHelp: TDialogClickBoolFn;
     FireCommand: TDialogClickIdProc;
     CloseDropDown: TDialogClickProc;
     CommitDropDown: TDialogClickProc;
@@ -123,6 +126,12 @@ begin
   begin
     Ops.CloseDropDown();
     Ops.FireCancel();
+    Exit(True);
+  end;
+  if DialogHelpMarkHit(B, ALocalCol, ALocalRow) and Assigned(Ops.FireHelp) and
+     Ops.FireHelp() then
+  begin
+    Ops.CloseDropDown();
     Exit(True);
   end;
   if not B.Contains(ALocalCol, ALocalRow) then

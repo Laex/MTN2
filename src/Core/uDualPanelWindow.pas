@@ -1986,6 +1986,16 @@ begin
       FDialog.PushDialog(Ord(FDialogKind));
       FSettings.OpenMaskGroupsOver;
     end;
+  FDialog.OnHelp := OpenHelp;
+  FDialog.OnHelpAvailable :=
+    function: Boolean
+    var
+      Screen: THelpScreen;
+    begin
+      Screen := CurrentHelpScreen;
+      Result := (Screen.DialogKind <> hdkNone) and
+        ((Screen.DialogTopic <> '') or (HelpTopicForDialog(Screen.DialogKind) <> ''));
+    end;
   FDialogKind := hdkNone;
   FPluginListReturnRow := -1;
   FPluginInfoRow := -1;

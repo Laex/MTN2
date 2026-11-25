@@ -222,7 +222,7 @@ Dev-сборки содержат свежие изменения и могут 
 | `src/Platform` | платформенный слой: `Windows` и `Posix` с одноимёнными модулями |
 | `src/Hosts` | оболочки: `Ansi` – версия для текстового терминала |
 | `src/Forms`, `src/dialogs`, `src/Assets/themes` | главная форма, JSON-диалоги, корневая тема |
-| `src/plugins` | встроенные плагины (`mtn.7z`, `mtn.tmp`, `mtn.git`, `mtn.csv`, `mtn.docview`, `mtn.pdf`, `mtn.logfilter`, `mtn.lua`, `mtn.ws`, `mtn.winsys`, `mtn.docker`, `mtn.rclone`, `mtn.everything`, `mtn.jtree`, `mtn.meta`, `mtn.diskmap`, WASM-демо) |
+| `src/plugins` | встроенные плагины (`mtn.7z`, `mtn.archivetools`, `mtn.bridge`, `mtn.checksums`, `mtn.csv`, `mtn.describe`, `mtn.diskmap`, `mtn.docker`, `mtn.docview`, `mtn.everything`, `mtn.exportlist`, `mtn.git`, `mtn.highlight`, `mtn.jtree`, `mtn.logfilter`, `mtn.lua`, `mtn.meta`, `mtn.multirename`, `mtn.net`, `mtn.pdf`, `mtn.rclone`, `mtn.ripgrep`, `mtn.screensaver`, `mtn.splitfile`, `mtn.thumbs`, `mtn.tmp`, `mtn.winsys`, `mtn.ws`, WASM-демо) |
 | `src/tests` | регрессионные тесты DUnitX по группам и раннер `run-tests.ps1` |
 | `src/tools` | DialogDesigner, ExportDialogJson, группа проектов `Group.groupproj`, служебные скрипты |
 | `bin/win64`, `bin/linux64` | результат сборки по платформам |

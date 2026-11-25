@@ -6,6 +6,15 @@ This file describes what changes for the user from version to version: new featu
 
 ## Unreleased
 
+### New
+
+- Dialogs that have a help page show a **[?]** mark in the top frame next to the close mark; a click on it opens the help of that dialog, like F1.
+
+### Changed
+
+- On Linux, passwords and key passphrases of network connections can be saved: they go to the desktop keyring through `secret-tool` (package `libsecret-tools`). Without it, or without a desktop session, they are asked for at every connection, as before. The Linux guide no longer says the processes and services plugin is missing on Linux.
+- The German and Chinese help now has the sections on plugin search, quick search, column sets, paired folders and grouping, and the multi-rename link in the help opens its own section. The ripgrep plugin has a help page. The language pack guide describes installing a pack, including plugin strings, by hand.
+
 ## Dev v0.5.12.42 – 2026-11-25
 
 ### New

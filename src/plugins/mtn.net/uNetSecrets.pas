@@ -2,9 +2,10 @@ unit uNetSecrets;
 
 { Protects the passwords and passphrases a session keeps in the plugin's
   settings. On Windows the secret is sealed with the data protection API for
-  the signed-in user (only that user on that machine can open it). Other
-  systems have no store the plugin can rely on, so nothing is saved there and
-  the user is asked at connection time. }
+  the signed-in user (only that user on that machine can open it). On Linux the
+  secret goes to the desktop keyring through the secret-tool program (libsecret)
+  and only a random reference is kept in the settings. Without secret-tool or a
+  session bus nothing is saved and the user is asked at connection time. }
 
 interface
 
@@ -20,11 +21,17 @@ function UnprotectSecret(const ASealed: string; out AText: string): Boolean;
 implementation
 
 uses
-  System.SysUtils, System.NetEncoding
-  {$IFDEF MSWINDOWS}, Winapi.Windows{$ENDIF};
+  System.SysUtils, System.NetEncoding, System.IOUtils
+  {$IFDEF MSWINDOWS}, Winapi.Windows{$ELSE}, uPlatformProcess{$ENDIF};
 
 const
+  {$IFDEF MSWINDOWS}
   cPrefix = 'dpapi:';
+  {$ELSE}
+  cPrefix = 'keyring:';
+  cSecretTool = 'secret-tool';
+  cKeyringService = 'mtn2.net';
+  {$ENDIF}
 
 {$IFDEF MSWINDOWS}
 type
@@ -47,12 +54,44 @@ const
   cEntropy: AnsiString = 'MTN2.net.session';
 {$ENDIF}
 
+{$IFNDEF MSWINDOWS}
+function SecretToolPath: string;
+var
+  Dir: string;
+begin
+  for Dir in GetEnvironmentVariable('PATH').Split([':'], TStringSplitOptions.ExcludeEmpty) do
+  begin
+    Result := TPath.Combine(Dir, cSecretTool);
+    if TFile.Exists(Result) then
+      Exit;
+  end;
+  Result := '';
+end;
+
+{ secret-tool talks to the keyring over the session bus; without one (SSH
+  without a desktop session, containers) every call would fail or hang. }
+function KeyringAvailable: Boolean;
+begin
+  Result := (GetEnvironmentVariable('DBUS_SESSION_BUS_ADDRESS') <> '') and
+    (SecretToolPath <> '');
+end;
+
+function RunSecretTool(const AArgs: TArray<string>; const AStdIn: string;
+  out AOutput: string): Boolean;
+var
+  Code: Cardinal;
+begin
+  Result := (PlatformRunCaptured(SecretToolPath, AArgs, AStdIn, 15000, nil, AOutput, Code) = srOk)
+    and (Code = 0);
+end;
+{$ENDIF}
+
 function SecretsAvailable: Boolean;
 begin
   {$IFDEF MSWINDOWS}
   Result := True;
   {$ELSE}
-  Result := False;
+  Result := KeyringAvailable;
   {$ENDIF}
 end;
 
@@ -91,8 +130,16 @@ begin
   end;
 end;
 {$ELSE}
+var
+  Id, Output: string;
 begin
   Result := '';
+  if (AText = '') or not KeyringAvailable then
+    Exit;
+  Id := TGUID.NewGuid.ToString.Trim(['{', '}']).ToLower;
+  if RunSecretTool(['store', '--label=MTN2 network connection', 'service', cKeyringService,
+    'id', Id], AText, Output) then
+    Result := cPrefix + Id;
 end;
 {$ENDIF}
 
@@ -130,9 +177,17 @@ begin
   Result := True;
 end;
 {$ELSE}
+var
+  Id: string;
 begin
   AText := '';
   Result := False;
+  if (Copy(ASealed, 1, Length(cPrefix)) <> cPrefix) or not KeyringAvailable then
+    Exit;
+  Id := Copy(ASealed, Length(cPrefix) + 1, MaxInt);
+  if Id = '' then
+    Exit;
+  Result := RunSecretTool(['lookup', 'service', cKeyringService, 'id', Id], '', AText);
 end;
 {$ENDIF}
 
