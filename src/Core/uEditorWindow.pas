@@ -3916,6 +3916,10 @@ begin
   end;
   Path := TPath.GetFullPath(TPath.Combine(ExtractFilePath(FileUriToPath(FURI)),
     StringReplace(Topic, '/', PathDelim, [rfReplaceAll])));
+  // A wiki link names a note without its extension.
+  if not FileExists(Path) and (ExtractFileExt(Path) = '') and
+     FileExists(Path + '.md') then
+    Path := Path + '.md';
   if not FileExists(Path) then
   begin
     Notice(T('ui.editor.linkMissing', 'File not found: %s'), Path, tkWarning);

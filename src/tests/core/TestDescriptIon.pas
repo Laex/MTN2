@@ -19,11 +19,20 @@ type
     [Test] procedure Utf8AndAnsiFilesKeepTheirEncoding;
   end;
 
+  [TestFixture]
+  TTestFolderDescriptionCache = class
+  public
+    [Test] procedure ABusyCacheDoesNotRefresh;
+    [Test] procedure AMissingMapOrAnotherFolderRefreshes;
+    [Test] procedure TheSameFolderWaitsOutTheInterval;
+    [Test] procedure AnEmptyNameOrFolderReturnsNothing;
+  end;
+
 implementation
 
 uses
   System.SysUtils, System.IOUtils, System.Generics.Collections,
-  uDescriptIon, uVfsTypes;
+  uDescriptIon, uVfsTypes, uFolderDescriptionCache;
 
 function NewDir: string;
 begin
@@ -159,7 +168,42 @@ begin
   end;
 end;
 
+procedure TTestFolderDescriptionCache.ABusyCacheDoesNotRefresh;
+begin
+  Assert.IsFalse(DescriptionCacheDue(True, 'C:\A', 'C:\A', True, 5000, 0));
+end;
+
+procedure TTestFolderDescriptionCache.AMissingMapOrAnotherFolderRefreshes;
+begin
+  Assert.IsTrue(DescriptionCacheDue(False, 'C:\A', 'C:\A', False, 1000, 1000));
+  Assert.IsTrue(DescriptionCacheDue(False, 'C:\B', 'C:\A', True, 1000, 1000));
+end;
+
+procedure TTestFolderDescriptionCache.TheSameFolderWaitsOutTheInterval;
+begin
+  Assert.IsFalse(DescriptionCacheDue(False, 'C:\A', 'C:\A', True, 2000, 1000));
+  Assert.IsTrue(DescriptionCacheDue(False, 'C:\A', 'C:\A', True, 2600, 1000));
+end;
+
+procedure TTestFolderDescriptionCache.AnEmptyNameOrFolderReturnsNothing;
+var
+  Cache: TFolderDescriptionCache;
+begin
+  Cache := TFolderDescriptionCache.Create(
+    function: Boolean
+    begin
+      Result := True;
+    end, nil);
+  try
+    Assert.AreEqual('', Cache.TextOf('', 'a.txt'));
+    Assert.AreEqual('', Cache.TextOf('file:///C:/work', ''));
+  finally
+    Cache.Free;
+  end;
+end;
+
 initialization
   TDUnitX.RegisterTestFixture(TTestDescriptIon);
+  TDUnitX.RegisterTestFixture(TTestFolderDescriptionCache);
 
 end.

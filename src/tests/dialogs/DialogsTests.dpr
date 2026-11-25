@@ -43,7 +43,8 @@ uses
   TestSetModeDialog in 'TestSetModeDialog.pas',
   TestThemeDialogs in 'TestThemeDialogs.pas',
   TestSshConnectionsDialog in 'TestSshConnectionsDialog.pas',
-  TestPluginDialogs in 'TestPluginDialogs.pas';
+  TestPluginDialogs in 'TestPluginDialogs.pas',
+  TestDialogLiveUpdate in 'TestDialogLiveUpdate.pas';
 
 begin
   RunRegisteredTests;

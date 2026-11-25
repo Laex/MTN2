@@ -240,7 +240,10 @@
         <DCCReference Include="Core\uDualPanelClick.pas"/>
         <DCCReference Include="Core\uDualPanelDrag.pas"/>
         <DCCReference Include="Core\uDualPanelTabs.pas"/>
+        <DCCReference Include="Core\uEmbeddedWorkspaces.pas"/>
         <DCCReference Include="Core\uDualPanelCommands.pas"/>
+        <DCCReference Include="Core\uDualPanelCommandRun.pas"/>
+        <DCCReference Include="Core\uDualPanelQuickSearch.pas"/>
         <DCCReference Include="Core\uEditorSearch.pas"/>
         <DCCReference Include="Core\uEditorUndo.pas"/>
         <DCCReference Include="Core\uEditorLineOps.pas"/>
@@ -275,6 +278,7 @@
         <DCCReference Include="Core\uDialogResources.pas"/>
         <DCCReference Include="Core\uDialogLocaleLayout.pas"/>
         <DCCReference Include="Core\uDialogValues.pas"/>
+        <DCCReference Include="Core\uDialogLiveUpdate.pas"/>
         <DCCReference Include="Core\uDialogTabs.pas"/>
         <DCCReference Include="Core\uDialogV2Layout.pas"/>
         <DCCReference Include="Core\uDialogLayout.pas"/>
@@ -291,6 +295,7 @@
         <DCCReference Include="Core\uDualPanelJobChips.pas"/>
         <DCCReference Include="Core\uWindowChrome.pas"/>
         <DCCReference Include="Core\uDescriptIon.pas"/>
+        <DCCReference Include="Core\uFolderDescriptionCache.pas"/>
         <DCCReference Include="Core\uDualPanelJobList.pas"/>
         <DCCReference Include="Core\uDualPanelSync.pas"/>
         <DCCReference Include="Core\uSyncIgnore.pas"/>
@@ -316,6 +321,9 @@
         <DCCReference Include="Core\uDualPanelFindDialogs.pas"/>
         <DCCReference Include="Core\uDualPanelInfoPanel.pas"/>
         <DCCReference Include="Core\uDualPanelPanelDraw.pas"/>
+        <DCCReference Include="Core\uDualPanelPluginJson.pas"/>
+        <DCCReference Include="Core\uDualPanelCompare.pas"/>
+        <DCCReference Include="Core\uDualPanelPluginManager.pas"/>
         <DCCReference Include="Core\uDualPanelStatus.pas"/>
         <DCCReference Include="Core\uPanelUriLabels.pas"/>
         <DCCReference Include="Core\uDualPanelWindow.pas"/>

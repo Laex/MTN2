@@ -296,6 +296,18 @@ begin
   Assert.IsTrue(L.DisplayText = '1. Name - used in the repo',
     'list item strips both **bold** and *italic* markers');
 
+  L := TMarkdownParser.ParseLine('- [[02_Intro|Intro and scope]] end', State);
+  Assert.AreEqual('- Intro and scope end', L.DisplayText, 'wiki link shows its label');
+  Assert.IsTrue(HasSpan(L, 3, 15, mskLink) and (L.Spans[1].Target = '02_Intro'),
+    '[[note|label]] -> link span over the label, target is the note');
+
+  L := TMarkdownParser.ParseLine('see [[Other note#Part]]', State);
+  Assert.AreEqual('see Other note#Part', L.DisplayText, 'wiki link without a label shows the target');
+  Assert.AreEqual('Other note#Part', L.Spans[0].Target, 'anchor stays in the target');
+
+  L := TMarkdownParser.ParseLine('a [[unclosed and [[]] empty', State);
+  Assert.IsTrue(Length(L.Spans) = 0, 'unclosed or empty wiki link is plain text');
+
   // Unmatched / malformed markers must not raise or infinite-loop.
   L := TMarkdownParser.ParseLine('a lone * star with no close', State);
   Assert.IsTrue(L.DisplayText <> '', 'unterminated "*" does not crash ParseLine');
@@ -318,6 +330,11 @@ begin
 
   L := TMarkdownParser.ParseLine('some_snake_case_name here', State);
   Assert.IsTrue(Length(L.Spans) = 0, 'multiple intraword underscores in one identifier: still no italic');
+
+  L := TMarkdownParser.ParseLine('03_Глава_1_Точка и 04_Глава_2_Линия', State);
+  Assert.IsTrue(L.DisplayText = '03_Глава_1_Точка и 04_Глава_2_Линия',
+    'underscores between Cyrillic letters and digits are not italic delimiters');
+  Assert.IsTrue(Length(L.Spans) = 0, 'Cyrillic identifiers with underscores: no spans');
 
   L := TMarkdownParser.ParseLine('This is _actually italic_ text.', State);
   Assert.IsTrue(L.DisplayText = 'This is actually italic text.',

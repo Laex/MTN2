@@ -68,7 +68,10 @@ uses
   TestHostShell in 'TestHostShell.pas',
   TestKeyRouting in 'TestKeyRouting.pas',
   TestThemeController in 'TestThemeController.pas',
-  TestUserMenuController in 'TestUserMenuController.pas';
+  TestUserMenuController in 'TestUserMenuController.pas',
+  TestDualPanelPluginJson in 'TestDualPanelPluginJson.pas',
+  TestDualPanelCommandRun in 'TestDualPanelCommandRun.pas',
+  TestDualPanelQuickSearch in 'TestDualPanelQuickSearch.pas';
 
 begin
   RunRegisteredTests;

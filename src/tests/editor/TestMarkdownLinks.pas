@@ -23,6 +23,7 @@ type
     [Test] procedure TestHelpFollowsLinks;
     [Test] procedure TestViewerFollowsLocalLinks;
     [Test] procedure TestLinksClickableInAnyLayout;
+    [Test] procedure TestViewerFollowsWikiLinks;
   end;
 
 implementation
@@ -310,6 +311,65 @@ begin
     Help.Free;
     SetResourceRoot(OldRoot);
     TDirectory.Delete(Root, True);
+  end;
+end;
+
+procedure TTestMarkdownLinks.TestViewerFollowsWikiLinks;
+var
+  Dir: string;
+  View: TEditorWindow;
+  Grid: TTerminalGrid;
+
+  function Find(const AWord: string; out AX, AY: Integer): Boolean;
+  var
+    X, Y, I: Integer;
+  begin
+    for Y := 0 to High(Grid) do
+      for X := 0 to High(Grid[Y]) - Length(AWord) do
+      begin
+        I := 1;
+        while (I <= Length(AWord)) and (Grid[Y][X + I - 1].CharValue = AWord[I]) do
+          Inc(I);
+        if I > Length(AWord) then
+        begin
+          AX := X;
+          AY := Y;
+          Exit(True);
+        end;
+      end;
+    Result := False;
+  end;
+
+var
+  X, Y, BX, BY: Integer;
+begin
+  Dir := TPath.Combine(TPath.GetTempPath, 'mtn2-mdwiki-' + TPath.GetGUIDFileName(False));
+  ForceDirectories(Dir);
+  TFile.WriteAllText(TPath.Combine(Dir, 'index.md'),
+    '# Index heading' + sLineBreak + sLineBreak +
+    '- [[02_Second_note|Second note]]' + sLineBreak, TEncoding.UTF8);
+  TFile.WriteAllText(TPath.Combine(Dir, '02_Second_note.md'),
+    '# Second heading' + sLineBreak, TEncoding.UTF8);
+  SetLength(Grid, 24);
+  for Y := 0 to High(Grid) do
+    SetLength(Grid[Y], 80);
+  View := TEditorWindow.Create(CreateThemeByName('NDN'), 1);
+  try
+    View.Open(PathToFileUri(TPath.Combine(Dir, 'index.md')), True);
+    Pump;
+    View.PaintEmbedded(Grid, 0, 0, 80, 24, 0, 0);
+    Assert.IsTrue(Find('Second note', X, Y), 'wiki link label is drawn');
+    Assert.IsFalse(Find('[[', BX, BY), 'wiki link brackets are not drawn');
+
+    View.HandleMouseDown(X + 1, Y, []);
+    View.HandleMouseUp;
+    Pump;
+    View.PaintEmbedded(Grid, 0, 0, 80, 24, 0, 0);
+    Assert.IsTrue(Find('Second heading', X, Y),
+      'click opens the note named by the wiki link, without its extension');
+  finally
+    View.Free;
+    TDirectory.Delete(Dir, True);
   end;
 end;
 

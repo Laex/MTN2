@@ -8,6 +8,7 @@ This file describes what changes for the user from version to version: new featu
 
 ### Added
 
+- The Markdown viewer shows Obsidian wiki links (`[[note]]`, `[[note|label]]`) as links and opens the note, adding `.md` when the name has no extension. An underscore between letters, including Cyrillic ones, no longer turns the text into italics.
 - The "File already exists" prompt has a "Compare" button: it opens both files in the comparison view (the new one on the left, the existing one on the right) and brings the prompt back when the view is closed. Files that cannot be shown as a text comparison (binary, identical) get a one-line verdict instead.
 - "Split / combine..." in the File menu cuts the file under the cursor into numbered parts (`name.001`, `name.002`, ...) of a chosen size (`700M`, `1.44M`, `4G`) and joins the parts back into one file when the cursor is on any part. Existing files are never overwritten; Esc cancels and removes the unfinished result.
 - "Test archive" in the File menu checks every file of the archive under the cursor against its stored checksums without unpacking it, and lists the damaged ones. ZIP is checked by the program, 7z, RAR, TAR and the other formats of the 7-Zip plugin by the plugin (also in its Plugins menu).
@@ -28,6 +29,7 @@ This file describes what changes for the user from version to version: new featu
 
 ### Fixed
 
+- A folder-description refresh no longer shows an access-violation dialog when the read finishes after the window has closed.
 - Coloring a long line allocates its spans once, and the comparison of two long files grows its step list by doubling.
 - File addresses of a large folder and network paths are encoded in one buffer, and releasing many folders before a delete or move allocates the path list once.
 - A long Markdown line and a long UTF-7 text are built in one buffer. A batch of search hits, the file list of a search and the extra hits of a search provider are allocated once.

@@ -1,4 +1,4 @@
-﻿unit TestKeyHints;
+unit TestKeyHints;
 
 { The key hints of uKeyHints: which state shows which hint, the keys read from
   the live keymap, and each hint offered once. }
@@ -29,6 +29,9 @@ type
     [Test] procedure SameNameDistinctFoldersDetectsPair;
     [Test] procedure DocumentHintSituationsBranches;
     [Test] procedure PanelSurfaceHintSituationsThresholds;
+    [Test] procedure RestoredTabsAndWorkspacesAreNotNews;
+    [Test] procedure TheEarlierFreshSituationIsOffered;
+    [Test] procedure ARefusedHintTriesTheNextSituation;
   end;
 
 implementation
@@ -259,6 +262,50 @@ begin
   Assert.IsTrue(hsInfoPanel in H, 'info');
   Assert.IsTrue(hsPanelTabs in H, 'tabs');
   Assert.IsTrue(hsSameNameFolders in H, 'same name');
+end;
+
+procedure TTestKeyHints.RestoredTabsAndWorkspacesAreNotNews;
+var
+  Active: THintSituations;
+begin
+  Active := [hsPanelTabs, hsWorkspaces, hsMenu, hsJobs];
+  Assert.IsTrue(SessionRestoredHintSituations(Active) = [hsPanelTabs, hsWorkspaces]);
+  Assert.IsTrue(SessionRestoredHintSituations([hsConsole]) = []);
+end;
+
+procedure TTestKeyHints.TheEarlierFreshSituationIsOffered;
+var
+  Shown: THintSituation;
+begin
+  Shown := hsNone;
+  Assert.IsTrue(OfferFreshHint([hsJobs, hsMenu],
+    function(ASituation: THintSituation): Boolean
+    begin
+      Shown := ASituation;
+      Result := True;
+    end));
+  Assert.IsTrue(Shown = hsMenu, 'menu comes before jobs');
+end;
+
+procedure TTestKeyHints.ARefusedHintTriesTheNextSituation;
+var
+  Shown: THintSituation;
+begin
+  Shown := hsNone;
+  Assert.IsTrue(OfferFreshHint([hsMenu, hsJobs],
+    function(ASituation: THintSituation): Boolean
+    begin
+      if ASituation = hsMenu then
+        Exit(False);
+      Shown := ASituation;
+      Result := True;
+    end));
+  Assert.IsTrue(Shown = hsJobs);
+  Assert.IsFalse(OfferFreshHint([],
+    function(ASituation: THintSituation): Boolean
+    begin
+      Result := True;
+    end));
 end;
 
 initialization

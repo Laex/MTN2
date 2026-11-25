@@ -162,7 +162,8 @@ function MarkdownResolveImageFile(const ADocPath, AImageRef: string): string;
 implementation
 
 uses
-  System.StrUtils, System.IOUtils, System.Math, uTerminalTypes;
+  System.StrUtils, System.IOUtils, System.Math, System.Character,
+  uTerminalTypes;
 
 function MakeSpan(AStart, ALen: Integer; AKind: TMdSpanKind): TMdSpan;
 begin
@@ -556,7 +557,7 @@ type
 // same line, would spuriously turn everything between them italic/bold.
 function IsWordChar(ACh: Char): Boolean;
 begin
-  Result := CharInSet(ACh, ['A'..'Z', 'a'..'z', '0'..'9', '_']);
+  Result := (ACh = '_') or TCharacter.IsLetterOrDigit(ACh);
 end;
 
 // Single left-to-right pass: at each position, try each inline construct in
@@ -651,6 +652,45 @@ var
     Result := True;
   end;
 
+  // Obsidian [[note]] / [[note#heading|label]]: the label (or the note name)
+  // is shown, the note name goes to Target.
+  function TryWikiLink: Boolean;
+  var
+    CloseIdx, SpanStart, BarIdx: Integer;
+    Inner, LinkText, LinkTarget: string;
+    Span: TMdSpan;
+  begin
+    Result := False;
+    if (I + 1 > N) or (S[I] <> '[') or (S[I + 1] <> '[') then
+      Exit;
+    CloseIdx := PosEx(']]', S, I + 2);
+    if CloseIdx = 0 then
+      Exit;
+    Inner := Copy(S, I + 2, CloseIdx - I - 2);
+    BarIdx := Pos('|', Inner);
+    if BarIdx > 0 then
+    begin
+      LinkTarget := Trim(Copy(Inner, 1, BarIdx - 1));
+      LinkText := Trim(Copy(Inner, BarIdx + 1, MaxInt));
+    end
+    else
+    begin
+      LinkTarget := Trim(Inner);
+      LinkText := LinkTarget;
+    end;
+    if (LinkTarget = '') or (Pos('[', Inner) > 0) then
+      Exit;
+    if LinkText = '' then
+      LinkText := LinkTarget;
+    SpanStart := Text.Length + 1;
+    Text.Append(LinkText);
+    Span := MakeSpan(SpanStart, Length(LinkText), mskLink);
+    Span.Target := LinkTarget;
+    Spans.Add(Span);
+    I := CloseIdx + 2;
+    Result := True;
+  end;
+
 begin
   Spans := TList<TMdSpan>.Create;
   Text := nil;
@@ -666,6 +706,7 @@ begin
       if TryMarker('**', '**', mskBold, True) then Continue;
       if TryMarker('__', '__', mskBold, True, True) then Continue;
       if TryMarker('~~', '~~', mskStrike, True) then Continue;
+      if TryWikiLink then Continue;
       if TryLink then Continue;
       if TryMarker('*', '*', mskItalic, True) then Continue;
       if TryMarker('_', '_', mskItalic, True, True) then Continue;

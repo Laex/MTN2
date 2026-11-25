@@ -16,7 +16,7 @@ uses
   uInputLine, uFunctionBar, uPanelModel, uPanelColumns, uColumnSets, uPluginColumns, uDirWatch, uDialogTypes, uDialogBuilders, uDialogJson,
   uDialogHost, uShellAssoc, uShellIcons, uDualPanelOverlays,
   uDualPanelDrivePopup, uDualPanelFolderTree, uDualPanelHistoryPopup, uDualPanelJobs, uDualPanelJobList,
-  uDualPanelJobRules, uDualPanelJobChips, uWindowChrome, uDescriptIon, uDualPanelSearch, uDualPanelMenus,
+  uDualPanelJobRules, uDualPanelJobChips, uWindowChrome, uDescriptIon, uFolderDescriptionCache, uDualPanelSearch, uDualPanelMenus,
   uFolderSize, uDualPanelFolderSize, uDualPanelSelection, uDualPanelCmdLine,
   uDualPanelDrawUtils, uDualPanelInfoPanel, uDualPanelPanelDraw, uDualPanelOperations, uTopMenuBar, uMenuRegistry, uCommandRegistry, uDocumentProviders, uPanelPluginRegistry, uPluginHost, uPluginInstall, uPluginInfo, uPluginServices, uPluginInputChord, uPluginSurface,
   uFolderHistory, uFolderFrecent, uANSIParser,
@@ -31,7 +31,8 @@ uses
   uDualPanelJobDialogs, uDualPanelFindDialogs, uDiffViewer, uDualPanelStatus, uStatusSegments, uElevatedVfs, uElevation,
   uDualPanelInput, uDualPanelTopMenu, uDualPanelClick, uDualPanelDrag, uPanelUriLabels,
   uMessageBus, uDisplaySettings, uConPty, uNotice, uToast, uHiddenDialogs, uPlatformDrives,
-  uKeyHints, uFeatureTips, uPanelCompare;
+  uKeyHints, uFeatureTips, uPanelCompare, uDualPanelCompare, uDualPanelPluginManager,
+  uDualPanelCommandRun, uDualPanelQuickSearch, uEmbeddedWorkspaces;
 
 type
   THandleInputMethod = function(var AKey: Word; AShift: TShiftState;
@@ -60,38 +61,19 @@ type
     /// to as a drive's remembered folder; a later "not found" for the same
     /// folder makes the panel climb to an existing parent.</summary>
     FListedOkUri: array[TPanelSide] of string;
-    FQuickSearchActive: Boolean;
-    // Opened by the Quick search action, with no Alt held: it lingers like a
-    // sticky search whatever the setting says.
-    FQuickSearchLatched: Boolean;
-    FQuickSearchText: string;
     /// <summary>The masks behind the entries of the open filter dialog's list.</summary>
     FFilterPresets: TArray<string>;
     /// <summary>The panel filter in force (Ctrl+I): hides non-matching rows via
     /// IPanelModel.SetFilterMask; '' when there is none.</summary>
     FFilterMask: string;
-    /// <summary>Descript.ion of the active folder, for the status line: the folder,
-    /// its file's timestamp and when it was last looked at.</summary>
-    FDescDir: string;
-    FDescStamp: TDateTime;
-    FDescCheckedAt: UInt64;
-    FDescBusy: Boolean;
-    FDescMap: TDictionary<string, string>;
-    FCompareOptions: TPanelCompareOptions;
-    FCompareToken: IJobCancelToken;
-    /// <summary>The pairs listed by the open group-compare dialog; Enter
-    /// opens the selected one.</summary>
-    FCompareGroup: TArray<TComparePair>;
-    FGroupVerdicts: TArray<TCompareResult>;
-    FGroupSkipped, FGroupSel: Integer;
-    /// <summary>The group-compare list itself is the open dialog.</summary>
-    FGroupListOpen: Boolean;
-    /// <summary>A pair opened from the list is showing; closing it brings
-    /// the list back.</summary>
-    FGroupReturn: Boolean;
+    /// <summary>Descript.ion of the active folder, for the status line.</summary>
+    FDescriptions: TFolderDescriptionCache;
+    FCompare: TDualPanelCompare;
+    FPluginMgr: TDualPanelPluginManager;
+    FCommands: TDualPanelCommandRun;
+    FSearch: TDualPanelQuickSearch;
     FNextTabId: Cardinal;
-    FDocuments: TObjectDictionary<Cardinal, TEditorWindow>;
-    FTerminals: TObjectDictionary<Cardinal, TTerminalWorkspaceWindow>;
+    FWork: TEmbeddedWorkspaces;
     FLeftBounds: TRectI;   // outer panel frame (local)
     FRightBounds: TRectI;
     FListTop: Integer;
@@ -224,14 +206,6 @@ type
     FSpaceSelects: Boolean;
     FVimKeys: Boolean;
     FKeepPanelFocus: Boolean;
-    FStickyQuickSearch: Boolean;
-    FQuickSearchKeepEmpty: Boolean;
-    FQuickSearchFilter: Boolean;
-    FQuickSearchKeepFilter: Boolean;
-    FQuickSearchFuzzy: Boolean;
-    /// <summary>The side whose model holds the quick-search filter.</summary>
-    FQuickSearchFilterSide: TPanelSide;
-    FQuickSearchFiltering: Boolean;
     /// <summary>Blinking cursor phase: True = cursor shown, False = cursor hidden.</summary>
     FCursorVisible: Boolean;
     FDialog: TDialogHost;
@@ -311,9 +285,6 @@ type
     FSearchDlg: TSearchDialogController;
     FDirSync: TDirSyncDialogController;
     FDiffView: TDiffViewer;
-    /// <summary>The diff viewer was opened from the overwrite prompt; the
-    /// prompt stays pending and reopens when the viewer closes.</summary>
-    FAskCompareActive: Boolean;
     FKeymapHost: TDualPanelKeymapHost;
     FShiftSelect: TShiftSelectGesture;
     FClickHost: TDualPanelClickHost;
@@ -665,11 +636,18 @@ type
     procedure RefreshActive;
     function HandleQuickSearchInput(var AKey: Word; AShift: TShiftState; var AKeyChar: Char): Boolean;
     procedure ClearQuickSearch;
-    procedure SetQuickSearchNeedle(const AText: string);
-    procedure FocusFirstFilteredRow;
     procedure StartQuickSearch;
-    function QuickSearchLingers: Boolean;
     procedure DrawQuickSearchField(const ABounds: TRectI);
+    function GetStickyQuickSearch: Boolean;
+    procedure SetStickyQuickSearch(AValue: Boolean);
+    function GetQuickSearchKeepEmpty: Boolean;
+    procedure SetQuickSearchKeepEmpty(AValue: Boolean);
+    function GetQuickSearchFilter: Boolean;
+    procedure SetQuickSearchFilter(AValue: Boolean);
+    function GetQuickSearchKeepFilter: Boolean;
+    procedure SetQuickSearchKeepFilter(AValue: Boolean);
+    function GetQuickSearchFuzzy: Boolean;
+    procedure SetQuickSearchFuzzy(AValue: Boolean);
     procedure OpenPanelFilter;
     function HandlePanelFilterCommand(const AControlId: string): Boolean;
     procedure ApplyPanelFilter(const AMask: string);
@@ -711,14 +689,7 @@ type
       const AMask: string);
     procedure SubmitCommandLine;
     procedure RunConsoleCommand(const ACommand: string);
-    /// <summary>Clears the command line and hands ACommand to the console;
-    /// False when there is nothing to run.</summary>
-    function SendConsoleCommand(const ACommand: string): Boolean;
     /// <summary>FAR Shift+Enter: cmdline or cursor file as a separate OS process.</summary>
-    procedure RunDetachedFromCmdLine(const AText, ACwd: string);
-    procedure RunDetachedOpenFolder(const AUri: string; const ATab: TTab;
-      AIsParent: Boolean);
-    procedure RunDetachedFile(const AUri: string);
     procedure RunDetached;
     /// <summary>The command line runs in the console, which shows it for a
     /// moment (OnRunInBackground, Options > Console...) and gives the panels back.
@@ -728,14 +699,7 @@ type
     /// background console. An empty command line runs the console program under
     /// the cursor in the terminal tab of the panels tab instead.</summary>
     procedure RunInNewTab;
-    /// <summary>The console program under the cursor, placed by AWhere; False
-    /// when the cursor is not on a local console program.</summary>
-    function RunCursorFile(AWhere: TLaunchPlacement): Boolean;
     function PanelCommandCwd: string;
-    /// <summary>Shared active-panel-dir -> console push, used by both the
-    /// gated auto-sync (NotifyShellCwdSync) and the unconditional hotkey
-    /// (SyncConsoleDirNow).</summary>
-    procedure PushShellCwdSync;
     procedure NotifyShellCwdSync;
     /// <summary>Lets the background shell leave a folder that is about to be
     /// deleted or moved: Windows refuses to remove a process's current folder.</summary>
@@ -846,27 +810,13 @@ type
     procedure ShowOpenWithMenu(const APaths: TArray<string>);
     procedure ApplySetAttributes(const APaths: TArray<string>; const APlan: TFileAttrPlan);
     procedure BeginCompareFiles;
-    procedure BeginCompareGroup(const ALeftRows, ARightRows: TPanelRows;
-      const ALeftTab, ARightTab: TTab);
-    procedure ShowCompareGroup(const APairs: TArray<TComparePair>;
-      const AVerdicts: TArray<TCompareResult>; ASkipped: Integer);
     procedure HandleCompareResultCommand(const AControlId: string);
-    procedure ReturnToCompareGroup;
-    procedure LeaveRemovedFolder(ASide: TPanelSide);
     procedure DiffViewerClosed(Sender: TObject);
     function TryCompareOverwriteAsk: Boolean;
-    procedure OpenPairCompare(const ALeftRow, ARightRow: TPanelRow;
-      const ALeftName, ARightName, ATitle: string);
-    procedure RunPlainCompare(const ALeftRow, ARightRow: TPanelRow;
-      const ALeftName, ARightName, ATitle: string; AToken: IJobCancelToken);
     /// <summary>Ctrl+Shift+C: select what differs between the two panels.</summary>
     procedure CompareFolders;
     procedure DispatchCompareOptionsCommand(const AControlId: string);
-    procedure RunCompareFolders;
-    procedure ApplyCompareResult(const ADiff: TPanelCompareResult);
-    procedure ShowCompareResult(const ATitle, AMessage: string);
-    procedure ShowFileDiff(const ALeftName, ARightName, AStatus: string;
-      const ASummary: TArray<TCompareSummaryRow>; const ALines: TArray<string>);
+    procedure LeaveRemovedFolder(ASide: TPanelSide);
     procedure NavigateToRecycleBin;
     procedure RestoreCursorItemFromRecycleBin;
     function ActivePanelIsTmp: Boolean;
@@ -928,15 +878,9 @@ type
     procedure ShowPluginList(ASelectedIndex: Integer);
     procedure BeginHostColorPick(const AFieldId: string);
     procedure FinishHostColorPick(const AControlId: string);
-    procedure ShowPluginInfo(ARow: Integer);
-    procedure ShowPluginPermissions(ARow: Integer);
     function HandlePluginPermsCommand(const AControlId: string): Boolean;
     function HandlePluginInfoCommand(const AControlId: string): Boolean;
     function HandlePluginListCommand(const AControlId: string): Boolean;
-    procedure AskInstallPlugin(ARow: Integer);
-    procedure RunPluginInstall(ASource: string; AReplace: Boolean);
-    procedure AskRemovePlugin(ARow: Integer);
-    procedure ShowPluginNotice(const ATitle, AText: string);
     procedure OpenFolderHistoryDialog;
     procedure OpenFolderFrecentDialog;
     procedure OpenFileHistoryDialog;
@@ -1115,13 +1059,10 @@ type
     procedure CloseWorkspace(AIndex: Integer);
     procedure RemoveWorkspaceTabAt(AIndex: Integer);
     function DocumentForWorkspace(AIndex: Integer): TEditorWindow;
-    procedure DocumentContentChanged(Sender: TObject);
-    procedure DocumentCloseRequest(Sender: TObject);
     procedure ClearAllDocuments;
     function TerminalForWorkspace(AIndex: Integer): TTerminalWorkspaceWindow;
-    procedure TerminalContentChanged(Sender: TObject);
-    procedure TerminalCloseRequest(Sender: TObject);
     procedure ClearAllTerminals;
+    function EmbeddedAlive: Boolean;
     procedure SyncWindowTitle;
     procedure LayoutPanels(AWidth, AHeight: Integer);
     procedure DrawMenuBar(AWidth: Integer);
@@ -1604,15 +1545,15 @@ type
     /// <summary>Typing on a file panel goes into the command line but leaves
     /// the focus on the panel; the line takes it only on Ctrl+Down or a click.</summary>
     property KeepPanelFocus: Boolean read FKeepPanelFocus write FKeepPanelFocus;
-    property StickyQuickSearch: Boolean read FStickyQuickSearch write FStickyQuickSearch;
-    property QuickSearchKeepEmpty: Boolean read FQuickSearchKeepEmpty write FQuickSearchKeepEmpty;
+    property StickyQuickSearch: Boolean read GetStickyQuickSearch write SetStickyQuickSearch;
+    property QuickSearchKeepEmpty: Boolean read GetQuickSearchKeepEmpty write SetQuickSearchKeepEmpty;
     /// <summary>Quick search hides the files that do not match, besides moving
     /// the cursor.</summary>
-    property QuickSearchFilter: Boolean read FQuickSearchFilter write FQuickSearchFilter;
+    property QuickSearchFilter: Boolean read GetQuickSearchFilter write SetQuickSearchFilter;
     /// <summary>The quick-search filter stays in the folder entered with Enter
     /// or a click; only Esc ends it.</summary>
-    property QuickSearchKeepFilter: Boolean read FQuickSearchKeepFilter write FQuickSearchKeepFilter;
-    property QuickSearchFuzzy: Boolean read FQuickSearchFuzzy write FQuickSearchFuzzy;
+    property QuickSearchKeepFilter: Boolean read GetQuickSearchKeepFilter write SetQuickSearchKeepFilter;
+    property QuickSearchFuzzy: Boolean read GetQuickSearchFuzzy write SetQuickSearchFuzzy;
     /// <summary>Active panel's local filesystem path ('' for archive/find/non-panel
     /// workspaces). Used by the host to seed the background console's cwd.</summary>
     function ActiveLocalPath: string;
@@ -1683,10 +1624,127 @@ uses
   uFindRouter,
   uPlatformInfo, uPlatformProcess, uPlatformFolders, uPlatformPaths, uImageInfo, uFileClip, uWinFileDragDrop, uStrings, uFileHistory, uChromeRows,
   uExternalTools, uEnvProfiles, uDialogHistory, uCloudFiles, uKeyChord, uConsoleSettings, uZipVfs,
-  uCharWidth, uConfigMode, uPluginChrome, uColorPickerControl, uRenameJournal, uConfigLocation;
+  uCharWidth, uConfigMode, uPluginChrome, uColorPickerControl, uRenameJournal, uConfigLocation,
+  uDialogLiveUpdate, uDualPanelPluginJson;
 
 const
   cLiveFilterHistory = 'livefilter';
+
+type
+  TCompareWindowHost = class(TInterfacedObject, IDualPanelCompareHost)
+  private
+    FWindow: TDualPanelWindow;
+  public
+    constructor Create(AWindow: TDualPanelWindow);
+    function CanStartOperation: Boolean;
+    function ActiveWorkspace: TDualPanelWorkspaceTab;
+    procedure SaveActiveWorkspace(const AWs: TDualPanelWorkspaceTab);
+    function CompareDialogVisible: Boolean;
+    procedure OpenCompareDialog(AKind: THostDialogKind; const ADecl: TDialogDeclaration);
+    procedure CloseCompareDialog;
+    procedure ClearCompareDialog;
+    function CompareCheckbox(const AId: string): Boolean;
+    function CompareListIndex(const AId: string): Integer;
+    procedure SetCmdFocused(AValue: Boolean);
+    procedure NotifyChanged;
+    procedure Invalidate;
+    function PanelViewKind(ASide: TPanelSide): TPanelViewKind;
+    function RowsForSide(ASide: TPanelSide): TPanelRows;
+    procedure ShowInfo(const ATitle, ADetail: string);
+    procedure OpenStub(AKind: TStubKind; const ATitle, ADetail: string);
+    procedure CloseStub;
+    procedure CloseTransientUiBeforeDialog;
+    function CompareLife: ILifeFlag;
+    function CompareVfs: IVirtualFileSystem;
+    function CompareDiffView: TDiffViewer;
+    procedure CompareToast(const AText: string; AKind: TToastKind);
+    function CompareJobState: TPanelJobState;
+    procedure CompareReplayAsk;
+  end;
+
+  TPluginManagerHost = class(TInterfacedObject, IDualPanelPluginManagerHost)
+  private
+    FWindow: TDualPanelWindow;
+  public
+    constructor Create(AWindow: TDualPanelWindow);
+    procedure OpenKindDialog(AKind: THostDialogKind; const ADecl: TDialogDeclaration);
+    procedure CloseDialog;
+    procedure NotifyChanged;
+    function ListIndex(const AId: string): Integer;
+    function ListScrollTop: Integer;
+    procedure SetListScrollTop(ATop: Integer);
+    function Checkbox(const AId: string): Boolean;
+    function ShowHostDialog(const ADecl: TDialogDeclaration;
+      const AOnCommand: TProc<string, string>; const AHelpTopic: string;
+      const AOnChange: TFunc<string, string>): Boolean;
+    procedure RequestOpenViewer(const AUri: string);
+    function DialogVisible: Boolean;
+    function PluginListReturnRow: Integer;
+    procedure SetPluginListReturnRow(AValue: Integer);
+    function PluginInfoRow: Integer;
+    procedure SetPluginInfoRow(AValue: Integer);
+    function PluginInfoHelp: string;
+    procedure SetPluginInfoHelp(const AValue: string);
+    function PluginPermsRow: Integer;
+    procedure SetPluginPermsRow(AValue: Integer);
+    function PluginPermsCount: Integer;
+    procedure SetPluginPermsCount(AValue: Integer);
+    function PluginPermsHasOverride: Boolean;
+    procedure SetPluginPermsHasOverride(AValue: Boolean);
+  end;
+
+  TCommandWindowHost = class(TInterfacedObject, IDualPanelCommandHost)
+  private
+    FWindow: TDualPanelWindow;
+  public
+    constructor Create(AWindow: TDualPanelWindow);
+    function ActiveWorkspace: TDualPanelWorkspaceTab;
+    function ActivePanel(var AWs: TDualPanelWorkspaceTab): TPanelState;
+    function GetActiveRow(out AWs: TDualPanelWorkspaceTab; out APanel: TPanelState;
+      out ATab: TTab; out ARows: TPanelRows; out ARow: TPanelRow;
+      out AIdx: Integer): Boolean;
+    function AutoSync: Boolean;
+    function ShellCwdAssigned: Boolean;
+    procedure ShellCwdSync(const APath: string);
+    function ShellReleaseAssigned: Boolean;
+    function ShellRelease(const APaths: TArray<string>): Boolean;
+    function LaunchAssigned: Boolean;
+    function LaunchFile(const APath: string; AWhere: TLaunchPlacement): Boolean;
+    function RunCommandAssigned: Boolean;
+    procedure RunCommand(const ACommand, AWorkingDir: string);
+    procedure ReturnWhenDone;
+    procedure RunInBackground;
+    function CmdReady: Boolean;
+    function CmdText: string;
+    procedure CmdRemember(const AText: string);
+    procedure CmdClear;
+    function Life: ILifeFlag;
+    procedure ShowInfo(const AText, AArg: string);
+    procedure ShowWarning(const AText, AArg: string);
+    function ConsoleProfile: string;
+    function ReturnsToPanels: Boolean;
+    procedure OpenTerminal(const AProfileId, ACwd, ACommand: string);
+    procedure SetCmdFocused(AValue: Boolean);
+    procedure NotifyChanged;
+    procedure OpenStub(AKind: TStubKind; const ATitle, ADetail: string);
+  end;
+
+  TQuickSearchHost = class(TInterfacedObject, IDualPanelQuickSearchHost)
+  private
+    FWindow: TDualPanelWindow;
+  public
+    constructor Create(AWindow: TDualPanelWindow);
+    function ActiveWorkspace: TDualPanelWorkspaceTab;
+    function ActivePanel(var AWs: TDualPanelWorkspaceTab): TPanelState;
+    procedure SetActivePanel(var AWs: TDualPanelWorkspaceTab; const APanel: TPanelState);
+    function RowsForSide(ASide: TPanelSide): TPanelRows;
+    procedure SetNeedle(ASide: TPanelSide; const ANeedle: string; AFuzzy: Boolean);
+    procedure SaveActiveWorkspace(const AWs: TDualPanelWorkspaceTab);
+    function ListViewHeight: Integer;
+    function ListColCount(ASide: TPanelSide): Integer;
+    procedure ClampCursor(ASide: TPanelSide);
+    procedure NotifyChanged;
+  end;
 
 class function TInputOverlayEntry.Make(AIsActive: TFunc<Boolean>;
   AHandle: THandleInputMethod): TInputOverlayEntry;
@@ -1806,13 +1864,26 @@ const
 constructor TDualPanelWindow.Create(const ATheme: IThemeRenderer; AId: Cardinal);
 var
   Life: ILifeFlag;
+  Host: TEmbeddedWorkspaceHost;
 begin
   inherited Create(ATheme, AId);
   FEnterViewPos := TDictionary<string, Integer>.Create;
   FPendingViewPos := -1;
   FLife := NewLifeFlag;
-  FAlive := True;
+  // The flag, not the window field: a folder-description refresh can land
+  // after the window is freed, and reading the field then is a dead object.
   Life := FLife;
+  FDescriptions := TFolderDescriptionCache.Create(
+    function: Boolean
+    begin
+      Result := Life.Alive;
+    end,
+    procedure
+    begin
+      if Life.Alive then
+        Invalidate;
+    end);
+  FAlive := True;
   FArchivesUnlocked := TDictionary<string, Boolean>.Create;
   ShellIconsSetOnReady(
     procedure
@@ -1879,8 +1950,20 @@ begin
   FRightWatch.OnChanged := HostRightDirWatch;
   FWatchPending[psLeft] := False;
   FWatchPending[psRight] := False;
-  FDocuments := TObjectDictionary<Cardinal, TEditorWindow>.Create([]);
-  FTerminals := TObjectDictionary<Cardinal, TTerminalWorkspaceWindow>.Create([]);
+  Host := Default(TEmbeddedWorkspaceHost);
+  Host.SelectWorkspace := SelectWorkspace;
+  Host.RemoveWorkspace := RemoveWorkspaceTabAt;
+  Host.NotifyChanged := NotifyChanged;
+  Host.SyncWindowTitle := SyncWindowTitle;
+  Host.SyncDirWatches := SyncDirWatches;
+  Host.SetCmdFocused := SetCmdFocused;
+  Host.Alive := EmbeddedAlive;
+  Host.ActiveWorkspace := ActiveWorkspace;
+  Host.OnCommandExecuted := RecordConsoleCommand;
+  Host.OnGetCmdHistory := GetCommandHistoryItems;
+  Host.OnRemoveCmdHistory := RemoveCommandHistoryItem;
+  Host.OnClearCmdHistory := ClearCommandHistory;
+  FWork := TEmbeddedWorkspaces.Create(FState, FNextTabId, Host);
   FDialog := TDialogHost.Create(ATheme);
   FDialog.OnChanged := DialogChanged;
   FDialog.OnMaskGroupsAvailable :=
@@ -2008,7 +2091,7 @@ begin
       end;
     FreeAndNil(FOpenTempDirs);
   end;
-  FreeAndNil(FDescMap);
+  FreeAndNil(FDescriptions);
   FreeAndNil(FArchivesUnlocked);
   ShellIconsSetOnReady(nil);
   if Assigned(FNavigateSub) then
@@ -2025,9 +2108,8 @@ begin
   FHostWindowId := 0;
   CancelFolderSize;
   ClearAllDocuments;
-  FreeAndNil(FDocuments);
   ClearAllTerminals;
-  FreeAndNil(FTerminals);
+  FreeAndNil(FWork);
   if Assigned(FLeftWatch) then
   begin
     FLeftWatch.OnChanged := nil;
@@ -2061,6 +2143,8 @@ begin
   FreeAndNil(FJobs);
   FreeAndNil(FSearchUi);
   FreeAndNil(FFileOps);
+  FreeAndNil(FCommands);
+  FreeAndNil(FSearch);
   FreeAndNil(FSettings);
   FreeAndNil(FThemeDlg);
   FreeAndNil(FCmdHistory);
@@ -2093,6 +2177,9 @@ begin
     FDialog.Close;
     FreeAndNil(FDialog);
   end;
+  FHostDialogCommand := nil;
+  FHostDialogChange := nil;
+  FreeAndNil(FPluginMgr);
   if Assigned(FHelp) then
   begin
     FHelp.OnChanged := nil;
@@ -2104,8 +2191,9 @@ begin
   FreeAndNil(FKeyHints);
   FreeAndNil(FFeatureTips);
   FreeAndNil(FSaver);
-  if Assigned(FCompareToken) then
-    FCompareToken.Cancel;
+  if Assigned(FCompare) then
+    FCompare.Cancel;
+  FreeAndNil(FCompare);
   if Assigned(FQuickText) then
   begin
     FQuickText.OnChanged := nil;
@@ -3096,7 +3184,7 @@ end;
 procedure TDualPanelWindow.HostOpenOverwriteAsk(const APath, ANewLine,
   AExistingLine: string);
 begin
-  if FAskCompareActive then
+  if Assigned(FCompare) and FCompare.AskActive then
     Exit;
   if not JobUiPrepareAsk(FDialog, FDialogKind, FJobProgressRes, FJobAskDeferred) then
     Exit;
@@ -3854,7 +3942,10 @@ procedure TDualPanelWindow.BindRuntimeControllers;
 begin
   FCmdLineMgr := TDualPanelCmdLineManager.Create(HostCmdLineSubmit, NotifyChanged);
   FCmdLineMgr.OnGetNames := HostCmdLineNames;
-  FCompareOptions := TPanelCompareOptions.Default;
+  FCompare := TDualPanelCompare.Create(TCompareWindowHost.Create(Self));
+  FPluginMgr := TDualPanelPluginManager.Create(TPluginManagerHost.Create(Self));
+  FCommands := TDualPanelCommandRun.Create(TCommandWindowHost.Create(Self));
+  FSearch := TDualPanelQuickSearch.Create(TQuickSearchHost.Create(Self));
   FCmdLineMgr.OnGetBaseDir := ActiveLocalPath;
   FCmdLineMgr.OnOpenHistoryPopup := OpenCmdHistoryPopup;
   FCmdLineMgr.OnSuggestHistory := ShowCmdHistorySuggestions;
@@ -4625,18 +4716,8 @@ begin
 end;
 
 procedure TDualPanelWindow.ShowSituationHint;
-const
-  // The order in which states that begin together are offered; one hint is
-  // shown per look.
-  cPriority: array[0..26] of THintSituation = (hsMenu, hsFindResults,
-    hsArchive, hsTempPanel, hsWorkspace, hsSftp, hsPluginFolder, hsRecycleBin,
-    hsCommandLine, hsHexView, hsMarkdown, hsViewer, hsEditor, hsEditorSelection,
-    hsConsole, hsTerminal, hsSelection, hsManySelected, hsArchiveFile,
-    hsQuickView, hsInfoPanel, hsLongFolder, hsFolderTravel, hsSameNameFolders,
-    hsPanelTabs, hsWorkspaces, hsJobs);
 var
   Active, Fresh: THintSituations;
-  S: THintSituation;
   Starting, Shown: Boolean;
   Tip: string;
 begin
@@ -4644,21 +4725,14 @@ begin
     Exit;
   Active := CurrentHintSituations;
   Starting := not FHintStarted;
-  Shown := False;
   if not FHintStarted then
   begin
     FHintStarted := True;
-    // Tabs and workspaces restored with the session are not news.
-    FHintActive := Active * [hsPanelTabs, hsWorkspaces];
+    FHintActive := SessionRestoredHintSituations(Active);
   end;
   Fresh := Active - FHintActive;
   FHintActive := Active;
-  for S in cPriority do
-    if (S in Fresh) and ShowKeyHint(S) then
-    begin
-      Shown := True;
-      Break;
-    end;
+  Shown := OfferFreshHint(Fresh, ShowKeyHint);
   // The run's feature tip comes with the first look, unless a hint for the
   // state the program starts in took the toast.
   if Starting and not Shown and Assigned(FFeatureTips) then
@@ -5265,7 +5339,7 @@ begin
       SetLength(Gone, Length(Candidates));
       N := 0;
       for I := 0 to High(Candidates) do
-        if FileGetAttr(Candidates[I]) = -1 then
+        if not (FileExists(Candidates[I]) or DirectoryExists(Candidates[I])) then
         begin
           Gone[N] := Candidates[I];
           Inc(N);
@@ -6119,291 +6193,196 @@ begin
     end);
 end;
 
-function TDualPanelWindow.PanelCommandCwd: string;
-var
-  Ws: TDualPanelWorkspaceTab;
-  URI: string;
-  FindData: TFindSessionData;
+constructor TCommandWindowHost.Create(AWindow: TDualPanelWindow);
 begin
-  Ws := ActiveWorkspace;
-  URI := ActiveTab(ActivePanel(Ws)).CurrentURI;
-  Result := FileUriToPath(URI);
-  if HasArchiveChain(URI) then
-    Result := SafeDirectoryName(ArchiveBasePath(URI))
-  else if IsFindUri(URI) then
-  begin
-    if TryGetFindSessionFromUri(URI, FindData) then
-      Result := FindData.RootPath;
-  end;
+  inherited Create;
+  FWindow := AWindow;
 end;
 
-procedure TDualPanelWindow.PushShellCwdSync;
-var
-  Ws: TDualPanelWorkspaceTab;
-  URI, Path: string;
+function TCommandWindowHost.ActiveWorkspace: TDualPanelWorkspaceTab;
 begin
-  if not Assigned(FOnShellCwdSync) then
-    Exit;
-  Ws := ActiveWorkspace;
-  if Ws.Kind <> wkPanels then
-    Exit;
-  URI := ActiveTab(ActivePanel(Ws)).CurrentURI;
-  // Archive / find: leave shell cwd at last local path (no silent cd).
-  if HasArchiveChain(URI) or IsFindUri(URI) then
-    Exit;
-  Path := FileUriToPath(URI);
-  if Path = '' then
-    Exit;
-  FOnShellCwdSync(Path);
+  Result := FWindow.ActiveWorkspace;
+end;
+
+function TCommandWindowHost.ActivePanel(var AWs: TDualPanelWorkspaceTab): TPanelState;
+begin
+  Result := FWindow.ActivePanel(AWs);
+end;
+
+function TCommandWindowHost.GetActiveRow(out AWs: TDualPanelWorkspaceTab;
+  out APanel: TPanelState; out ATab: TTab; out ARows: TPanelRows;
+  out ARow: TPanelRow; out AIdx: Integer): Boolean;
+begin
+  Result := FWindow.GetActiveRow(AWs, APanel, ATab, ARows, ARow, AIdx);
+end;
+
+function TCommandWindowHost.AutoSync: Boolean;
+begin
+  Result := FWindow.FAutoSyncConsoleCwd;
+end;
+
+function TCommandWindowHost.ShellCwdAssigned: Boolean;
+begin
+  Result := Assigned(FWindow.FOnShellCwdSync);
+end;
+
+procedure TCommandWindowHost.ShellCwdSync(const APath: string);
+begin
+  FWindow.FOnShellCwdSync(APath);
+end;
+
+function TCommandWindowHost.ShellReleaseAssigned: Boolean;
+begin
+  Result := Assigned(FWindow.FOnShellReleaseDirs);
+end;
+
+function TCommandWindowHost.ShellRelease(const APaths: TArray<string>): Boolean;
+begin
+  Result := FWindow.FOnShellReleaseDirs(APaths);
+end;
+
+function TCommandWindowHost.LaunchAssigned: Boolean;
+begin
+  Result := Assigned(FWindow.FOnLaunchConsoleFile);
+end;
+
+function TCommandWindowHost.LaunchFile(const APath: string;
+  AWhere: TLaunchPlacement): Boolean;
+begin
+  Result := FWindow.FOnLaunchConsoleFile(APath, AWhere);
+end;
+
+function TCommandWindowHost.RunCommandAssigned: Boolean;
+begin
+  Result := Assigned(FWindow.FOnRunCommand);
+end;
+
+procedure TCommandWindowHost.RunCommand(const ACommand, AWorkingDir: string);
+begin
+  FWindow.FOnRunCommand(ACommand, AWorkingDir);
+end;
+
+procedure TCommandWindowHost.ReturnWhenDone;
+begin
+  if Assigned(FWindow.FOnReturnWhenDone) then
+    FWindow.FOnReturnWhenDone(FWindow);
+end;
+
+procedure TCommandWindowHost.RunInBackground;
+begin
+  if Assigned(FWindow.FOnRunInBackground) then
+    FWindow.FOnRunInBackground(FWindow);
+end;
+
+function TCommandWindowHost.CmdReady: Boolean;
+begin
+  Result := Assigned(FWindow.FCmdLineMgr);
+end;
+
+function TCommandWindowHost.CmdText: string;
+begin
+  Result := FWindow.FCmdLineMgr.Text;
+end;
+
+procedure TCommandWindowHost.CmdRemember(const AText: string);
+begin
+  FWindow.FCmdLineMgr.RememberCommand(AText);
+end;
+
+procedure TCommandWindowHost.CmdClear;
+begin
+  FWindow.FCmdLineMgr.Clear;
+end;
+
+function TCommandWindowHost.Life: ILifeFlag;
+begin
+  Result := FWindow.FLife;
+end;
+
+procedure TCommandWindowHost.ShowInfo(const AText, AArg: string);
+begin
+  FWindow.FToast.Show(AText, AArg, tkInfo);
+end;
+
+procedure TCommandWindowHost.ShowWarning(const AText, AArg: string);
+begin
+  FWindow.FToast.Show(AText, AArg, tkWarning);
+end;
+
+function TCommandWindowHost.ConsoleProfile: string;
+begin
+  Result := FWindow.HostGetConsoleProfile;
+end;
+
+function TCommandWindowHost.ReturnsToPanels: Boolean;
+begin
+  Result := GConsoleSettings.ReturnToPanels;
+end;
+
+procedure TCommandWindowHost.OpenTerminal(const AProfileId, ACwd, ACommand: string);
+begin
+  FWindow.OpenTerminal(AProfileId, ACwd, ACommand);
+end;
+
+procedure TCommandWindowHost.SetCmdFocused(AValue: Boolean);
+begin
+  FWindow.SetCmdFocused(AValue);
+end;
+
+procedure TCommandWindowHost.NotifyChanged;
+begin
+  FWindow.NotifyChanged;
+end;
+
+procedure TCommandWindowHost.OpenStub(AKind: TStubKind; const ATitle, ADetail: string);
+begin
+  FWindow.OpenStub(AKind, ATitle, ADetail);
+end;
+
+function TDualPanelWindow.PanelCommandCwd: string;
+begin
+  Result := FCommands.PanelCommandCwd;
 end;
 
 procedure TDualPanelWindow.NotifyShellCwdSync;
 begin
-  // By default the console and the active panel keep their own directory;
-  // this only fires the automatic push when the user opted in.
-  if FAutoSyncConsoleCwd then
-    PushShellCwdSync;
+  FCommands.NotifyShellCwdSync;
 end;
 
 function TDualPanelWindow.ReleaseShellDirs(const ASources: TArray<string>): Boolean;
-var
-  Paths: TArray<string>;
-  Path, URI: string;
-  N: Integer;
 begin
-  Result := False;
-  if not Assigned(FOnShellReleaseDirs) then
-    Exit;
-  // One allocation for the selection. Growing the list per path stalls
-  // deleting or moving many folders.
-  SetLength(Paths, Length(ASources));
-  N := 0;
-  for URI in ASources do
-  begin
-    if HasArchiveChain(URI) or IsFindUri(URI) then
-      Continue;
-    Path := FileUriToPath(URI);
-    if Path <> '' then
-    begin
-      Paths[N] := Path;
-      Inc(N);
-    end;
-  end;
-  SetLength(Paths, N);
-  if Length(Paths) > 0 then
-    Result := FOnShellReleaseDirs(Paths);
+  Result := FCommands.ReleaseShellDirs(ASources);
 end;
 
 procedure TDualPanelWindow.RunAfterShellRelease(const ASources: TArray<string>;
   const AAction: TProc);
-var
-  Life: ILifeFlag;
 begin
-  if not ReleaseShellDirs(ASources) then
-  begin
-    AAction();
-    Exit;
-  end;
-  // The shell needs a moment to process the cd before the folder is touched.
-  Life := FLife;
-  TThread.ForceQueue(nil,
-    procedure
-    begin
-      if Life.Alive then
-        AAction();
-    end, 250);
+  FCommands.RunAfterShellRelease(ASources, AAction);
 end;
 
 procedure TDualPanelWindow.SyncConsoleDirNow;
-var
-  Ws: TDualPanelWorkspaceTab;
-  URI, Path: string;
 begin
-  Ws := ActiveWorkspace;
-  if not Assigned(FOnShellCwdSync) or (Ws.Kind <> wkPanels) then
-    Exit;
-  // Same rules as PushShellCwdSync, which stays silent: it also runs on
-  // every panel navigation when auto-sync is on.
-  URI := ActiveTab(ActivePanel(Ws)).CurrentURI;
-  if HasArchiveChain(URI) or IsFindUri(URI) then
-    Path := ''
-  else
-    Path := FileUriToPath(URI);
-  if Path = '' then
-  begin
-    FToast.Show(T('ui.toast.consoleDirUnavailable',
-      'The console cannot go into this folder'), '', tkWarning);
-    Exit;
-  end;
-  PushShellCwdSync;
-  FToast.Show(T('ui.toast.consoleDir', 'Console folder: %s'), Path);
+  FCommands.SyncConsoleDirNow;
 end;
 
 procedure TDualPanelWindow.RunConsoleCommand(const ACommand: string);
 begin
-  if SendConsoleCommand(ACommand) then
-    // Only a command typed under the panels sends the program back to them;
-    // one typed in the background console stays in the console.
-    if GConsoleSettings.ReturnToPanels and Assigned(FOnReturnWhenDone) then
-      FOnReturnWhenDone(Self);
+  FCommands.RunConsoleCommand(ACommand);
 end;
 
 procedure TDualPanelWindow.RunInNewTab;
-var
-  Cmd, Profile: string;
 begin
-  if not Assigned(FCmdLineMgr) then
-    Exit;
-  Cmd := Trim(FCmdLineMgr.Text);
-  if Cmd = '' then
-  begin
-    RunCursorFile(lpPanelTerminal);
-    Exit;
-  end;
-  FCmdLineMgr.RememberCommand(Cmd);
-  FCmdLineMgr.Clear;
-  Profile := HostGetConsoleProfile;
-  if Profile = '' then
-    Profile := cShellProfileCmd;
-  OpenTerminal(Profile, PanelCommandCwd, Cmd);
+  FCommands.RunInNewTab;
 end;
 
 procedure TDualPanelWindow.RunInBackground;
 begin
-  if not Assigned(FCmdLineMgr) then
-    Exit;
-  if Trim(FCmdLineMgr.Text) = '' then
-  begin
-    RunCursorFile(lpBackground);
-    Exit;
-  end;
-  FCmdLineMgr.RememberCommand(FCmdLineMgr.Text);
-  if SendConsoleCommand(FCmdLineMgr.Text) and Assigned(FOnRunInBackground) then
-    FOnRunInBackground(Self);
-end;
-
-function TDualPanelWindow.RunCursorFile(AWhere: TLaunchPlacement): Boolean;
-var
-  Ws: TDualPanelWorkspaceTab;
-  Panel: TPanelState;
-  Tab: TTab;
-  Rows: TPanelRows;
-  Row: TPanelRow;
-  Idx: Integer;
-  Path: string;
-begin
-  Result := False;
-  if not Assigned(FOnLaunchConsoleFile) or
-     not GetActiveRow(Ws, Panel, Tab, Rows, Row, Idx) then
-    Exit;
-  if Row.IsParent or Row.IsDirectory or HasArchiveChain(Row.URI) then
-    Exit;
-  Path := FileUriToPath(Row.URI);
-  if (Path = '') or not LocalPathIsFile(Path) then
-    Exit;
-  Result := FOnLaunchConsoleFile(Path, AWhere);
-  if Result then
-    NotifyChanged;
-end;
-
-function TDualPanelWindow.SendConsoleCommand(const ACommand: string): Boolean;
-var
-  Cmd, Cwd: string;
-begin
-  Result := False;
-  Cmd := Trim(ACommand);
-  if Cmd = '' then
-    Exit;
-  Cwd := PanelCommandCwd;
-  if Assigned(FCmdLineMgr) then
-    FCmdLineMgr.Clear;
-  // Leave cmdline unfocused so scroll/typing reach the Console buffer.
-  SetCmdFocused(False);
-  NotifyChanged;
-  if Assigned(FOnRunCommand) then
-    FOnRunCommand(Cmd, Cwd);
-  Result := True;
-end;
-
-procedure TDualPanelWindow.RunDetachedFromCmdLine(const AText, ACwd: string);
-begin
-  if Assigned(FCmdLineMgr) then
-    FCmdLineMgr.Clear;
-  SetCmdFocused(False);
-  if not ShellRunDetached(AText, ACwd) then
-    OpenStub(skShellInfo, 'Run failed', AText)
-  else
-    NotifyChanged;
-end;
-
-procedure TDualPanelWindow.RunDetachedOpenFolder(const AUri: string;
-  const ATab: TTab; AIsParent: Boolean);
-var
-  Path: string;
-begin
-  Path := PanelItemFullPath(AUri, ATab.CurrentURI, AIsParent);
-  if (Path = '') or (not TDirectory.Exists(Path)) then
-    Exit;
-  if not ShellOpenFile(Path) then
-    OpenStub(skShellInfo, 'Explorer failed', Path)
-  else
-    NotifyChanged;
-end;
-
-procedure TDualPanelWindow.RunDetachedFile(const AUri: string);
-var
-  Path, Cmd, Cwd: string;
-begin
-  Path := FileUriToPath(AUri);
-  if (Path = '') or (not TFile.Exists(Path)) then
-    Exit;
-  if Pos(' ', Path) > 0 then
-    Cmd := '"' + Path + '"'
-  else
-    Cmd := Path;
-  Cwd := SafeDirectoryName(Path);
-  if not ShellRunDetached(Cmd, Cwd) then
-    OpenStub(skShellInfo, 'Run failed', Path)
-  else
-    NotifyChanged;
+  FCommands.RunInBackground;
 end;
 
 procedure TDualPanelWindow.RunDetached;
-var
-  Text, Cwd: string;
-  Ws: TDualPanelWorkspaceTab;
-  Panel: TPanelState;
-  Tab: TTab;
-  Rows: TPanelRows;
-  Row: TPanelRow;
-  Idx: Integer;
 begin
-  Text := '';
-  if Assigned(FCmdLineMgr) then
-    Text := Trim(FCmdLineMgr.Text);
-  Cwd := PanelCommandCwd;
-
-  if Text <> '' then
-  begin
-    RunDetachedFromCmdLine(Text, Cwd);
-    Exit;
-  end;
-
-  // Empty cmdline > file/folder under cursor (separate process, not ConPTY).
-  if not GetActiveRow(Ws, Panel, Tab, Rows, Row, Idx) then
-    Exit;
-  if Row.URI = '' then
-    Exit;
-
-  // Directories and ".." > open in Explorer (shell folder open).
-  // ".." opens the current panel folder, not the parent (FAR Shift+Enter semantics).
-  if Row.IsDirectory or Row.IsParent then
-  begin
-    RunDetachedOpenFolder(Row.URI, Tab, Row.IsParent);
-    Exit;
-  end;
-
-  RunDetachedFile(Row.URI);
+  FCommands.RunDetached;
 end;
 
 procedure TDualPanelWindow.CloseDrivePopup;
@@ -6875,11 +6854,8 @@ begin
   // Only cancel an in-flight folder-size job; other stubs must not bump Gen.
   if Assigned(FFolderSizeMgr) and FFolderSizeMgr.IsActive then
     CancelFolderSize;
-  if Assigned(FCompareToken) then
-  begin
-    FCompareToken.Cancel;
-    FCompareToken := nil;
-  end;
+  if Assigned(FCompare) then
+    FCompare.Cancel;
   if Assigned(FMenus) then
     FMenus.CloseStub;
 end;
@@ -6957,60 +6933,23 @@ end;
 
 procedure TDualPanelWindow.ApplyHostDialogUpdates(const AJson: string);
 var
-  Root, Labels, Lists, ListObj: TJSONValue;
-  Pair: TJSONPair;
-  Items, Accents, Triple: TJSONArray;
-  Lines: TArray<string>;
-  Marks: TArray<TListAccent>;
-  I, Selected: Integer;
+  Update: TDialogLiveUpdate;
+  I: Integer;
 begin
-  if AJson = '' then
+  if not TryParseDialogLiveUpdate(AJson, Update) then
     Exit;
-  Root := TJSONObject.ParseJSONValue(AJson);
+  FDialog.BeginUpdate;
   try
-    if not (Root is TJSONObject) then
-      Exit;
-    FDialog.BeginUpdate;
-    try
-      Labels := TJSONObject(Root).GetValue('labels');
-      if Labels is TJSONObject then
-        for Pair in TJSONObject(Labels) do
-          FDialog.SetLabelText(Pair.JsonString.Value, Pair.JsonValue.Value);
-      Lists := TJSONObject(Root).GetValue('lists');
-      if Lists is TJSONObject then
-        for Pair in TJSONObject(Lists) do
-        begin
-          ListObj := Pair.JsonValue;
-          if not (ListObj is TJSONObject) then
-            Continue;
-          if not TJSONObject(ListObj).TryGetValue<TJSONArray>('items', Items) then
-            Continue;
-          SetLength(Lines, Items.Count);
-          for I := 0 to Items.Count - 1 do
-            Lines[I] := Items.Items[I].Value;
-          Selected := 0;
-          TJSONObject(ListObj).TryGetValue<Integer>('selected', Selected);
-          FDialog.SetListItems(Pair.JsonString.Value, Lines, Selected);
-          Marks := nil;
-          if TJSONObject(ListObj).TryGetValue<TJSONArray>('accents', Accents) then
-          begin
-            for I := 0 to Accents.Count - 1 do
-              if (Accents.Items[I] is TJSONArray) and (TJSONArray(Accents.Items[I]).Count = 3) then
-              begin
-                Triple := TJSONArray(Accents.Items[I]);
-                SetLength(Marks, Length(Marks) + 1);
-                Marks[High(Marks)].Item := StrToIntDef(Triple.Items[0].Value, 0);
-                Marks[High(Marks)].Col := StrToIntDef(Triple.Items[1].Value, 0);
-                Marks[High(Marks)].Len := StrToIntDef(Triple.Items[2].Value, 0);
-              end;
-          end;
-          FDialog.SetListAccents(Pair.JsonString.Value, Marks);
-        end;
-    finally
-      FDialog.EndUpdate;
+    for I := 0 to High(Update.Labels) do
+      FDialog.SetLabelText(Update.Labels[I].Id, Update.Labels[I].Text);
+    for I := 0 to High(Update.Lists) do
+    begin
+      FDialog.SetListItems(Update.Lists[I].Id, Update.Lists[I].Items,
+        Update.Lists[I].Selected);
+      FDialog.SetListAccents(Update.Lists[I].Id, Update.Lists[I].Accents);
     end;
   finally
-    Root.Free;
+    FDialog.EndUpdate;
   end;
 end;
 
@@ -7642,576 +7581,291 @@ begin
     end).Start;
 end;
 
-procedure TDualPanelWindow.ShowCompareResult(const ATitle, AMessage: string);
-begin
-  if Assigned(FDialog) and FDialog.Visible then
-    Exit;
-  SetCmdFocused(False);
-  FGroupListOpen := False;
-  FDialogKind := hdkCompareResult;
-  FDialog.Open(BuildConfirmDialog(ATitle, AMessage), DialogCommand);
-  NotifyChanged;
-end;
-
-procedure TDualPanelWindow.ShowFileDiff(const ALeftName, ARightName,
-  AStatus: string; const ASummary: TArray<TCompareSummaryRow>;
-  const ALines: TArray<string>);
-const
-  cSameFg = TAlphaColor($FF00D000);
-  cDiffFg = TAlphaColor($FFFF4040);
-var
-  Items: TArray<string>;
-  Swatches: TArray<TListSwatch>;
-  I: Integer;
-begin
-  if Assigned(FDialog) and FDialog.Visible then
-    Exit;
-  SetCmdFocused(False);
-  FGroupListOpen := False;
-  FDialogKind := hdkCompareResult;
-  SetLength(Items, Length(ASummary));
-  SetLength(Swatches, Length(ASummary));
-  for I := 0 to High(ASummary) do
-  begin
-    Items[I] := ASummary[I].Text;
-    Swatches[I].Col := 0;
-    Swatches[I].Text := ASummary[I].Text;
-    if ASummary[I].Same then
-      Swatches[I].Fg := cSameFg
-    else
-      Swatches[I].Fg := cDiffFg;
-  end;
-  FDialog.Open(BuildFileDiffDialog(ALeftName, ARightName, AStatus, Items,
-    Swatches, ALines), DialogCommand);
-  NotifyChanged;
-end;
-
 procedure TDualPanelWindow.CompareFolders;
-var
-  Ws: TDualPanelWorkspaceTab;
-  Title: string;
 begin
-  if not CanStartOperation or Assigned(FCompareToken) then
-    Exit;
-  Ws := ActiveWorkspace;
-  if Ws.Kind <> wkPanels then
-    Exit;
-  Title := T('ui.compareFolders.title', 'Compare folders');
-  if not (Ws.State.LeftVisible and Ws.State.RightVisible) or
-     (PanelViewKind(psLeft) <> pvkFiles) or (PanelViewKind(psRight) <> pvkFiles) then
-  begin
-    ShowCompareResult(Title, T('ui.compareFolders.needPanels',
-      'Both panels must show file lists.'));
-    Exit;
-  end;
-  CloseTransientUiBeforeDialog;
-  FDialogKind := hdkCompareOptions;
-  FDialog.Open(BuildCompareOptionsDialog(FCompareOptions.ByTime,
-    FCompareOptions.BySize, FCompareOptions.ByContent), DialogCommand);
-  NotifyChanged;
+  FCompare.CompareFolders;
 end;
 
 procedure TDualPanelWindow.DispatchCompareOptionsCommand(const AControlId: string);
-var
-  Opt: TPanelCompareOptions;
 begin
-  Opt.ByTime := FDialog.GetCheckbox('by_time');
-  Opt.BySize := FDialog.GetCheckbox('by_size');
-  Opt.ByContent := FDialog.GetCheckbox('by_content');
-  FDialog.Close;
-  if DialogCmdIsAccept(AControlId) then
-  begin
-    FCompareOptions := Opt;
-    RunCompareFolders;
-  end;
-  NotifyChanged;
-end;
-
-// The new selection replaces the previous one on both sides, as in FAR.
-procedure TDualPanelWindow.ApplyCompareResult(const ADiff: TPanelCompareResult);
-var
-  Ws: TDualPanelWorkspaceTab;
-  LeftTab, RightTab: TTab;
-begin
-  Ws := ActiveWorkspace;
-  if Ws.Kind <> wkPanels then
-    Exit;
-  LeftTab := ActiveTab(Ws.State.LeftPanel);
-  LeftTab.SelectedURIs := ADiff.LeftUris;
-  SetActiveTab(Ws.State.LeftPanel, LeftTab);
-  RightTab := ActiveTab(Ws.State.RightPanel);
-  RightTab.SelectedURIs := ADiff.RightUris;
-  SetActiveTab(Ws.State.RightPanel, RightTab);
-  SaveActiveWorkspace(Ws);
-  Invalidate;
-  // Differences speak for themselves (the selection and its totals in the
-  // panel footer); only "nothing differs" needs saying, as in FAR.
-  if (Length(ADiff.LeftUris) = 0) and (Length(ADiff.RightUris) = 0) then
-    ShowCompareResult(T('ui.compareFolders.title', 'Compare folders'),
-      T('ui.compareFolders.same', 'The folders are identical.'));
-end;
-
-procedure TDualPanelWindow.RunCompareFolders;
-var
-  Life: ILifeFlag;
-  Token: IJobCancelToken;
-  LeftRows, RightRows: TPanelRows;
-  Opt: TPanelCompareOptions;
-  Title: string;
-  Ws: TDualPanelWorkspaceTab;
-begin
-  Ws := ActiveWorkspace;
-  // Found items come from many folders: there is no folder to compare.
-  if IsFindUri(ActiveTab(Ws.State.LeftPanel).CurrentURI) or
-     IsFindUri(ActiveTab(Ws.State.RightPanel).CurrentURI) then
-  begin
-    ShowInfo(T('ui.compareFolders.title', 'Compare folders'),
-      T('ui.compareFolders.findPanel',
-        'Search results cannot be compared with a folder.'));
-    Exit;
-  end;
-  LeftRows := RowsForSide(psLeft);
-  RightRows := RowsForSide(psRight);
-  Opt := FCompareOptions;
-  if not Opt.ByContent then
-  begin
-    ApplyCompareResult(ComparePanelRows(LeftRows, RightRows, Opt, nil));
-    Exit;
-  end;
-  // Reading file content can take long: the comparison runs off the UI
-  // thread behind a stub that Esc cancels.
-  Life := FLife;
-  Token := TJobCancelToken.Create;
-  FCompareToken := Token;
-  Title := T('ui.compareFolders.title', 'Compare folders');
-  OpenStub(skShellInfo, Title, T('ui.compareFolders.working', 'Comparing... Esc=Cancel'));
-  TThread.CreateAnonymousThread(
-    procedure
-    var
-      Diff: TPanelCompareResult;
-      Err: string;
-    begin
-      Err := '';
-      try
-        Diff := ComparePanelRows(LeftRows, RightRows, Opt,
-          function(const ALeft, ARight: TPanelRow): Boolean
-          var
-            LP, RP: string;
-          begin
-            if Token.IsCancellationRequested then
-              Exit(True);
-            LP := FileUriToPath(ALeft.URI);
-            RP := FileUriToPath(ARight.URI);
-            // Rows of other filesystems (archives, SFTP) are not read.
-            if (LP = '') or (RP = '') then
-              Exit(True);
-            Result := LocalFilesHaveSameContent(LP, RP,
-              function: Boolean
-              begin
-                Result := Token.IsCancellationRequested;
-              end);
-          end);
-      except
-        on E: Exception do
-          Err := E.Message;
-      end;
-      TThread.Queue(nil,
-        procedure
-        begin
-          if Token.IsCancellationRequested or not Life.Alive then
-            Exit;
-          FCompareToken := nil;
-          CloseStub;
-          if Err <> '' then
-          begin
-            OpenStub(skShellInfo, Title, Err);
-            Exit;
-          end;
-          ApplyCompareResult(Diff);
-        end);
-    end).Start;
+  FCompare.DispatchOptionsCommand(AControlId);
 end;
 
 procedure TDualPanelWindow.BeginCompareFiles;
-var
-  Ws: TDualPanelWorkspaceTab;
-  LeftRows, RightRows: TPanelRows;
-  LeftTab, RightTab: TTab;
-  LeftIdx, RightIdx, LeftMarked, RightMarked: Integer;
-  LeftRow, RightRow: TPanelRow;
-  LeftName, RightName, Title: string;
-  EitherSideNotAPlainFile, SamePanelPair: Boolean;
 begin
-  if not CanStartOperation then
-    Exit;
-  FGroupReturn := False;
-  Ws := ActiveWorkspace;
-  if Ws.Kind <> wkPanels then
-    Exit;
-  Title := T('ui.compareFiles.title', 'Compare files');
-  LeftRows := RowsForSide(psLeft);
-  RightRows := RowsForSide(psRight);
-  if (Length(LeftRows) = 0) or (Length(RightRows) = 0) then
-    Exit;
-  LeftTab := ActiveTab(Ws.State.LeftPanel);
-  RightTab := ActiveTab(Ws.State.RightPanel);
-  LeftMarked := CountMarkedRows(LeftRows, LeftTab);
-  RightMarked := CountMarkedRows(RightRows, RightTab);
-  // Two marked files in one panel and nothing marked in the other are the pair.
-  if Ws.State.ActiveSide = psLeft then
-    SamePanelPair := (RightMarked = 0) and
-      PickMarkedFilePair(LeftRows, LeftTab, LeftRow, RightRow)
-  else
-    SamePanelPair := (LeftMarked = 0) and
-      PickMarkedFilePair(RightRows, RightTab, LeftRow, RightRow);
-  // Any other marking of two or more rows compares the same-named files.
-  if (not SamePanelPair) and (Max(LeftMarked, RightMarked) >= 2) then
-  begin
-    BeginCompareGroup(LeftRows, RightRows, LeftTab, RightTab);
-    Exit;
-  end;
-  if not SamePanelPair then
-  begin
-    LeftIdx := EnsureRange(LeftTab.CursorIndex, 0, High(LeftRows));
-    RightIdx := EnsureRange(RightTab.CursorIndex, 0, High(RightRows));
-    LeftRow := LeftRows[LeftIdx];
-    RightRow := RightRows[RightIdx];
-    EitherSideNotAPlainFile := LeftRow.IsParent or RightRow.IsParent or
-      LeftRow.IsDirectory or RightRow.IsDirectory;
-    if EitherSideNotAPlainFile then
-    begin
-      ShowCompareResult(Title, T('ui.compareFiles.needFiles',
-        'Select a file (not a folder) on each panel.'));
-      Exit;
-    end;
-  end;
-
-  if SamePanelPair then
-  begin
-    LeftName := '1: ' + LeftRow.Text;
-    RightName := '2: ' + RightRow.Text;
-  end
-  else
-  begin
-    LeftName := 'L: ' + LeftRow.Text;
-    RightName := 'R: ' + RightRow.Text;
-  end;
-  OpenPairCompare(LeftRow, RightRow, LeftName, RightName, Title);
-end;
-
-procedure TDualPanelWindow.OpenPairCompare(const ALeftRow, ARightRow: TPanelRow;
-  const ALeftName, ARightName, ATitle: string);
-var
-  Life: ILifeFlag;
-  Token: IJobCancelToken;
-  LeftRow, RightRow: TPanelRow;
-  LeftName, RightName, Title: string;
-begin
-  Life := FLife;
-  LeftRow := ALeftRow;
-  RightRow := ARightRow;
-  LeftName := ALeftName;
-  RightName := ARightName;
-  Title := ATitle;
-  Token := TJobCancelToken.Create;
-  if not Assigned(FDiffView) then
-  begin
-    FDiffView := TDiffViewer.Create(Theme);
-    FDiffView.OnChanged := HelpChanged;
-    FDiffView.OnClosed := DiffViewerClosed;
-  end;
-  CloseTransientUiBeforeDialog;
-  FDiffView.Open(LeftRow.URI, RightRow.URI, LeftName, RightName, FVfs,
-    procedure
-    begin
-      if Life.Alive then
-        RunPlainCompare(LeftRow, RightRow, LeftName, RightName, Title, Token);
-    end);
-end;
-
-procedure TDualPanelWindow.BeginCompareGroup(const ALeftRows, ARightRows: TPanelRows;
-  const ALeftTab, ARightTab: TTab);
-var
-  Life: ILifeFlag;
-  Token: IJobCancelToken;
-  Pairs: TArray<TComparePair>;
-  Verdicts: TArray<TCompareResult>;
-  Step: TProc<Integer>;
-  Skipped: Integer;
-  Title: string;
-begin
-  Title := T('ui.compareFiles.title', 'Compare files');
-  Pairs := PairMarkedFilesByName(ALeftRows, ARightRows, ALeftTab, ARightTab, Skipped);
-  if Length(Pairs) = 0 then
-  begin
-    ShowCompareResult(Title, T('ui.compareGroup.none',
-      'No files with the same name to compare.'));
-    Exit;
-  end;
-  Life := FLife;
-  Token := TJobCancelToken.Create;
-  FCompareToken := Token;
-  SetLength(Verdicts, Length(Pairs));
-  OpenStub(skShellInfo, Title, T('ui.compareGroup.working', 'Comparing... Esc=Cancel'));
-  // One pair at a time; the next starts when the previous one is read. Files
-  // of different sizes are told apart without reading them.
-  Step := procedure(AIdx: Integer)
-    begin
-      if Token.IsCancellationRequested or not Life.Alive then
-      begin
-        Step := nil;
-        Exit;
-      end;
-      if AIdx > High(Pairs) then
-      begin
-        Step := nil;
-        FCompareToken := nil;
-        CloseStub;
-        FGroupSel := 0;
-        ShowCompareGroup(Pairs, Verdicts, Skipped);
-        Exit;
-      end;
-      if (Pairs[AIdx].Left.Size >= 0) and (Pairs[AIdx].Right.Size >= 0) and
-         (Pairs[AIdx].Left.Size <> Pairs[AIdx].Right.Size) then
-      begin
-        Verdicts[AIdx] := crDifferSize;
-        Step(AIdx + 1);
-        Exit;
-      end;
-      CompareFilesAsync(Pairs[AIdx].Left.URI, Pairs[AIdx].Right.URI, FVfs, Token,
-        procedure(AResult: TCompareResult; ADiffOffset: Int64; const AError: TVfsError)
-        begin
-          Verdicts[AIdx] := AResult;
-          Step(AIdx + 1);
-        end);
-    end;
-  Step(0);
-end;
-
-procedure TDualPanelWindow.ShowCompareGroup(const APairs: TArray<TComparePair>;
-  const AVerdicts: TArray<TCompareResult>; ASkipped: Integer);
-const
-  cSameFg = TAlphaColor($FF00D000);
-  cDiffFg = TAlphaColor($FFFF4040);
-var
-  Items: TArray<string>;
-  Swatches: TArray<TListSwatch>;
-  I, NameW, Same, Differ, NotCompared: Integer;
-  Verdict: string;
-begin
-  if Assigned(FDialog) and FDialog.Visible then
-    Exit;
-  NameW := 0;
-  for I := 0 to High(APairs) do
-    NameW := Min(Max(NameW, Length(PanelCompareName(APairs[I].Left))), 52);
-  SetLength(Items, Length(APairs));
-  SetLength(Swatches, Length(APairs));
-  Same := 0;
-  Differ := 0;
-  NotCompared := ASkipped;
-  for I := 0 to High(APairs) do
-  begin
-    case AVerdicts[I] of
-      crEqual:
-        begin
-          Verdict := T('ui.compareFiles.contentEqual', 'identical');
-          Swatches[I].Fg := cSameFg;
-          Inc(Same);
-        end;
-      crReadError:
-        begin
-          Verdict := T('ui.compareGroup.error', 'read error');
-          Swatches[I].Fg := cDiffFg;
-          Inc(NotCompared);
-        end;
-    else
-      Verdict := T('ui.compareFiles.differs', 'differs');
-      Swatches[I].Fg := cDiffFg;
-      Inc(Differ);
-    end;
-    Items[I] := PanelCompareName(APairs[I].Left).PadRight(NameW) + '  ' + Verdict;
-    Swatches[I].Col := 0;
-    Swatches[I].Text := Items[I];
-  end;
-  FCompareGroup := APairs;
-  FGroupVerdicts := AVerdicts;
-  FGroupSkipped := ASkipped;
-  FGroupListOpen := True;
-  FGroupReturn := False;
-  SetCmdFocused(False);
-  FDialogKind := hdkCompareResult;
-  FDialog.Open(BuildCompareGroupDialog(
-    T('ui.compareGroup.status', '%d identical, %d differ, %d not compared',
-      [Same, Differ, NotCompared]), Items, Swatches,
-    EnsureRange(FGroupSel, 0, High(APairs))), DialogCommand);
-  NotifyChanged;
+  FCompare.BeginFiles;
 end;
 
 procedure TDualPanelWindow.HandleCompareResultCommand(const AControlId: string);
-var
-  Idx: Integer;
-  Pair: TComparePair;
 begin
-  if not FGroupListOpen then
-  begin
-    // A pair's own result window: the list comes back when it is closed.
-    FDialog.Close;
-    ReturnToCompareGroup;
-    Exit;
-  end;
-  Idx := FDialog.GetListSelectedIndex('pairs');
-  FDialog.Close;
-  FGroupListOpen := False;
-  if (Idx >= 0) and (Idx <= High(FCompareGroup)) and
-     DialogCmdIsListAccept(AControlId, 'pairs') then
-  begin
-    Pair := FCompareGroup[Idx];
-    FGroupSel := Idx;
-    FGroupReturn := True;
-    OpenPairCompare(Pair.Left, Pair.Right, 'L: ' + Pair.Left.Text,
-      'R: ' + Pair.Right.Text, T('ui.compareFiles.title', 'Compare files'));
-  end
-  else
-  begin
-    FCompareGroup := nil;
-    FGroupVerdicts := nil;
-  end;
-end;
-
-procedure TDualPanelWindow.ReturnToCompareGroup;
-begin
-  if not FGroupReturn then
-    Exit;
-  FGroupReturn := False;
-  ShowCompareGroup(FCompareGroup, FGroupVerdicts, FGroupSkipped);
+  FCompare.HandleResultCommand(AControlId);
 end;
 
 procedure TDualPanelWindow.DiffViewerClosed(Sender: TObject);
 begin
-  if FAskCompareActive then
-  begin
-    FAskCompareActive := False;
-    if Assigned(FJobs) then
-      FJobs.ReplayCurrentAsk;
-    Exit;
-  end;
-  ReturnToCompareGroup;
+  FCompare.ViewerClosed;
 end;
 
 function TDualPanelWindow.TryCompareOverwriteAsk: Boolean;
-var
-  St: TPanelJobState;
-  Life: ILifeFlag;
-  Token: IJobCancelToken;
-  SrcUri, DstUri: string;
 begin
-  St := FJobs.State;
-  if St.PendingBothDirs or (St.PendingSrcURI = '') or (St.PendingDstURI = '') then
-  begin
-    FToast.Show(T('ui.job.compareFoldersWarn',
-      'Only files can be compared.'), '', tkWarning);
-    Exit(False);
-  end;
-  if not Assigned(FDiffView) then
-  begin
-    FDiffView := TDiffViewer.Create(Theme);
-    FDiffView.OnChanged := HelpChanged;
-    FDiffView.OnClosed := DiffViewerClosed;
-  end;
-  Life := FLife;
-  Token := TJobCancelToken.Create;
-  SrcUri := St.PendingSrcURI;
-  DstUri := St.PendingDstURI;
-  FDialogKind := hdkNone;
-  FDialog.Close;
-  FAskCompareActive := True;
-  CloseTransientUiBeforeDialog;
-  // Files the viewer cannot show (binary, equal, too large) get a one-line
-  // verdict instead, then the prompt comes back.
-  FDiffView.Open(SrcUri, DstUri, T('ui.job.compareNew', 'New'),
-    T('ui.job.compareExisting', 'Existing'), FVfs,
-    procedure
-    begin
-      if not Life.Alive then
-        Exit;
-      CompareFilesAsync(SrcUri, DstUri, FVfs, Token,
-        procedure(AResult: TCompareResult; ADiffOffset: Int64;
-          const AError: TVfsError)
-        var
-          Msg: string;
-        begin
-          if not Life.Alive then
-            Exit;
-          case AResult of
-            crEqual:
-              Msg := T('ui.compareFiles.identical', 'Files are identical.');
-            crDifferSize:
-              Msg := T('ui.compareFiles.sizeBinary', 'Files differ in size.');
-            crDifferAtOffset:
-              Msg := T('ui.compareFiles.offsetBinary',
-                'Files differ at byte offset %d.', [ADiffOffset]);
-          else
-            Msg := T('ui.compareFiles.failed', 'Compare failed: %s',
-              [AError.Message]);
-          end;
-          FToast.Show(Msg, '', tkInfo);
-          FAskCompareActive := False;
-          if Assigned(FJobs) then
-            FJobs.ReplayCurrentAsk;
-        end);
-    end);
-  Result := True;
+  Result := FCompare.TryOverwriteAsk;
 end;
 
-procedure TDualPanelWindow.RunPlainCompare(const ALeftRow, ARightRow: TPanelRow;
-  const ALeftName, ARightName, ATitle: string; AToken: IJobCancelToken);
-var
-  Life: ILifeFlag;
-  LeftRow, RightRow: TPanelRow;
-  LeftName, RightName, Title: string;
+constructor TCompareWindowHost.Create(AWindow: TDualPanelWindow);
 begin
-  Life := FLife;
-  LeftRow := ALeftRow;
-  RightRow := ARightRow;
-  LeftName := ALeftName;
-  RightName := ARightName;
-  Title := ATitle;
-  DiffFilesAsync(LeftRow.URI, RightRow.URI, FVfs, AToken,
-    procedure(AResult: TCompareResult; ADiffOffset: Int64; const AError: TVfsError;
-      const ADiffLines: TArray<string>; AChangedLines: Integer)
-    var
-      Status: string;
-      Extra: TArray<string>;
-    begin
-      if not Life.Alive then
-        Exit;
-      if AResult = crReadError then
-      begin
-        ShowCompareResult(Title, T('ui.compareFiles.failed', 'Compare failed: %s',
-          [AError.Message]));
-        Exit;
-      end;
-      Extra := nil;
-      case AResult of
-        crEqual:
-          Status := T('ui.compareFiles.identical', 'Files are identical.');
-        crDifferSize:
-          Status := T('ui.compareFiles.sizeBinary', 'Files differ in size.');
-      else
-        Status := T('ui.compareFiles.offsetBinary',
-          'Files differ at byte offset %d.', [ADiffOffset]);
-      end;
-      if (AResult <> crEqual) and (Length(ADiffLines) > 0) and
-         (AChangedLines > 0) then
-      begin
-        Status := T('ui.compareFiles.linesDiffer', '%d line(s) differ',
-          [AChangedLines]);
-        Extra := ADiffLines;
-      end;
-      ShowFileDiff(LeftName, RightName, Status,
-        BuildCompareSummary(LeftRow, RightRow, AResult = crEqual, ADiffOffset),
-        Extra);
-    end);
+  inherited Create;
+  FWindow := AWindow;
+end;
+
+function TCompareWindowHost.CanStartOperation: Boolean;
+begin
+  Result := FWindow.CanStartOperation;
+end;
+
+function TCompareWindowHost.ActiveWorkspace: TDualPanelWorkspaceTab;
+begin
+  Result := FWindow.ActiveWorkspace;
+end;
+
+procedure TCompareWindowHost.SaveActiveWorkspace(const AWs: TDualPanelWorkspaceTab);
+begin
+  FWindow.SaveActiveWorkspace(AWs);
+end;
+
+function TCompareWindowHost.CompareDialogVisible: Boolean;
+begin
+  Result := Assigned(FWindow.FDialog) and FWindow.FDialog.Visible;
+end;
+
+procedure TCompareWindowHost.OpenCompareDialog(AKind: THostDialogKind;
+  const ADecl: TDialogDeclaration);
+begin
+  FWindow.FDialogKind := AKind;
+  FWindow.FDialog.Open(ADecl, FWindow.DialogCommand);
+end;
+
+procedure TCompareWindowHost.CloseCompareDialog;
+begin
+  FWindow.FDialog.Close;
+end;
+
+procedure TCompareWindowHost.ClearCompareDialog;
+begin
+  FWindow.FDialogKind := hdkNone;
+  FWindow.FDialog.Close;
+end;
+
+function TCompareWindowHost.CompareCheckbox(const AId: string): Boolean;
+begin
+  Result := FWindow.FDialog.GetCheckbox(AId);
+end;
+
+function TCompareWindowHost.CompareListIndex(const AId: string): Integer;
+begin
+  Result := FWindow.FDialog.GetListSelectedIndex(AId);
+end;
+
+procedure TCompareWindowHost.SetCmdFocused(AValue: Boolean);
+begin
+  FWindow.SetCmdFocused(AValue);
+end;
+
+procedure TCompareWindowHost.NotifyChanged;
+begin
+  FWindow.NotifyChanged;
+end;
+
+procedure TCompareWindowHost.Invalidate;
+begin
+  FWindow.Invalidate;
+end;
+
+function TCompareWindowHost.PanelViewKind(ASide: TPanelSide): TPanelViewKind;
+begin
+  Result := FWindow.PanelViewKind(ASide);
+end;
+
+function TCompareWindowHost.RowsForSide(ASide: TPanelSide): TPanelRows;
+begin
+  Result := FWindow.RowsForSide(ASide);
+end;
+
+procedure TCompareWindowHost.ShowInfo(const ATitle, ADetail: string);
+begin
+  FWindow.ShowInfo(ATitle, ADetail);
+end;
+
+procedure TCompareWindowHost.OpenStub(AKind: TStubKind; const ATitle, ADetail: string);
+begin
+  FWindow.OpenStub(AKind, ATitle, ADetail);
+end;
+
+procedure TCompareWindowHost.CloseStub;
+begin
+  FWindow.CloseStub;
+end;
+
+procedure TCompareWindowHost.CloseTransientUiBeforeDialog;
+begin
+  FWindow.CloseTransientUiBeforeDialog;
+end;
+
+function TCompareWindowHost.CompareLife: ILifeFlag;
+begin
+  Result := FWindow.FLife;
+end;
+
+function TCompareWindowHost.CompareVfs: IVirtualFileSystem;
+begin
+  Result := FWindow.FVfs;
+end;
+
+function TCompareWindowHost.CompareDiffView: TDiffViewer;
+begin
+  if not Assigned(FWindow.FDiffView) then
+  begin
+    FWindow.FDiffView := TDiffViewer.Create(FWindow.Theme);
+    FWindow.FDiffView.OnChanged := FWindow.HelpChanged;
+    FWindow.FDiffView.OnClosed := FWindow.DiffViewerClosed;
+  end;
+  Result := FWindow.FDiffView;
+end;
+
+procedure TCompareWindowHost.CompareToast(const AText: string; AKind: TToastKind);
+begin
+  FWindow.FToast.Show(AText, '', AKind);
+end;
+
+function TCompareWindowHost.CompareJobState: TPanelJobState;
+begin
+  Result := FWindow.FJobs.State;
+end;
+
+procedure TCompareWindowHost.CompareReplayAsk;
+begin
+  if Assigned(FWindow.FJobs) then
+    FWindow.FJobs.ReplayCurrentAsk;
+end;
+
+constructor TPluginManagerHost.Create(AWindow: TDualPanelWindow);
+begin
+  inherited Create;
+  FWindow := AWindow;
+end;
+
+procedure TPluginManagerHost.OpenKindDialog(AKind: THostDialogKind;
+  const ADecl: TDialogDeclaration);
+begin
+  FWindow.FDialogKind := AKind;
+  FWindow.FDialog.Open(ADecl, FWindow.DialogCommand);
+  FWindow.NotifyChanged;
+end;
+
+procedure TPluginManagerHost.CloseDialog;
+begin
+  FWindow.FDialog.Close;
+end;
+
+procedure TPluginManagerHost.NotifyChanged;
+begin
+  FWindow.NotifyChanged;
+end;
+
+function TPluginManagerHost.ListIndex(const AId: string): Integer;
+begin
+  Result := FWindow.FDialog.GetListSelectedIndex(AId);
+end;
+
+function TPluginManagerHost.ListScrollTop: Integer;
+begin
+  Result := FWindow.FDialog.GetListScrollTop;
+end;
+
+procedure TPluginManagerHost.SetListScrollTop(ATop: Integer);
+begin
+  FWindow.FDialog.SetListScrollTop(ATop);
+end;
+
+function TPluginManagerHost.Checkbox(const AId: string): Boolean;
+begin
+  Result := FWindow.FDialog.GetCheckbox(AId);
+end;
+
+function TPluginManagerHost.ShowHostDialog(const ADecl: TDialogDeclaration;
+  const AOnCommand: TProc<string, string>; const AHelpTopic: string;
+  const AOnChange: TFunc<string, string>): Boolean;
+begin
+  Result := FWindow.ShowHostDialog(ADecl, AOnCommand, AHelpTopic, AOnChange);
+end;
+
+procedure TPluginManagerHost.RequestOpenViewer(const AUri: string);
+begin
+  FWindow.RequestOpenViewer(AUri);
+end;
+
+function TPluginManagerHost.DialogVisible: Boolean;
+begin
+  Result := Assigned(FWindow.FDialog) and FWindow.FDialog.Visible;
+end;
+
+function TPluginManagerHost.PluginListReturnRow: Integer;
+begin
+  Result := FWindow.FPluginListReturnRow;
+end;
+
+procedure TPluginManagerHost.SetPluginListReturnRow(AValue: Integer);
+begin
+  FWindow.FPluginListReturnRow := AValue;
+end;
+
+function TPluginManagerHost.PluginInfoRow: Integer;
+begin
+  Result := FWindow.FPluginInfoRow;
+end;
+
+procedure TPluginManagerHost.SetPluginInfoRow(AValue: Integer);
+begin
+  FWindow.FPluginInfoRow := AValue;
+end;
+
+function TPluginManagerHost.PluginInfoHelp: string;
+begin
+  Result := FWindow.FPluginInfoHelp;
+end;
+
+procedure TPluginManagerHost.SetPluginInfoHelp(const AValue: string);
+begin
+  FWindow.FPluginInfoHelp := AValue;
+end;
+
+function TPluginManagerHost.PluginPermsRow: Integer;
+begin
+  Result := FWindow.FPluginPermsRow;
+end;
+
+procedure TPluginManagerHost.SetPluginPermsRow(AValue: Integer);
+begin
+  FWindow.FPluginPermsRow := AValue;
+end;
+
+function TPluginManagerHost.PluginPermsCount: Integer;
+begin
+  Result := FWindow.FPluginPermsCount;
+end;
+
+procedure TPluginManagerHost.SetPluginPermsCount(AValue: Integer);
+begin
+  FWindow.FPluginPermsCount := AValue;
+end;
+
+function TPluginManagerHost.PluginPermsHasOverride: Boolean;
+begin
+  Result := FWindow.FPluginPermsHasOverride;
+end;
+
+procedure TPluginManagerHost.SetPluginPermsHasOverride(AValue: Boolean);
+begin
+  FWindow.FPluginPermsHasOverride := AValue;
 end;
 
 procedure TDualPanelWindow.NavigateToRecycleBin;
@@ -8830,229 +8484,139 @@ begin
     end);
 end;
 
-procedure TDualPanelWindow.SetQuickSearchNeedle(const AText: string);
-var
-  M: IPanelModel;
-  Ws: TDualPanelWorkspaceTab;
-  Panel: TPanelState;
-  Tab: TTab;
-  Rows: TPanelRows;
-  Keep: string;
-  I: Integer;
+constructor TQuickSearchHost.Create(AWindow: TDualPanelWindow);
 begin
-  if not FQuickSearchFiltering and (AText = '') then
-    Exit;
-  // Ending the filter keeps the cursor on the same file, not on the same row.
-  Keep := '';
-  if FQuickSearchFiltering and (AText = '') then
-  begin
-    Ws := ActiveWorkspace;
-    if Ws.State.ActiveSide = FQuickSearchFilterSide then
-    begin
-      Panel := ActivePanel(Ws);
-      Tab := ActiveTab(Panel);
-      Rows := RowsForSide(FQuickSearchFilterSide);
-      if (Tab.CursorIndex >= 0) and (Tab.CursorIndex <= High(Rows)) then
-        Keep := Rows[Tab.CursorIndex].Text;
-    end;
-  end;
-  if FQuickSearchFiltering and (FQuickSearchFilterSide <> ActiveWorkspace.State.ActiveSide) then
-  begin
-    M := ModelForSide(FQuickSearchFilterSide);
-    if Assigned(M) then
-      M.SetNeedleFilter('');
-  end;
-  FQuickSearchFilterSide := ActiveWorkspace.State.ActiveSide;
-  M := ModelForSide(FQuickSearchFilterSide);
-  if Assigned(M) then
-    M.SetNeedleFilter(AText, FQuickSearchFuzzy);
-  FQuickSearchFiltering := AText <> '';
-  if Keep <> '' then
-  begin
-    Ws := ActiveWorkspace;
-    Panel := ActivePanel(Ws);
-    Tab := ActiveTab(Panel);
-    Rows := RowsForSide(Ws.State.ActiveSide);
-    for I := 0 to High(Rows) do
-      if Rows[I].Text = Keep then
-      begin
-        Tab.CursorIndex := I;
-        EnsurePanelCursorVisible(Tab, Length(Rows), Max(ListViewHeight, 1),
-          ListColCountForSide(Ws.State.ActiveSide));
-        SetActiveTab(Panel, Tab);
-        SetActivePanel(Ws, Panel);
-        SaveActiveWorkspace(Ws);
-        Break;
-      end;
-  end;
+  inherited Create;
+  FWindow := AWindow;
 end;
 
-// Puts the cursor on the first real row of the filtered list: a fuzzy
-// filter keeps names the typed text is not a prefix of.
-procedure TDualPanelWindow.FocusFirstFilteredRow;
-var
-  Ws: TDualPanelWorkspaceTab;
-  Panel: TPanelState;
-  Tab: TTab;
-  Rows: TPanelRows;
-  I: Integer;
+function TQuickSearchHost.ActiveWorkspace: TDualPanelWorkspaceTab;
 begin
-  Ws := ActiveWorkspace;
-  Panel := ActivePanel(Ws);
-  Tab := ActiveTab(Panel);
-  Rows := RowsForSide(Ws.State.ActiveSide);
-  for I := 0 to High(Rows) do
-    if not Rows[I].IsParent then
-    begin
-      Tab.CursorIndex := I;
-      EnsurePanelCursorVisible(Tab, Length(Rows), Max(ListViewHeight, 1),
-        ListColCountForSide(Ws.State.ActiveSide));
-      SetActiveTab(Panel, Tab);
-      SetActivePanel(Ws, Panel);
-      SaveActiveWorkspace(Ws);
-      Exit;
-    end;
-  ClampCursorSide(Ws.State.ActiveSide);
+  Result := FWindow.ActiveWorkspace;
+end;
+
+function TQuickSearchHost.ActivePanel(var AWs: TDualPanelWorkspaceTab): TPanelState;
+begin
+  Result := FWindow.ActivePanel(AWs);
+end;
+
+procedure TQuickSearchHost.SetActivePanel(var AWs: TDualPanelWorkspaceTab;
+  const APanel: TPanelState);
+begin
+  FWindow.SetActivePanel(AWs, APanel);
+end;
+
+function TQuickSearchHost.RowsForSide(ASide: TPanelSide): TPanelRows;
+begin
+  Result := FWindow.RowsForSide(ASide);
+end;
+
+procedure TQuickSearchHost.SetNeedle(ASide: TPanelSide; const ANeedle: string;
+  AFuzzy: Boolean);
+var
+  M: IPanelModel;
+begin
+  M := FWindow.ModelForSide(ASide);
+  if Assigned(M) then
+    M.SetNeedleFilter(ANeedle, AFuzzy);
+end;
+
+procedure TQuickSearchHost.SaveActiveWorkspace(const AWs: TDualPanelWorkspaceTab);
+begin
+  FWindow.SaveActiveWorkspace(AWs);
+end;
+
+function TQuickSearchHost.ListViewHeight: Integer;
+begin
+  Result := FWindow.ListViewHeight;
+end;
+
+function TQuickSearchHost.ListColCount(ASide: TPanelSide): Integer;
+begin
+  Result := FWindow.ListColCountForSide(ASide);
+end;
+
+procedure TQuickSearchHost.ClampCursor(ASide: TPanelSide);
+begin
+  FWindow.ClampCursorSide(ASide);
+end;
+
+procedure TQuickSearchHost.NotifyChanged;
+begin
+  FWindow.NotifyChanged;
+end;
+
+function TDualPanelWindow.GetStickyQuickSearch: Boolean;
+begin
+  Result := FSearch.Sticky;
+end;
+
+procedure TDualPanelWindow.SetStickyQuickSearch(AValue: Boolean);
+begin
+  FSearch.Sticky := AValue;
+end;
+
+function TDualPanelWindow.GetQuickSearchKeepEmpty: Boolean;
+begin
+  Result := FSearch.KeepEmpty;
+end;
+
+procedure TDualPanelWindow.SetQuickSearchKeepEmpty(AValue: Boolean);
+begin
+  FSearch.KeepEmpty := AValue;
+end;
+
+function TDualPanelWindow.GetQuickSearchFilter: Boolean;
+begin
+  Result := FSearch.Filter;
+end;
+
+procedure TDualPanelWindow.SetQuickSearchFilter(AValue: Boolean);
+begin
+  FSearch.Filter := AValue;
+end;
+
+function TDualPanelWindow.GetQuickSearchKeepFilter: Boolean;
+begin
+  Result := FSearch.KeepFilter;
+end;
+
+procedure TDualPanelWindow.SetQuickSearchKeepFilter(AValue: Boolean);
+begin
+  FSearch.KeepFilter := AValue;
+end;
+
+function TDualPanelWindow.GetQuickSearchFuzzy: Boolean;
+begin
+  Result := FSearch.Fuzzy;
+end;
+
+procedure TDualPanelWindow.SetQuickSearchFuzzy(AValue: Boolean);
+begin
+  FSearch.Fuzzy := AValue;
 end;
 
 procedure TDualPanelWindow.ClearQuickSearch;
 begin
-  if FQuickSearchFiltering then
-    SetQuickSearchNeedle('');
-  if not FQuickSearchActive and (FQuickSearchText = '') then
-    Exit;
-  FQuickSearchActive := False;
-  FQuickSearchLatched := False;
-  FQuickSearchText := '';
-  NotifyChanged;
-end;
-
-function TDualPanelWindow.QuickSearchLingers: Boolean;
-begin
-  // A filtering search stays open after Alt is released: Esc or Enter is
-  // the way to remove the filter.
-  Result := FStickyQuickSearch or FQuickSearchLatched or FQuickSearchFilter;
+  FSearch.Clear;
 end;
 
 procedure TDualPanelWindow.StartQuickSearch;
 begin
-  if ActiveWorkspace.Kind <> wkPanels then
-    Exit;
-  FQuickSearchActive := True;
-  FQuickSearchLatched := True;
-  FQuickSearchText := '';
-  NotifyChanged;
+  FSearch.Start;
 end;
 
 procedure TDualPanelWindow.DrawQuickSearchField(const ABounds: TRectI);
 begin
   // FAR-style Alt search box inside the panel that owns the search.
-  DrawSearchInfoBox(Buffer, ABounds, ' Search: ', FQuickSearchText, FCursorVisible);
+  DrawSearchInfoBox(Buffer, ABounds, ' Search: ', FSearch.Text, FCursorVisible);
 end;
 
 function TDualPanelWindow.HandleQuickSearchInput(var AKey: Word; AShift: TShiftState;
   var AKeyChar: Char): Boolean;
-var
-  Ws: TDualPanelWorkspaceTab;
-  Panel: TPanelState;
-  Tab: TTab;
-  Rows: TPanelRows;
-  Ch: Char;
 begin
-  Result := True;
-  // A sticky search ends on Ctrl chords and on keys that are not text, Backspace
-  // or Up / Down; the key itself then acts as usual.
-  if QuickSearchEndsOnKey(QuickSearchLingers, FQuickSearchActive, AShift, AKey,
-     AKeyChar) then
-  begin
-    ClearQuickSearch;
-    Exit(False);
-  end;
-  case ClassifyNeedleBoxKey(AKey, AKeyChar, Ch) of
-    nbaClear:
-      case ClassifyQuickSearchClear(
-        FQuickSearchKeepFilter and FQuickSearchFiltering,
-        QuickSearchLingers, AKey) of
-        qscKeepOpen:
-          Exit(False);
-        qscClearPassThrough:
-          begin
-            ClearQuickSearch;
-            Exit(False);
-          end;
-      else
-        begin
-          ClearQuickSearch;
-          AKey := 0;
-          AKeyChar := #0;
-        end;
-      end;
-    nbaBackspace:
-      begin
-        NeedleBackspace(FQuickSearchText);
-        if FQuickSearchFilter then
-        begin
-          SetQuickSearchNeedle(FQuickSearchText);
-          if FQuickSearchText <> '' then
-          begin
-            Ws := ActiveWorkspace;
-            Panel := ActivePanel(Ws);
-            Tab := ActiveTab(Panel);
-            if ApplyQuickSearchMatch(Tab, RowsForSide(Ws.State.ActiveSide),
-              FQuickSearchText, ListViewHeight, ListColCountForSide(Ws.State.ActiveSide)) then
-            begin
-              SetActiveTab(Panel, Tab);
-              SetActivePanel(Ws, Panel);
-              SaveActiveWorkspace(Ws);
-            end
-            else if FQuickSearchFuzzy then
-              FocusFirstFilteredRow;
-          end;
-        end;
-        // An empty field stays open when asked for: a letter that cannot be
-        // typed after Alt can be typed after any other Alt+letter and Backspace.
-        if (FQuickSearchText = '') and not FQuickSearchKeepEmpty then
-        begin
-          FQuickSearchActive := False;
-          FQuickSearchLatched := False;
-        end;
-        AKey := 0;
-        AKeyChar := #0;
-        NotifyChanged;
-      end;
-    nbaAppend:
-      begin
-        FQuickSearchActive := True;
-        FQuickSearchText := FQuickSearchText + Ch;
-        if FQuickSearchFilter then
-          SetQuickSearchNeedle(FQuickSearchText);
-        Ws := ActiveWorkspace;
-        Panel := ActivePanel(Ws);
-        Tab := ActiveTab(Panel);
-        Rows := RowsForSide(Ws.State.ActiveSide);
-        if ApplyQuickSearchMatch(Tab, Rows, FQuickSearchText, ListViewHeight,
-          ListColCountForSide(Ws.State.ActiveSide)) then
-        begin
-          SetActiveTab(Panel, Tab);
-          SetActivePanel(Ws, Panel);
-          SaveActiveWorkspace(Ws);
-        end
-        else if FQuickSearchFilter then
-        begin
-          if FQuickSearchFuzzy then
-            FocusFirstFilteredRow
-          else
-            ClampCursorSide(Ws.State.ActiveSide);
-        end;
-        AKey := 0;
-        AKeyChar := #0;
-        NotifyChanged;
-      end;
-  else
-    Result := False;
-  end;
+  Result := FSearch.HandleInput(AKey, AShift, AKeyChar);
 end;
-
 procedure TDualPanelWindow.OpenPanelFilter;
 const
   cPresets: array[0..3] of string = (
@@ -9159,71 +8723,10 @@ begin
 end;
 
 function TDualPanelWindow.DescriptionOf(const ADirUri, AName: string): string;
-var
-  Dir, KnownDir: string;
-  KnownStamp: TDateTime;
-  Tick: UInt64;
-  Life: ILifeFlag;
 begin
-  Result := '';
-  Dir := FileUriToPath(ADirUri);
-  if (Dir = '') or (AName = '') then
-    Exit;
-  Tick := PlatformTickCount64;
-  // The file is read off the UI thread: on an unreachable network drive the
-  // existence probes block for a long time. The status line shows the cached
-  // map and is repainted when a refresh lands.
-  if not FDescBusy and
-     ((not SameLocalPath(Dir, FDescDir)) or (FDescMap = nil) or
-      (Tick - FDescCheckedAt > 1500)) then
-  begin
-    FDescBusy := True;
-    Life := FLife;
-    KnownDir := FDescDir;
-    KnownStamp := FDescStamp;
-    if FDescMap = nil then
-      KnownDir := '';
-    TThread.CreateAnonymousThread(
-      procedure
-      var
-        Path: string;
-        Stamp: TDateTime;
-        Map: TDictionary<string, string>;
-      begin
-        Map := nil;
-        try
-          Path := DescriptionsFilePath(Dir);
-          if not FileAge(Path, Stamp) then
-            Stamp := 0;
-          if (not SameLocalPath(Dir, KnownDir)) or (Stamp <> KnownStamp) then
-            Map := LoadDescriptions(Dir);
-        except
-          FreeAndNil(Map);
-          Stamp := 0;
-        end;
-        TThread.Queue(nil,
-          procedure
-          begin
-            if not Life.Alive then
-            begin
-              Map.Free;
-              Exit;
-            end;
-            FDescBusy := False;
-            FDescCheckedAt := PlatformTickCount64;
-            if Map <> nil then
-            begin
-              FreeAndNil(FDescMap);
-              FDescMap := Map;
-              FDescDir := Dir;
-              FDescStamp := Stamp;
-              Invalidate;
-            end;
-          end);
-      end).Start;
-  end;
-  if (FDescMap = nil) or not SameLocalPath(Dir, FDescDir) or
-     not FDescMap.TryGetValue(AName, Result) then
+  if Assigned(FDescriptions) then
+    Result := FDescriptions.TextOf(ADirUri, AName)
+  else
     Result := '';
 end;
 
@@ -9888,7 +9391,6 @@ var
   Side: TPanelSide;
   Bounds: TRectI;
 begin
-  Result := False;
   if Assigned(FSaver) and FSaver.Wake then
     Exit(True);
   if DiffViewVisible then
@@ -10548,288 +10050,22 @@ end;
 
 procedure TDualPanelWindow.ShowPluginList(ASelectedIndex: Integer);
 begin
-  FDialogKind := hdkPluginList;
-  FDialog.Open(BuildPluginListDialog(HostPluginRows, ASelectedIndex), DialogCommand);
-  NotifyChanged;
-end;
-
-procedure TDualPanelWindow.ShowPluginInfo(ARow: Integer);
-var
-  Info: TPluginInfo;
-begin
-  if not HostPluginInfo(ARow, Info) then
-  begin
-    ShowPluginList(ARow);
-    Exit;
-  end;
-  FPluginInfoRow := ARow;
-  FPluginInfoHelp := Info.HelpFile;
-  FDialogKind := hdkPluginInfo;
-  FDialog.Open(BuildPluginInfoDialog(Info.Name, PluginInfoLines(Info, 72),
-    Info.HelpFile <> ''), DialogCommand);
-  NotifyChanged;
-end;
-
-procedure TDualPanelWindow.ShowPluginPermissions(ARow: Integer);
-var
-  Name, Intro: string;
-  Over, Perms, Texts: TArray<string>;
-  OverOn: Boolean;
-  Granted: TArray<Boolean>;
-  I: Integer;
-begin
-  if not HostPluginPermissions(ARow, Name, Over, OverOn, Perms, Granted) then
-  begin
-    ShowPluginList(ARow);
-    Exit;
-  end;
-  SetLength(Texts, Length(Perms));
-  for I := 0 to High(Perms) do
-    Texts[I] := PermissionDescription(Perms[I]);
-  FPluginPermsRow := ARow;
-  FPluginPermsCount := Length(Perms);
-  FPluginPermsHasOverride := Length(Over) > 0;
-  FDialogKind := hdkPluginPerms;
-  if (Length(Over) > 0) or (Length(Perms) > 0) then
-    Intro := T('ui.plugins.permsIntro', 'The plugin asks to be allowed to:')
-  else
-    Intro := T('ui.plugins.permsNone', 'The plugin asks for no permissions.');
-  FDialog.Open(BuildPluginPermissionsDialog(Name, Intro,
-    Format(T('ui.plugins.permsOverride', 'replace the built-in handlers: %s'),
-      [string.Join(' ', Over)]),
-    Length(Over) > 0, OverOn, Texts, Granted), DialogCommand);
-  NotifyChanged;
+  FPluginMgr.ShowList(ASelectedIndex);
 end;
 
 function TDualPanelWindow.HandlePluginPermsCommand(const AControlId: string): Boolean;
-var
-  Row, I: Integer;
-  Granted: TArray<Boolean>;
-  OverOn: Boolean;
 begin
-  Result := True;
-  Row := FPluginPermsRow;
-  if DialogCmdIsAccept(AControlId) then
-  begin
-    SetLength(Granted, FPluginPermsCount);
-    for I := 0 to High(Granted) do
-      Granted[I] := FDialog.GetCheckbox('perm_' + IntToStr(I));
-    OverOn := FPluginPermsHasOverride and FDialog.GetCheckbox('perm_override');
-    FDialog.Close;
-    HostApplyPluginPermissions(Row, OverOn, Granted);
-  end
-  else
-    FDialog.Close;
-  ShowPluginList(Row);
+  Result := FPluginMgr.HandlePerms(AControlId);
 end;
 
 function TDualPanelWindow.HandlePluginInfoCommand(const AControlId: string): Boolean;
-var
-  Row: Integer;
-  HelpFile: string;
 begin
-  Result := True;
-  Row := FPluginInfoRow;
-  HelpFile := FPluginInfoHelp;
-  FDialog.Close;
-  // Opened from the drive list: no plugin list behind it.
-  if Row < 0 then
-    Exit;
-  if (AControlId = 'help') and (HelpFile <> '') then
-  begin
-    // The help page opens in the viewer; the Plugins list is not brought back.
-    RequestOpenViewer(PathToFileUri(HelpFile));
-    Exit;
-  end;
-  ShowPluginList(Row);
-end;
-
-{ A message over the Plugins list; the list comes back when it is closed. }
-procedure TDualPanelWindow.ShowPluginNotice(const ATitle, AText: string);
-var
-  Row: Integer;
-begin
-  if ShowHostDialog(BuildConfirmDialog(ATitle, AText), nil, 'settings.md#plugins') then
-    Exit;
-  Row := FPluginListReturnRow;
-  FPluginListReturnRow := -1;
-  if Row >= 0 then
-    ShowPluginList(Row);
-end;
-
-procedure TDualPanelWindow.AskInstallPlugin(ARow: Integer);
-begin
-  FPluginListReturnRow := ARow;
-  if ShowHostDialog(BuildInputDialog(T('ui.plugins.installTitle', 'Install plugin'),
-       T('ui.plugins.installPrompt', 'Folder or .zip file with the plugin:'), ''),
-     procedure(AControl, AValues: string)
-     var
-       V: TJSONValue;
-       Source: string;
-     begin
-       if not DialogCmdIsAccept(AControl) then
-         Exit;
-       Source := '';
-       V := TJSONObject.ParseJSONValue(AValues);
-       try
-         if V is TJSONObject then
-           TJSONObject(V).TryGetValue<string>('name', Source);
-       finally
-         V.Free;
-       end;
-       if Trim(Source) <> '' then
-         RunPluginInstall(Source, False);
-     end, 'settings.md#plugins') then
-    Exit;
-  FPluginListReturnRow := -1;
-  ShowPluginList(ARow);
-end;
-
-procedure TDualPanelWindow.RunPluginInstall(ASource: string; AReplace: Boolean);
-var
-  R: TPluginInstallResult;
-  Title: string;
-begin
-  Title := T('ui.plugins.installTitle', 'Install plugin');
-  R := HostInstallPlugin(ASource, AReplace);
-  case R.Status of
-    pisOk:
-      if R.Replaced then
-        ShowPluginNotice(Title, Format(T('ui.plugins.replaced',
-          'Plugin %s replaced. A loaded plugin keeps its old version until the next start.'), [R.Id]))
-      else
-        ShowPluginNotice(Title, Format(T('ui.plugins.installed',
-          'Plugin %s installed. It is switched off: turn it on in the list with Space, then OK.'), [R.Id]));
-    pisExists:
-      ShowHostDialog(BuildConfirmDialog(Title, Format(T('ui.plugins.exists',
-          'The plugin %s is installed already. Replace it?'), [R.Id])),
-        procedure(AControl, AValues: string)
-        begin
-          if DialogCmdIsAccept(AControl) then
-            RunPluginInstall(ASource, True);
-        end, 'settings.md#plugins');
-    pisSourceMissing:
-      ShowPluginNotice(Title, Format(T('ui.plugins.sourceMissing', 'Not found: %s'), [Trim(ASource)]));
-    pisNoManifest:
-      ShowPluginNotice(Title, T('ui.plugins.noManifest', 'The source has no plugin.json.'));
-    pisBadId:
-      ShowPluginNotice(Title, Format(T('ui.plugins.badId',
-        'The plugin id "%s" is not allowed: use letters, digits, ".", "_" and "-".'), [R.Id]));
-    pisUnsafeArchive:
-      ShowPluginNotice(Title, T('ui.plugins.unsafeArchive',
-        'The archive is refused: it has paths outside the plugin folder or is too large.'));
-  else
-    ShowPluginNotice(Title, Format(T('ui.plugins.installFailed', 'Installing failed: %s'), [R.Detail]));
-  end;
-end;
-
-procedure TDualPanelWindow.AskRemovePlugin(ARow: Integer);
-var
-  Id: string;
-begin
-  Id := HostPluginIdAt(ARow);
-  FPluginListReturnRow := ARow;
-  if (Id <> '') and
-     ShowHostDialog(BuildConfirmDialog(T('ui.plugins.removeTitle', 'Remove plugin'),
-       Format(T('ui.plugins.removeAsk', 'Delete the plugin %s and its files?'), [Id])),
-       procedure(AControl, AValues: string)
-       var
-         Detail: string;
-         Title: string;
-       begin
-         if not DialogCmdIsAccept(AControl) then
-           Exit;
-         Title := T('ui.plugins.removeTitle', 'Remove plugin');
-         if HostRemovePlugin(ARow, Detail) then
-           ShowPluginNotice(Title, Format(T('ui.plugins.removed', 'Plugin %s removed.'), [Id]))
-         else
-           ShowPluginNotice(Title, Format(T('ui.plugins.removeFailed',
-             'Plugin %s could not be removed: %s. Switch it off, restart the program and try again.'),
-             [Id, Detail]));
-       end, 'settings.md#plugins') then
-    Exit;
-  FPluginListReturnRow := -1;
-  ShowPluginList(ARow);
+  Result := FPluginMgr.HandleInfo(AControlId);
 end;
 
 function TDualPanelWindow.HandlePluginListCommand(const AControlId: string): Boolean;
-var
-  Row, Delta, Top: Integer;
-  Kind: TPluginListCommandKind;
 begin
-  Result := True;
-  Kind := ClassifyPluginListCommand(AControlId);
-  if Kind = plcDismiss then
-  begin
-    // OK applies the pending on/off choices; Cancel, Esc and the close box drop them.
-    FDialog.Close;
-    if DialogCmdIsAccept(AControlId) then
-      HostPluginsCommit
-    else
-      HostPluginsCancel;
-    NotifyChanged;
-    Exit;
-  end;
-  Row := FDialog.GetListSelectedIndex('plugins');
-  Top := FDialog.GetListScrollTop;
-  FDialog.Close;
-  case Kind of
-    plcUp, plcDown:
-      begin
-        // The selection follows the plugin to its new place.
-        if Kind = plcUp then
-          Delta := -1
-        else
-          Delta := 1;
-        if HostMovePlugin(Row, Delta) then
-          Inc(Row, Delta);
-        ShowPluginList(Row);
-        FDialog.SetListScrollTop(Top);
-      end;
-    plcInfo:
-      ShowPluginInfo(Row);
-    plcAdd:
-      AskInstallPlugin(Row);
-    plcRemove:
-      AskRemovePlugin(Row);
-    plcSettings:
-      begin
-        // The plugin shows its own dialog and the list comes back when it is closed;
-        // one without settings gets a message.
-        FPluginListReturnRow := Row;
-        if HostConfigurePlugin(Row) then
-        begin
-          if Assigned(FDialog) and FDialog.Visible then
-            Exit;
-          FPluginListReturnRow := -1;
-        end
-        else
-        begin
-          // A message dialog; closing it brings the list back (hdkHost branch).
-          if not ShowHostDialog(BuildConfirmDialog(T('ui.plugins.noSettingsTitle', 'Plugin settings'),
-               Format(T('ui.plugins.noSettings', 'The plugin %s has no settings.'),
-                 [HostPluginIdAt(Row)])), nil, 'settings.md') then
-          begin
-            FPluginListReturnRow := -1;
-            ShowPluginList(Row);
-          end;
-          Exit;
-        end;
-        ShowPluginList(Row);
-        FDialog.SetListScrollTop(Top);
-      end;
-    plcPermissions:
-      ShowPluginPermissions(Row);
-    plcToggle:
-      begin
-        HostTogglePlugin(Row);
-        // The list is rebuilt so the marks show the new state; the menu is rebuilt
-        // too, since a plugin that left or arrived takes its items with it. The rows
-        // stay where they were: the list does not jump.
-        ShowPluginList(Row);
-        FDialog.SetListScrollTop(Top);
-      end;
-  end;
+  Result := FPluginMgr.HandleList(AControlId);
 end;
 
 function TDualPanelWindow.CurrentHelpScreen: THelpScreen;
@@ -12137,8 +11373,6 @@ procedure TDualPanelWindow.RemoveWorkspaceTabAt(AIndex: Integer);
 var
   ReturnIdx: Integer;
   Id, OriginId: Cardinal;
-  Ed: TEditorWindow;
-  Term: TTerminalWorkspaceWindow;
   WasDocument, WasTerminal: Boolean;
 begin
   if (AIndex < 0) or (AIndex > High(FState.WorkspaceTabs)) then
@@ -12147,30 +11381,10 @@ begin
   OriginId := FState.WorkspaceTabs[AIndex].OriginWorkspaceId;
   WasDocument := FState.WorkspaceTabs[AIndex].Kind = wkDocument;
   WasTerminal := FState.WorkspaceTabs[AIndex].Kind = wkTerminal;
-  if WasDocument and Assigned(FDocuments) and
-     FDocuments.TryGetValue(Id, Ed) then
-  begin
-    Ed.OnCloseRequest := nil;
-    Ed.OnContentChanged := nil;
-    FDocuments.Remove(Id);
-    TThread.ForceQueue(nil,
-      procedure
-      begin
-        Ed.Free;
-      end);
-  end;
-  if WasTerminal and Assigned(FTerminals) and
-     FTerminals.TryGetValue(Id, Term) then
-  begin
-    Term.OnCloseRequest := nil;
-    Term.OnContentChanged := nil;
-    FTerminals.Remove(Id);
-    TThread.ForceQueue(nil,
-      procedure
-      begin
-        Term.Free;
-      end);
-  end;
+  if WasDocument then
+    FWork.DetachDocument(Id);
+  if WasTerminal then
+    FWork.DetachTerminal(Id);
   TDualPanelTabManager.RemoveWorkspaceAt(FState.WorkspaceTabs, AIndex);
   ReturnIdx := -1;
   if (WasDocument or WasTerminal) and (OriginId <> 0) then
@@ -12187,35 +11401,13 @@ begin
 end;
 
 procedure TDualPanelWindow.CloseHostDocument(AIndex: Integer);
-var
-  Ws: TDualPanelWorkspaceTab;
-  Ed: TEditorWindow;
 begin
-  Ws := FState.WorkspaceTabs[AIndex];
-  if Assigned(FDocuments) and FDocuments.TryGetValue(Ws.Id, Ed) then
-  begin
-    // Activate so AskSave dialog paints on the document tab.
-    if AIndex <> FState.ActiveWorkspaceIndex then
-      SelectWorkspace(AIndex);
-    Ed.BeginClose;
-  end
-  else
-    RemoveWorkspaceTabAt(AIndex);
+  FWork.CloseDocument(AIndex);
 end;
 
 procedure TDualPanelWindow.CloseHostTerminal(AIndex: Integer);
-var
-  Ws: TDualPanelWorkspaceTab;
-  Term: TTerminalWorkspaceWindow;
 begin
-  Ws := FState.WorkspaceTabs[AIndex];
-  // No ask-to-close flow: CloseWorkspace fires OnCloseRequest synchronously
-  // (TBaseConsoleWindow.DoClose), which TerminalCloseRequest turns into
-  // RemoveWorkspaceTabAt for us.
-  if Assigned(FTerminals) and FTerminals.TryGetValue(Ws.Id, Term) then
-    Term.CloseWorkspace
-  else
-    RemoveWorkspaceTabAt(AIndex);
+  FWork.CloseTerminal(AIndex);
 end;
 
 procedure TDualPanelWindow.CloseWorkspace(AIndex: Integer);
@@ -12226,20 +11418,16 @@ begin
 end;
 
 function TDualPanelWindow.DocumentForWorkspace(AIndex: Integer): TEditorWindow;
-var
-  Ws: TDualPanelWorkspaceTab;
-  Ed: TEditorWindow;
 begin
-  Result := nil;
-  if (AIndex < 0) or (AIndex > High(FState.WorkspaceTabs)) then
-    Exit;
-  Ws := FState.WorkspaceTabs[AIndex];
-  if Ws.Kind <> wkDocument then
-    Exit;
-  if not Assigned(FDocuments) then
-    Exit;
-  if FDocuments.TryGetValue(Ws.Id, Ed) then
-    Result := Ed;
+  if Assigned(FWork) then
+    Result := FWork.DocumentAt(AIndex)
+  else
+    Result := nil;
+end;
+
+function TDualPanelWindow.EmbeddedAlive: Boolean;
+begin
+  Result := FAlive;
 end;
 
 function TDualPanelWindow.ActiveDocument: TEditorWindow;
@@ -12248,73 +11436,9 @@ begin
 end;
 
 procedure TDualPanelWindow.ClearAllDocuments;
-var
-  Pair: TPair<Cardinal, TEditorWindow>;
-  Ed: TEditorWindow;
-  Ids: TArray<Cardinal>;
-  I, N: Integer;
 begin
-  if not Assigned(FDocuments) then
-    Exit;
-  N := 0;
-  SetLength(Ids, FDocuments.Count);
-  for Pair in FDocuments do
-  begin
-    Ids[N] := Pair.Key;
-    Inc(N);
-  end;
-  for I := 0 to N - 1 do
-  begin
-    if FDocuments.TryGetValue(Ids[I], Ed) then
-    begin
-      Ed.OnCloseRequest := nil;
-      Ed.OnContentChanged := nil;
-      FDocuments.Remove(Ids[I]);
-      Ed.Free;
-    end;
-  end;
-  FDocuments.Clear;
-end;
-
-procedure TDualPanelWindow.DocumentContentChanged(Sender: TObject);
-var
-  Ed: TEditorWindow;
-  I: Integer;
-begin
-  if not FAlive or not (Sender is TEditorWindow) then
-    Exit;
-  Ed := TEditorWindow(Sender);
-  I := TDualPanelTabManager.FindWorkspaceIndexByKindAndId(
-    FState.WorkspaceTabs, wkDocument, Ed.Id);
-  if I >= 0 then
-  begin
-    if not FState.WorkspaceTabs[I].TitleCustom then
-      FState.WorkspaceTabs[I].Title := Ed.TabCaption;
-    FState.WorkspaceTabs[I].ViewOnly := Ed.ViewOnly;
-    if I = FState.ActiveWorkspaceIndex then
-      SyncWindowTitle;
-  end;
-  NotifyChanged;
-end;
-
-procedure TDualPanelWindow.DocumentCloseRequest(Sender: TObject);
-var
-  Ed, Found: TEditorWindow;
-  I: Integer;
-  IsStillRegistered: Boolean;
-begin
-  if not (Sender is TEditorWindow) then
-    Exit;
-  Ed := TEditorWindow(Sender);
-  I := TDualPanelTabManager.FindWorkspaceIndexByKindAndId(
-    FState.WorkspaceTabs, wkDocument, Ed.Id);
-  IsStillRegistered := (I >= 0) and Assigned(FDocuments) and
-    FDocuments.TryGetValue(Ed.Id, Found) and (Found = Ed);
-  if IsStillRegistered then
-  begin
-    RemoveWorkspaceTabAt(I);
-    NotifyChanged;
-  end;
+  if Assigned(FWork) then
+    FWork.ClearDocuments;
 end;
 
 procedure TDualPanelWindow.OpenDocument(const AURI: string; AViewOnly: Boolean);
@@ -12341,49 +11465,8 @@ begin
 end;
 
 procedure TDualPanelWindow.OpenBuiltInDocument(const AURI: string; AViewOnly: Boolean);
-var
-  I: Integer;
-  Ws: TDualPanelWorkspaceTab;
-  Ed: TEditorWindow;
-  Cap: string;
 begin
-  if AURI = '' then
-    Exit;
-  // Alt+F11 history: every F3/F4, re-activating an already open tab included.
-  FileHistoryPush(AURI, not AViewOnly);
-  // Re-activate existing tab for the same URI / mode.
-  I := TDualPanelTabManager.FindDocumentWorkspaceIndex(
-    FState.WorkspaceTabs, AURI, AViewOnly);
-  if I >= 0 then
-  begin
-    SelectWorkspace(I);
-    NotifyChanged;
-    Exit;
-  end;
-
-  Cap := FileUriTitle(AURI);
-  if Cap = '' then
-    Cap := 'Document';
-  Ed := TEditorWindow.Create(Theme, FNextTabId);
-  Ed.Embedded := True;
-  Ed.OnContentChanged := DocumentContentChanged;
-  Ed.OnCloseRequest := DocumentCloseRequest;
-  Ed.Open(AURI, AViewOnly);
-
-  Ws := TDualPanelTabManager.MakeEmbeddedWorkspaceTab(
-    FNextTabId, TDualPanelTabManager.EmbeddedDocumentTitle(Ed.TabCaption, Cap),
-    wkDocument, ActiveWorkspace.Id);
-  Inc(FNextTabId);
-  Ws.DocURI := AURI;
-  Ws.ViewOnly := AViewOnly;
-
-  FDocuments.AddOrSetValue(Ws.Id, Ed);
-  // Insert after the current session tab (not always at the end).
-  TDualPanelTabManager.InsertWorkspaceAfterActive(
-    FState.WorkspaceTabs, FState.ActiveWorkspaceIndex, Ws);
-  SyncWindowTitle;
-  SyncDirWatches;
-  NotifyChanged;
+  FWork.OpenBuiltIn(AURI, AViewOnly, Theme);
 end;
 
 function TDualPanelWindow.VisibleSurfaces: TArray<Integer>;
@@ -12448,8 +11531,6 @@ end;
 function TDualPanelWindow.OpenSurfaceTab(AHandle: Integer): Boolean;
 var
   Ws: TDualPanelWorkspaceTab;
-  Ed: TEditorWindow;
-  Uri: string;
   Other: TPanelSide;
 begin
   Result := False;
@@ -12504,26 +11585,7 @@ begin
     NotifyChanged;
     Exit(True);
   end;
-  Uri := 'plugin-surface:' + IntToStr(AHandle);
-  Ed := TEditorWindow.Create(Theme, FNextTabId);
-  Ed.Embedded := True;
-  Ed.OnContentChanged := DocumentContentChanged;
-  Ed.OnCloseRequest := DocumentCloseRequest;
-  Ed.OpenSurface(AHandle);
-
-  Ws := TDualPanelTabManager.MakeEmbeddedWorkspaceTab(
-    FNextTabId, TDualPanelTabManager.EmbeddedDocumentTitle(Ed.TabCaption, 'Picture'),
-    wkDocument, ActiveWorkspace.Id);
-  Inc(FNextTabId);
-  Ws.DocURI := Uri;
-  Ws.ViewOnly := True;
-
-  FDocuments.AddOrSetValue(Ws.Id, Ed);
-  TDualPanelTabManager.InsertWorkspaceAfterActive(
-    FState.WorkspaceTabs, FState.ActiveWorkspaceIndex, Ws);
-  SyncWindowTitle;
-  NotifyChanged;
-  Result := True;
+  Result := FWork.OpenSurface(AHandle, Theme);
 end;
 
 function TDualPanelWindow.PluginDocInfoJson: string;
@@ -12568,53 +11630,23 @@ end;
 function TDualPanelWindow.PluginPanelInfoJson: string;
 var
   Ws: TDualPanelWorkspaceTab;
-  Root, SideObj: TJSONObject;
-  Sel: TJSONArray;
-  Side: TPanelSide;
-  Panel: TPanelState;
+  Left, Right: TPluginPanelSideInfo;
   Tab: TTab;
-  Rows: TPanelRows;
-  Idx: Integer;
-  U: string;
 begin
   Ws := ActiveWorkspace;
   if Ws.Kind <> wkPanels then
     Exit('');
-  Root := TJSONObject.Create;
-  try
-    if Ws.State.ActiveSide = psLeft then
-      Root.AddPair('active', 'left')
-    else
-      Root.AddPair('active', 'right');
-    for Side := psLeft to psRight do
-    begin
-      if Side = psLeft then
-        Panel := Ws.State.LeftPanel
-      else
-        Panel := Ws.State.RightPanel;
-      Tab := ActiveTab(Panel);
-      SideObj := TJSONObject.Create;
-      SideObj.AddPair('uri', Tab.CurrentURI);
-      Rows := RowsForSide(Side);
-      Idx := Tab.CursorIndex;
-      if (Idx >= 0) and (Idx <= High(Rows)) and not Rows[Idx].IsParent then
-      begin
-        SideObj.AddPair('cursor', Rows[Idx].URI);
-        SideObj.AddPair('cursorIsDirectory', TJSONBool.Create(Rows[Idx].IsDirectory));
-      end;
-      Sel := TJSONArray.Create;
-      for U in Tab.SelectedURIs do
-        Sel.Add(U);
-      SideObj.AddPair('selected', Sel);
-      if Side = psLeft then
-        Root.AddPair('left', SideObj)
-      else
-        Root.AddPair('right', SideObj);
-    end;
-    Result := Root.ToJSON;
-  finally
-    Root.Free;
-  end;
+  Tab := ActiveTab(Ws.State.LeftPanel);
+  Left.Uri := Tab.CurrentURI;
+  Left.Rows := RowsForSide(psLeft);
+  Left.CursorIndex := Tab.CursorIndex;
+  Left.Selected := Tab.SelectedURIs;
+  Tab := ActiveTab(Ws.State.RightPanel);
+  Right.Uri := Tab.CurrentURI;
+  Right.Rows := RowsForSide(psRight);
+  Right.CursorIndex := Tab.CursorIndex;
+  Right.Selected := Tab.SelectedURIs;
+  Result := BuildPluginPanelInfoJson(Ws.State.ActiveSide = psLeft, Left, Right);
 end;
 
 function TDualPanelWindow.PluginSendKey(const AChord: string): Boolean;
@@ -12767,99 +11799,23 @@ begin
 end;
 
 function TDualPanelWindow.PluginPanelListJson(ASide: Integer): string;
-const
-  cMaxRows = 10000;
 var
   Ws: TDualPanelWorkspaceTab;
-  Root, RowObj: TJSONObject;
-  RowsArr: TJSONArray;
   Side: TPanelSide;
   Panel: TPanelState;
   Tab: TTab;
-  Rows: TPanelRows;
-  I, N: Integer;
-  ColsObj: TJSONObject;
-  ColId, ColText: string;
-  HasCells: Boolean;
-
-  function ColName(const ARowText: string): string;
-  begin
-    Result := ARowText;
-    if (Result <> '') and (Result[Length(Result)] = '/') then
-      Delete(Result, Length(Result), 1);
-  end;
-
 begin
   Ws := ActiveWorkspace;
   if Ws.Kind <> wkPanels then
     Exit('');
-  case ASide of
-    0: Side := psLeft;
-    1: Side := psRight;
-  else
-    Side := Ws.State.ActiveSide;
-  end;
+  Side := PluginPanelSide(ASide, Ws.State.ActiveSide);
   if Side = psLeft then
     Panel := Ws.State.LeftPanel
   else
     Panel := Ws.State.RightPanel;
   Tab := ActiveTab(Panel);
-  Rows := RowsForSide(Side);
-  HasCells := FolderHasCells(Tab.CurrentURI);
-  Root := TJSONObject.Create;
-  try
-    Root.AddPair('uri', Tab.CurrentURI);
-    RowsArr := TJSONArray.Create;
-    N := 0;
-    for I := 0 to High(Rows) do
-    begin
-      if Rows[I].IsParent then
-        Continue;
-      if N >= cMaxRows then
-      begin
-        Root.AddPair('truncated', TJSONBool.Create(True));
-        Break;
-      end;
-      RowObj := TJSONObject.Create;
-      RowObj.AddPair('uri', Rows[I].URI);
-      RowObj.AddPair('name', Rows[I].Text);
-      RowObj.AddPair('dir', TJSONBool.Create(Rows[I].IsDirectory));
-      RowObj.AddPair('size', TJSONNumber.Create(Rows[I].Size));
-      if Rows[I].ModificationTime > 0 then
-        RowObj.AddPair('mtime', TJSONNumber.Create(Rows[I].ModificationTime));
-      if Rows[I].CreationTime > 0 then
-        RowObj.AddPair('ctime', TJSONNumber.Create(Rows[I].CreationTime));
-      if Rows[I].AccessTime > 0 then
-        RowObj.AddPair('atime', TJSONNumber.Create(Rows[I].AccessTime));
-      if Rows[I].FileType <> '' then
-        RowObj.AddPair('type', Rows[I].FileType);
-      if Rows[I].AttrText <> '' then
-        RowObj.AddPair('attr', Rows[I].AttrText);
-      if Rows[I].Extension <> '' then
-        RowObj.AddPair('ext', Rows[I].Extension);
-      ColsObj := nil;
-      if HasCells then
-        for ColId in ['dim', 'camera', 'artist', 'title'] do
-          if FolderCellText(Tab.CurrentURI, ColName(Rows[I].Text), ColId, ColText) and
-             (ColText <> '') then
-          begin
-            if ColsObj = nil then
-              ColsObj := TJSONObject.Create;
-            ColsObj.AddPair(ColId, ColText);
-          end;
-      if ColsObj <> nil then
-        RowObj.AddPair('cols', ColsObj);
-      RowsArr.Add(RowObj);
-      // The cursor is reported as an index into this list (the ".." row is not in it).
-      if I = Tab.CursorIndex then
-        Root.AddPair('cursor', TJSONNumber.Create(N));
-      Inc(N);
-    end;
-    Root.AddPair('rows', RowsArr);
-    Result := Root.ToJSON;
-  finally
-    Root.Free;
-  end;
+  Result := BuildPluginPanelListJson(Tab.CurrentURI, RowsForSide(Side),
+    Tab.CursorIndex);
 end;
 
 function TDualPanelWindow.PluginPanelSetCursor(ASide: Integer; const AURI: string): Boolean;
@@ -12876,12 +11832,7 @@ begin
   Ws := ActiveWorkspace;
   if (Ws.Kind <> wkPanels) or (Assigned(FDialog) and FDialog.Visible) then
     Exit;
-  case ASide of
-    0: Side := psLeft;
-    1: Side := psRight;
-  else
-    Side := Ws.State.ActiveSide;
-  end;
+  Side := PluginPanelSide(ASide, Ws.State.ActiveSide);
   Rows := RowsForSide(Side);
   Found := -1;
   for I := 0 to High(Rows) do
@@ -12930,12 +11881,7 @@ begin
   Result := (Ws.Kind = wkPanels) and not (Assigned(FDialog) and FDialog.Visible);
   if not Result then
     Exit;
-  case ASide of
-    0: Side := psLeft;
-    1: Side := psRight;
-  else
-    Side := Ws.State.ActiveSide;
-  end;
+  Side := PluginPanelSide(ASide, Ws.State.ActiveSide);
   if Side = psLeft then
     Panel := Ws.State.LeftPanel
   else
@@ -13022,12 +11968,7 @@ begin
   if not Result then
     Exit;
   Previous := ActiveWorkspace.State.ActiveSide;
-  case ASide of
-    0: Side := psLeft;
-    1: Side := psRight;
-  else
-    Side := Previous;
-  end;
+  Side := PluginPanelSide(ASide, Previous);
   NavigateSideTo(Side, AURI, True);
   // Showing a folder in the other panel does not move the focus there.
   if Side <> Previous then
@@ -13074,8 +12015,8 @@ end;
 procedure TDualPanelWindow.PluginPanelRefresh;
 begin
   // A plugin may have written Descript.ion: read it again on the next repaint.
-  FDescCheckedAt := 0;
-  FDescStamp := -1;
+  if Assigned(FDescriptions) then
+    FDescriptions.Forget;
   // A plugin job can write into either panel's folder, so both are read again.
   if ActiveWorkspace.Kind = wkPanels then
   begin
@@ -13085,20 +12026,11 @@ begin
 end;
 
 function TDualPanelWindow.TerminalForWorkspace(AIndex: Integer): TTerminalWorkspaceWindow;
-var
-  Ws: TDualPanelWorkspaceTab;
-  Term: TTerminalWorkspaceWindow;
 begin
-  Result := nil;
-  if (AIndex < 0) or (AIndex > High(FState.WorkspaceTabs)) then
-    Exit;
-  Ws := FState.WorkspaceTabs[AIndex];
-  if Ws.Kind <> wkTerminal then
-    Exit;
-  if not Assigned(FTerminals) then
-    Exit;
-  if FTerminals.TryGetValue(Ws.Id, Term) then
-    Result := Term;
+  if Assigned(FWork) then
+    Result := FWork.TerminalAt(AIndex)
+  else
+    Result := nil;
 end;
 
 function TDualPanelWindow.ActiveTerminal: TTerminalWorkspaceWindow;
@@ -13145,155 +12077,21 @@ begin
 end;
 
 procedure TDualPanelWindow.ClearAllTerminals;
-var
-  Pair: TPair<Cardinal, TTerminalWorkspaceWindow>;
-  Term: TTerminalWorkspaceWindow;
-  Ids: TArray<Cardinal>;
-  I, N: Integer;
 begin
-  if not Assigned(FTerminals) then
-    Exit;
-  N := 0;
-  SetLength(Ids, FTerminals.Count);
-  for Pair in FTerminals do
-  begin
-    Ids[N] := Pair.Key;
-    Inc(N);
-  end;
-  for I := 0 to N - 1 do
-  begin
-    if FTerminals.TryGetValue(Ids[I], Term) then
-    begin
-      Term.OnCloseRequest := nil;
-      Term.OnContentChanged := nil;
-      FTerminals.Remove(Ids[I]);
-      Term.Free;
-    end;
-  end;
-  FTerminals.Clear;
-end;
-
-procedure TDualPanelWindow.TerminalContentChanged(Sender: TObject);
-var
-  Term, Found: TTerminalWorkspaceWindow;
-  I: Integer;
-  IsActiveTerminalTab: Boolean;
-begin
-  if not FAlive or not (Sender is TTerminalWorkspaceWindow) then
-    Exit;
-  Term := TTerminalWorkspaceWindow(Sender);
-  I := TDualPanelTabManager.FindWorkspaceIndexByKindAndId(
-    FState.WorkspaceTabs, wkTerminal, Term.Id);
-  IsActiveTerminalTab := (I >= 0) and Assigned(FTerminals) and
-    FTerminals.TryGetValue(Term.Id, Found) and (Found = Term) and
-    (I = FState.ActiveWorkspaceIndex);
-  if IsActiveTerminalTab then
-    SyncWindowTitle;
-  NotifyChanged;
-end;
-
-procedure TDualPanelWindow.TerminalCloseRequest(Sender: TObject);
-var
-  Term, Found: TTerminalWorkspaceWindow;
-  I: Integer;
-  IsStillRegistered: Boolean;
-begin
-  if not (Sender is TTerminalWorkspaceWindow) then
-    Exit;
-  Term := TTerminalWorkspaceWindow(Sender);
-  I := TDualPanelTabManager.FindWorkspaceIndexByKindAndId(
-    FState.WorkspaceTabs, wkTerminal, Term.Id);
-  IsStillRegistered := (I >= 0) and Assigned(FTerminals) and
-    FTerminals.TryGetValue(Term.Id, Found) and (Found = Term);
-  if IsStillRegistered then
-  begin
-    RemoveWorkspaceTabAt(I);
-    NotifyChanged;
-  end;
+  if Assigned(FWork) then
+    FWork.ClearTerminals;
 end;
 
 procedure TDualPanelWindow.OpenTerminal(const AProfileId, ACwd: string;
   const ACommand: string);
-var
-  I: Integer;
-  Ws: TDualPanelWorkspaceTab;
-  Term: TTerminalWorkspaceWindow;
-  Profiles: TShellProfileArray;
-  ProfTitle: string;
 begin
-  if AProfileId = '' then
-    Exit;
-  SetCmdFocused(False);
-
-  ProfTitle := AProfileId;
-  Profiles := EnumerateShellProfiles;
-  for I := 0 to High(Profiles) do
-    if Profiles[I].Id = AProfileId then
-    begin
-      ProfTitle := Profiles[I].Title;
-      Break;
-    end;
-
-  Term := TTerminalWorkspaceWindow.Create(Theme, FNextTabId);
-  Term.CloseOnExit := FTerminalCloseOnExit;
-  Term.OnContentChanged := TerminalContentChanged;
-  Term.OnCloseRequest := TerminalCloseRequest;
-  Term.OnCommandExecuted := RecordConsoleCommand;
-  Term.OnGetCmdHistory := GetCommandHistoryItems;
-  Term.OnRemoveCmdHistory := RemoveCommandHistoryItem;
-  Term.OnClearCmdHistory := ClearCommandHistory;
-
-  Ws := TDualPanelTabManager.MakeEmbeddedWorkspaceTab(
-    FNextTabId, ProfTitle, wkTerminal, ActiveWorkspace.Id);
-  Inc(FNextTabId);
-  Ws.TermProfileId := AProfileId;
-
-  // Register the tab/dictionary entry before Start: unlike Ed.Open, PTY
-  // Start can fail synchronously and fire ProcessExited -> DoCloseWorkspace
-  // -> OnCloseRequest -> TerminalCloseRequest before control returns here,
-  // and that handler needs to find this tab to clean it up correctly.
-  FTerminals.AddOrSetValue(Ws.Id, Term);
-  TDualPanelTabManager.InsertWorkspaceAfterActive(
-    FState.WorkspaceTabs, FState.ActiveWorkspaceIndex, Ws);
-
-  Term.Start(AProfileId, ACwd);
-  // Start() may fail synchronously and already have torn the tab down via
-  // TerminalCloseRequest (which picks its own fallback active tab) - don't
-  // touch ActiveWorkspaceIndex again if that happened.
-  if not FTerminals.ContainsKey(Ws.Id) then
-    Exit;
-  // The shell buffers what is typed before its first prompt.
-  if ACommand <> '' then
-    Term.SendCommand(ACommand);
-
-  SyncWindowTitle;
-  SyncDirWatches;
-  NotifyChanged;
+  FWork.OpenTerminal(AProfileId, ACwd, ACommand, Theme, FTerminalCloseOnExit);
 end;
 
 procedure TDualPanelWindow.RunInPanelTerminal(const AProfileId, ACwd,
   ACommand: string);
-var
-  I: Integer;
-  Ws: TDualPanelWorkspaceTab;
-  Term: TTerminalWorkspaceWindow;
 begin
-  Ws := ActiveWorkspace;
-  if Ws.Kind = wkPanels then
-    for I := 0 to High(FState.WorkspaceTabs) do
-      if (FState.WorkspaceTabs[I].Kind = wkTerminal) and
-         (FState.WorkspaceTabs[I].OriginWorkspaceId = Ws.Id) and
-         (FState.WorkspaceTabs[I].TermProfileId = AProfileId) and
-         FTerminals.TryGetValue(FState.WorkspaceTabs[I].Id, Term) and
-         Term.IsIdle then
-      begin
-        SetCmdFocused(False);
-        Term.RunInDir(ACwd, ACommand);
-        SelectWorkspace(I);
-        NotifyChanged;
-        Exit;
-      end;
-  OpenTerminal(AProfileId, ACwd, ACommand);
+  FWork.RunInPanel(AProfileId, ACwd, ACommand, Theme, FTerminalCloseOnExit);
 end;
 
 procedure TDualPanelWindow.NextWorkspace;
@@ -15020,7 +13818,7 @@ begin
   Snap.HasTheme := Assigned(Theme);
   Snap.ThemeDouble := Assigned(Theme) and Theme.UsesDoubleLineForActivePanel;
   Snap.DropHighlight := FDropHighlightActive and (FDropHighlightSide = ASide);
-  Snap.QuickSearch := FQuickSearchActive;
+  Snap.QuickSearch := FSearch.Active;
   ViewH := Snap.ListBounds.Height;
   Snap.PageSize := BriefPageSize(Max(ViewH, 1),
     PanelListColumnCount(APanel.ColumnMode, Snap.ListBounds.Width));
@@ -15329,15 +14127,11 @@ begin
 end;
 
 procedure TDualPanelWindow.PrepareForSystemShutdown;
-var
-  Term: TTerminalWorkspaceWindow;
 begin
   if not FAlive then
     Exit;
-  if Assigned(FTerminals) then
-    for Term in FTerminals.Values do
-      if Assigned(Term) then
-        Term.ShutdownForSessionEnd;
+  if Assigned(FWork) then
+    FWork.ShutdownTerminals;
   CloseSearchUi;
   if Assigned(FJobs) and FJobs.HasBusyJob then
   begin
@@ -15774,11 +14568,8 @@ begin
   if CtrlJustReleased then
     CommitDrivePreview;
   // Alt Quick Search lives only while Alt is held, unless it is sticky.
-  if AltJustReleased and not QuickSearchLingers and
-     (FQuickSearchActive or (FQuickSearchText <> '')) then
+  if AltJustReleased and FSearch.TakeAltRelease then
   begin
-    FQuickSearchActive := False;
-    FQuickSearchText := '';
     Result := True;
     Invalidate;
   end;
@@ -15968,7 +14759,7 @@ begin
   Result.QuickViewVisible := QuickViewVisible;
   Result.CmdLineHasText := Assigned(FCmdLineMgr) and (FCmdLineMgr.Text <> '');
   Result.CmdFocused := CmdFocused;
-  Result.QuickSearchSticky := QuickSearchLingers and FQuickSearchActive;
+  Result.QuickSearchSticky := FSearch.Lingers and FSearch.Active;
   Result.ViewH := ViewH;
   Result.Cols := Cols;
   Result.PageSize := BriefPageSize(ViewH, Cols);
@@ -16100,7 +14891,6 @@ var
   Chord: string;
   KeyObj: TJSONObject;
 begin
-  Result := True;
   if ScreensaverTakesKey(AKey, AKeyChar) then
     Exit(True);
   if not FInjectingKeys and PluginHasTopicSubscriber(cKeyEventTopic) then
@@ -16291,7 +15081,7 @@ function TDualPanelWindow.HandleMouseDown(ALocalCol, ALocalRow: Integer;
 begin
   Result := False;
   FQuickViewFocused := False;
-  if not (FQuickSearchKeepFilter and FQuickSearchFiltering) then
+  if FSearch.ClearsOnClick then
     ClearQuickSearch;
   FSaverSwallowClick := False;
   FSaverSwallowUp := False;

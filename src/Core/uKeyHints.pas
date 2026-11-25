@@ -1,4 +1,4 @@
-﻿unit uKeyHints;
+unit uKeyHints;
 
 { One-line key hints for the state the program is in: search results, an
   archive, a temporary panel, a workspace, an SFTP or plugin folder, the
@@ -10,6 +10,7 @@
 interface
 
 uses
+  System.SysUtils,
   uKeymap;
 
 type
@@ -83,10 +84,19 @@ procedure WrapKeyHint(const AText: string; AMaxCols: Integer;
 /// <summary>The hint of ASituation in the current language, keys filled in.</summary>
 function KeyHintText(ASituation: THintSituation; const AProfile: TKeymapProfile): string;
 
+/// <summary>Tabs and workspaces restored with the session are not news: the
+/// first look treats those of AActive as already shown.</summary>
+function SessionRestoredHintSituations(const AActive: THintSituations): THintSituations;
+
+/// <summary>Offers the fresh situations in the order states that begin
+/// together are shown. One hint per look: the first AShow that accepts wins.</summary>
+function OfferFreshHint(const AFresh: THintSituations;
+  const AShow: TFunc<THintSituation, Boolean>): Boolean;
+
 implementation
 
 uses
-  System.SysUtils, uVfsTypes, uStrings, uCharWidth;
+  uVfsTypes, uStrings, uCharWidth;
 
 const
   cSituationKey: array[THintSituation] of string = (
@@ -359,6 +369,31 @@ begin
     Result := Result + ATemplate[P];
     Inc(P);
   end;
+end;
+
+const
+  // The order in which states that begin together are offered.
+  cHintPriority: array[0..26] of THintSituation = (hsMenu, hsFindResults,
+    hsArchive, hsTempPanel, hsWorkspace, hsSftp, hsPluginFolder, hsRecycleBin,
+    hsCommandLine, hsHexView, hsMarkdown, hsViewer, hsEditor, hsEditorSelection,
+    hsConsole, hsTerminal, hsSelection, hsManySelected, hsArchiveFile,
+    hsQuickView, hsInfoPanel, hsLongFolder, hsFolderTravel, hsSameNameFolders,
+    hsPanelTabs, hsWorkspaces, hsJobs);
+
+function SessionRestoredHintSituations(const AActive: THintSituations): THintSituations;
+begin
+  Result := AActive * [hsPanelTabs, hsWorkspaces];
+end;
+
+function OfferFreshHint(const AFresh: THintSituations;
+  const AShow: TFunc<THintSituation, Boolean>): Boolean;
+var
+  S: THintSituation;
+begin
+  for S in cHintPriority do
+    if (S in AFresh) and AShow(S) then
+      Exit(True);
+  Result := False;
 end;
 
 function KeyHintText(ASituation: THintSituation; const AProfile: TKeymapProfile): string;
