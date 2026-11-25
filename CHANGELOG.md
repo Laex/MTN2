@@ -29,6 +29,7 @@ This file describes what changes for the user from version to version: new featu
 
 ### Fixed
 
+- Unpacking an empty folder from a ZIP archive no longer fails with "Nothing to extract": the folder is created, and empty subfolders of an unpacked folder are kept.
 - A folder-description refresh no longer shows an access-violation dialog when the read finishes after the window has closed.
 - Coloring a long line allocates its spans once, and the comparison of two long files grows its step list by doubling.
 - File addresses of a large folder and network paths are encoded in one buffer, and releasing many folders before a delete or move allocates the path list once.

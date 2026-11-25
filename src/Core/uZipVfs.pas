@@ -1863,7 +1863,8 @@ end;
 
 procedure CollectExtractJobs(AZip: TZipFile; const APrefix: string;
   const ADestRoot: string; ACancel: IJobCancelToken;
-  AJobs: TList<TPair<Integer, string>>; var ATotal: Int64; var AError: TVfsError);
+  AJobs: TList<TPair<Integer, string>>; ADirs: TList<string>; var ATotal: Int64;
+  var AError: TVfsError);
 var
   Names: TArray<string>;
   Pref, Name, Rest, Dest: string;
@@ -1885,9 +1886,12 @@ begin
       Name := NormZipName(Names[I]);
       if IsUnsafeZipName(Names[I]) or (Name = '') then
         Continue;
-      if EntryIsDirectory(AZip, I, Names[I]) then
-        Continue;
       Dest := TPath.Combine(ADestRoot, StringReplace(Name, '/', PathDelim, [rfReplaceAll]));
+      if EntryIsDirectory(AZip, I, Names[I]) then
+      begin
+        ADirs.Add(Dest);
+        Continue;
+      end;
       AJobs.Add(TPair<Integer, string>.Create(I, Dest));
       H := AZip.FileInfo[I];
       Inc(ATotal, Int64(H.UncompressedSize));
@@ -1919,11 +1923,20 @@ begin
     if IsUnsafeZipName(Names[I]) then
       Continue;
     Name := NormZipName(Names[I]);
+    // The folder's own entry: an empty folder still has to be created.
+    if SameText(Name + '/', Pref) and EntryIsDirectory(AZip, I, Names[I]) then
+    begin
+      ADirs.Add(ADestRoot);
+      Continue;
+    end;
     if not ZipRestAfterPrefix(Name, Pref, Rest) then
       Continue;
-    if EntryIsDirectory(AZip, I, Names[I]) then
-      Continue;
     Dest := TPath.Combine(ADestRoot, StringReplace(Rest, '/', PathDelim, [rfReplaceAll]));
+    if EntryIsDirectory(AZip, I, Names[I]) then
+    begin
+      ADirs.Add(Dest);
+      Continue;
+    end;
     AJobs.Add(TPair<Integer, string>.Create(I, Dest));
     H := AZip.FileInfo[I];
     Inc(ATotal, Int64(H.UncompressedSize));
@@ -2018,7 +2031,9 @@ var
   Segs: TArray<string>;
   Stack: TArray<TZipLayer>;
   Jobs: TList<TPair<Integer, string>>;
+  Dirs: TList<string>;
   Total: Int64;
+  Dir: string;
 begin
   if not SplitArchiveUri(AFromURI, Base, Segs) then
   begin
@@ -2036,17 +2051,32 @@ begin
     Exit;
   try
     Jobs := TList<TPair<Integer, string>>.Create;
+    Dirs := TList<string>.Create;
     try
       Total := 0;
-      CollectExtractJobs(Stack[High(Stack)].Zip, Pref, Dest, ACancel, Jobs, Total, AErr);
+      CollectExtractJobs(Stack[High(Stack)].Zip, Pref, Dest, ACancel, Jobs, Dirs,
+        Total, AErr);
       if AErr.Code <> vecOk then
         Exit;
-      if Jobs.Count = 0 then
-        AErr := TVfsError.Make(vecNotFound, 'Nothing to extract', AFromURI)
-      else
-        RunExtractJobs(Stack[High(Stack)].Zip, Jobs, Total, AFromURI, ACancel,
-          AOnProgress, AErr);
+      if (Jobs.Count = 0) and (Dirs.Count = 0) then
+      begin
+        AErr := TVfsError.Make(vecNotFound, 'Nothing to extract', AFromURI);
+        Exit;
+      end;
+      try
+        for Dir in Dirs do
+          ForceDirectories(Dir);
+      except
+        on E: Exception do
+        begin
+          AErr := TVfsError.Make(vecIOError, E.Message, AToURI);
+          Exit;
+        end;
+      end;
+      RunExtractJobs(Stack[High(Stack)].Zip, Jobs, Total, AFromURI, ACancel,
+        AOnProgress, AErr);
     finally
+      Dirs.Free;
       Jobs.Free;
     end;
   finally

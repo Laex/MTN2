@@ -28,6 +28,7 @@ type
     [Test] procedure TestMoveMergesIntoExistingFolder;
     [Test] procedure TestRenameOnlyChangingCase;
     [Test] procedure TestFolderExtractSkipsEntriesLeavingTheDestination;
+    [Test] procedure TestFolderExtractCreatesEmptyFolders;
     [Test] procedure TestSkipNestedDirAlreadyExists;
     [Test] procedure TestJobLevelSkipMergesNested;
     [Test] procedure TestAskModeSkipOnFolderMerges;
@@ -326,6 +327,61 @@ begin
   Assert.IsTrue(Ok, 'the safe entry is extracted');
   Assert.IsTrue(TFile.Exists(TPath.Combine(Dst, 'ok.txt')), 'safe entry extracted');
   Assert.IsFalse(TFile.Exists(Escaped), 'entry with .. segments is not written outside');
+end;
+
+procedure TestFolderExtractCreatesEmptyFolders;
+var
+  ZipPath, Dst: string;
+  Zip: TZipFile;
+  Bytes: TBytes;
+  Vfs: IVirtualFileSystem;
+  Ev: TEvent;
+  Ok: Boolean;
+
+  procedure Extract(const AInner, ADest: string);
+  begin
+    Ok := False;
+    Ev.ResetEvent;
+    Vfs.CopyAsync(PathToFileUri(ZipPath) + '!/' + AInner, PathToFileUri(ADest), nil, nil,
+      procedure(const ASuccess: Boolean; const AErr: TVfsError)
+      begin
+        Ok := ASuccess;
+        Ev.SetEvent;
+      end, True, False);
+    Assert.IsTrue(WaitEvent(Ev), 'extract timed out');
+  end;
+
+begin
+  ZipPath := TPath.Combine(GRoot, 'emptydirs.zip');
+  Zip := TZipFile.Create;
+  try
+    Zip.Open(ZipPath, zmWrite);
+    Bytes := TEncoding.ASCII.GetBytes('data');
+    Zip.Add(Bytes, 'top/sub/file.txt');
+    SetLength(Bytes, 0);
+    Zip.Add(Bytes, 'top/empty/');
+    Zip.Add(Bytes, 'top/sub/deeper/');
+  finally
+    Zip.Free;
+  end;
+  Vfs := CreateDefaultVfs;
+  Ev := TEvent.Create(nil, True, False, '');
+  try
+    Dst := TPath.Combine(GRoot, 'empty_only');
+    Extract('top/empty', Dst);
+    Assert.IsTrue(Ok, 'an empty folder extracts without error');
+    Assert.IsTrue(TDirectory.Exists(Dst), 'the empty folder is created');
+
+    Dst := TPath.Combine(GRoot, 'empty_tree');
+    Extract('top', Dst);
+    Assert.IsTrue(Ok, 'a folder with empty subfolders extracts');
+    Assert.IsTrue(TFile.Exists(TPath.Combine(Dst, 'sub', 'file.txt')), 'file extracted');
+    Assert.IsTrue(TDirectory.Exists(TPath.Combine(Dst, 'empty')), 'empty subfolder kept');
+    Assert.IsTrue(TDirectory.Exists(TPath.Combine(Dst, 'sub', 'deeper')),
+      'empty nested subfolder kept');
+  finally
+    Ev.Free;
+  end;
 end;
 
 procedure TestMoveMergesIntoExistingFolder;
@@ -1058,6 +1114,11 @@ end;
 procedure TTestCopySkipMerge.TestFolderExtractSkipsEntriesLeavingTheDestination;
 begin
   TestCopySkipMerge.TestFolderExtractSkipsEntriesLeavingTheDestination;
+end;
+
+procedure TTestCopySkipMerge.TestFolderExtractCreatesEmptyFolders;
+begin
+  TestCopySkipMerge.TestFolderExtractCreatesEmptyFolders;
 end;
 
 procedure TTestCopySkipMerge.TestSkipNestedDirAlreadyExists;
