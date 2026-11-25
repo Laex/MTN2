@@ -8,7 +8,7 @@ interface
 uses
   System.SysUtils, System.Classes, System.UITypes,
   uDialogHost, uDialogTypes, uDialogBuilders, uDualPanelUiTypes, uTopMenuBar, uCommandPalette, uHelpContext,
-  uDualPanelHistoryDialogs, uKeymap;
+  uDualPanelHistoryDialogs, uKeymap, uSettingsPages;
 
 type
   TPaletteMenuGetter = reference to function: TTopMenuController;
@@ -20,6 +20,10 @@ type
     const APluginCommand: string): Boolean;
   /// <summary>Runs a panel action that has no menu item, as its key would.</summary>
   TPaletteRunAction = reference to procedure(AAction: TKeymapAction);
+  /// <summary>The fields of the settings window, listed in the palette.</summary>
+  TPaletteSettingFields = reference to function: TArray<TSettingField>;
+  /// <summary>Opens the settings window on the field AFieldId.</summary>
+  TPaletteOpenSetting = reference to procedure(const AFieldId: string);
 
   TCommandPaletteDialogController = class
   private
@@ -32,6 +36,8 @@ type
     FGetMenu: TPaletteMenuGetter;
     FOnAssignKey: TPaletteAssignKey;
     FOnRunAction: TPaletteRunAction;
+    FOnSettingFields: TPaletteSettingFields;
+    FOnOpenSetting: TPaletteOpenSetting;
     FAll: TArray<TPaletteEntry>;
     /// <summary>The search text and the command the palette had when it was
     /// left for the key list; Resume restores them.</summary>
@@ -66,6 +72,10 @@ type
     property OnAssignKey: TPaletteAssignKey read FOnAssignKey write FOnAssignKey;
     /// <summary>Without it the palette lists menu commands only.</summary>
     property OnRunAction: TPaletteRunAction read FOnRunAction write FOnRunAction;
+    /// <summary>With both set, the settings are listed and open on their field.</summary>
+    property OnSettingFields: TPaletteSettingFields read FOnSettingFields
+      write FOnSettingFields;
+    property OnOpenSetting: TPaletteOpenSetting read FOnOpenSetting write FOnOpenSetting;
   end;
 
 implementation
@@ -117,6 +127,8 @@ begin
   FAll := BuildPaletteEntries(Menu);
   if Assigned(FOnRunAction) then
     AppendKeymapOnlyEntries(Menu, KeymapActionCaption, FAll);
+  if Assigned(FOnSettingFields) and Assigned(FOnOpenSetting) then
+    AppendSettingEntries(FOnSettingFields(), FAll);
   FQuery := AQuery;
   // The line under the list follows the selected item, keyboard or mouse.
   FDialog.OnListSelected :=
@@ -271,6 +283,15 @@ begin
   FQuery := '';
   if not Accepted then
     Exit;
+  if Entry.SettingId <> '' then
+  begin
+    if Assigned(FOnOpenSetting) then
+    begin
+      PaletteNoteRun(Entry.Key);
+      FOnOpenSetting(Entry.SettingId);
+    end;
+    Exit;
+  end;
   if Entry.Action <> kaNone then
   begin
     if Assigned(FOnRunAction) then

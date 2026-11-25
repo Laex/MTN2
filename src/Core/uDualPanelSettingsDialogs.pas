@@ -105,7 +105,7 @@ type
     procedure ReadDisplayFields(var ADisp: TDisplaySettings);
     procedure ReadInterfaceFields(var ADisp: TDisplaySettings);
     procedure ReadConsoleFields;
-    procedure OpenSettings(AStart: TSettingsStart);
+    procedure OpenSettings(AStart: TSettingsStart; const AFocusId: string = '');
     procedure ApplySettingsQuery;
   public
     constructor Create(ADialog: TDialogHost; const AOnCommand: TDialogCommandEvent;
@@ -129,6 +129,10 @@ type
     procedure OpenInterface;
     procedure OpenExternalTools;
     procedure OpenConsoleOptions;
+    /// <summary>The fields of the settings window, for the command palette.</summary>
+    function SettingFields: TArray<TSettingField>;
+    /// <summary>Opens the settings window with the focus on the field AFieldId.</summary>
+    procedure OpenSettingField(const AFieldId: string);
     procedure OpenMarkdownColors;
     procedure OpenTerminalProfiles;
     procedure OpenConsoleProfiles;
@@ -477,7 +481,8 @@ begin
     BackgroundShowAt(FDialog.GetListSelectedIndex('bg_show'));
 end;
 
-procedure TSettingsDialogController.OpenSettings(AStart: TSettingsStart);
+procedure TSettingsDialogController.OpenSettings(AStart: TSettingsStart;
+  const AFocusId: string);
 var
   Cur: TDisplaySettings;
   Display, Iface: TDialogDeclaration;
@@ -522,6 +527,8 @@ begin
   if Start >= 0 then
     FDialog.SetTabItems(cSettingsStripId, FSettingsPages.Captions,
       FSettingsPages.Pages, Start);
+  if AFocusId <> '' then
+    FDialog.FocusControlById(AFocusId);
   Notify;
 end;
 
@@ -1150,6 +1157,24 @@ begin
   FDialog.Open(BuildExternalToolsDialog(Tools.ViewerCommand, Tools.EditorCommand),
     FOnCommand);
   Notify;
+end;
+
+function TSettingsDialogController.SettingFields: TArray<TSettingField>;
+var
+  Display, Iface, Merged: TDialogDeclaration;
+  Pages: TSettingsPages;
+begin
+  RequireDialogResource(cResDialogDisplay, Display);
+  RequireDialogResource(cResDialogInterface, Iface);
+  if not GFontSettingsApply then
+    RemoveFontControls(Display);
+  Merged := MergeSettingsPages([Display, Iface], [], '', Pages);
+  Result := SettingsFields(Merged, Pages);
+end;
+
+procedure TSettingsDialogController.OpenSettingField(const AFieldId: string);
+begin
+  OpenSettings(ssDisplay, AFieldId);
 end;
 
 procedure TSettingsDialogController.OpenConsoleOptions;

@@ -12,7 +12,7 @@ unit uCommandPalette;
 interface
 
 uses
-  System.SysUtils, System.Generics.Collections, uTopMenuBar, uKeymap;
+  System.SysUtils, System.Generics.Collections, uTopMenuBar, uKeymap, uSettingsPages;
 
 type
   TPaletteEntry = record
@@ -30,6 +30,9 @@ type
     /// <summary>The panel action of a command that has no menu item (its keys
     /// are the only way to it); kaNone for a menu command.</summary>
     Action: TKeymapAction;
+    /// <summary>Id of the field of the settings window a settings entry opens; empty
+    /// for a command.</summary>
+    SettingId: string;
   end;
 
   /// <summary>The caption of a keymap action in the current language.</summary>
@@ -43,6 +46,11 @@ const
 /// keys the menu never mentions and shows their shortcuts.</summary>
 procedure AppendKeymapOnlyEntries(AMenu: TTopMenuController;
   const ACaption: TPaletteActionCaption; var AEntries: TArray<TPaletteEntry>);
+
+/// <summary>Adds one entry per field of the settings window after the commands, so
+/// the palette finds a setting by its caption, its section or its description.</summary>
+procedure AppendSettingEntries(const AFields: TArray<TSettingField>;
+  var AEntries: TArray<TPaletteEntry>);
 
 /// <summary>The commands of AMenu that can run now, in menu order. Their search
 /// words come from menu.json, from the locale file and from the user's
@@ -294,6 +302,34 @@ begin
       E.Key := 'key:' + KeymapActionDisplayName(A);
       E.Aliases := T('menu.alias.' + E.Key, '');
       E.Description := T('menu.hint.' + E.Key, '');
+      List.Add(E);
+    end;
+    AEntries := List.ToArray;
+  finally
+    List.Free;
+  end;
+end;
+
+procedure AppendSettingEntries(const AFields: TArray<TSettingField>;
+  var AEntries: TArray<TPaletteEntry>);
+var
+  List: TList<TPaletteEntry>;
+  E: TPaletteEntry;
+  F: TSettingField;
+begin
+  List := TList<TPaletteEntry>.Create;
+  try
+    List.AddRange(AEntries);
+    for F in AFields do
+    begin
+      E := Default(TPaletteEntry);
+      E.Action := kaNone;
+      E.SettingId := F.Id;
+      E.Title := F.Caption;
+      E.Category := F.Section;
+      E.Key := 'setting:' + F.Id;
+      E.Aliases := T('palette.settingsAlias', 'settings,options');
+      E.Description := F.Hint;
       List.Add(E);
     end;
     AEntries := List.ToArray;

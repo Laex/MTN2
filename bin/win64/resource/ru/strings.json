@@ -1263,6 +1263,7 @@
     "tip.groupby": "Совет: {GroupBy} группирует строки по типу или дате",
     "tip.workspace": "Совет: {NewWorkspace} открывает отдельное рабочее пространство со своими панелями и терминалами",
     "palette.keysCategory": "Клавиши",
+    "palette.settingsAlias": "настройки,параметры,опции",
     "toast.refreshed": "Панель обновлена",
     "toast.restored": "Восстановлено из корзины: «%s»",
     "toast.selectionUnchanged": "Выделение не изменилось (маска «%s»)",

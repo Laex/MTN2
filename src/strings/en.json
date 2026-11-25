@@ -1266,6 +1266,7 @@
     "tip.groupby": "Tip: {GroupBy} groups the rows by type or date",
     "tip.workspace": "Tip: {NewWorkspace} opens a separate workspace with its own panels and terminals",
     "palette.keysCategory": "Keys",
+    "palette.settingsAlias": "settings,options",
     "toast.refreshed": "Panel refreshed",
     "toast.restored": "\"%s\" restored from the Recycle Bin",
     "toast.selectionUnchanged": "Selection unchanged (mask \"%s\")",

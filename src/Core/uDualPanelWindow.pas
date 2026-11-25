@@ -27,7 +27,7 @@ uses
   uDualPanelSshConnections, uSshConnections, uDualPanelUserAssociations,
   uOpenWith,
   uUserMenu, uUserMenuController, uDualPanelUserMenu,
-  uDualPanelHistoryDialogs, uDualPanelPaletteDialog, uDualPanelSettingsDialogs, uDualPanelThemeDialogs, uDualPanelFileDialogs,
+  uDualPanelHistoryDialogs, uDualPanelPaletteDialog, uDualPanelSettingsDialogs, uSettingsPages, uDualPanelThemeDialogs, uDualPanelFileDialogs,
   uDualPanelJobDialogs, uDualPanelFindDialogs, uDiffViewer, uDualPanelStatus, uStatusSegments, uElevatedVfs, uElevation,
   uDualPanelInput, uDualPanelTopMenu, uDualPanelClick, uDualPanelDrag, uPanelUriLabels,
   uMessageBus, uDisplaySettings, uConPty, uNotice, uToast, uHiddenDialogs, uPlatformDrives,
@@ -3873,6 +3873,16 @@ begin
       Key := 0;
       KeyChar := #0;
       HandleKeymapActionPrimary(AAction, Key, KeyChar);
+    end;
+  FPalette.OnSettingFields :=
+    function: TArray<TSettingField>
+    begin
+      Result := FSettings.SettingFields;
+    end;
+  FPalette.OnOpenSetting :=
+    procedure(const AFieldId: string)
+    begin
+      FSettings.OpenSettingField(AFieldId);
     end;
   FSettings := TSettingsDialogController.Create(FDialog,
     DialogCommand, HostSetDialogKind, NotifyChanged, CanStartOperation,

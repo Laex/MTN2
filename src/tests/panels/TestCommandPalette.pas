@@ -39,6 +39,7 @@ type
     [Test] procedure TestKeysWithoutMenuItemAreListedWithTheirShortcut;
     [Test] procedure TestKeyOnlyCommandRunsItsAction;
     [Test] procedure TestShortcutColumnIsSearched;
+    [Test] procedure TestSettingsAreListedAndFoundByCaptionSectionAndWord;
     [Test] procedure TestPluginCommandWithoutMenuItemIsListedAndRuns;
     [Test] procedure TestEveryMenuCommandAndBoundPanelOrGlobalKeyIsListed;
   end;
@@ -49,7 +50,7 @@ uses
   System.SysUtils, System.Classes, System.IOUtils, System.UITypes, System.TypInfo,
   uStrings, uKeymap, uCharWidth, uTopMenuBar, uCommandPalette,
   uDialogHost, uDialogTypes, uDialogBuilders, uDialogRenderer, uDualPanelUiTypes, uDualPanelPaletteDialog,
-  uDualPanelKeymapDialog, uCommandRegistry;
+  uDualPanelKeymapDialog, uCommandRegistry, uSettingsPages;
 
 const
   cMenuJson =
@@ -903,6 +904,37 @@ begin
     D.Free;
     M.Free;
   end;
+end;
+
+procedure TTestCommandPalette.TestSettingsAreListedAndFoundByCaptionSectionAndWord;
+var
+  Fields: TArray<TSettingField>;
+  Entries: TArray<TPaletteEntry>;
+  Rank: TArray<Integer>;
+begin
+  SetLength(Fields, 2);
+  Fields[0].Id := 'editor_autowrap';
+  Fields[0].Caption := 'Auto-wrap long lines while typing';
+  Fields[0].Hint := 'Breaks the line at the last space.';
+  Fields[0].Section := 'Editor';
+  Fields[1].Id := 'vim_keys';
+  Fields[1].Caption := 'Vim keys on the panel';
+  Fields[1].Hint := 'Vim-style keys.';
+  Fields[1].Section := 'Keyboard';
+  AppendSettingEntries(Fields, Entries);
+  Assert.AreEqual<Integer>(2, Length(Entries), 'one entry per field');
+  Assert.AreEqual('setting:editor_autowrap', Entries[0].Key, 'stable key');
+  Assert.AreEqual('editor_autowrap', Entries[0].SettingId, 'field to open');
+  Assert.AreEqual('Editor', Entries[0].Category, 'the section is the category');
+  Assert.AreEqual('Breaks the line at the last space.', PaletteContextText(Entries, 0), 'hint under the list');
+  Rank := PaletteRank(Entries, 'wrap');
+  Assert.AreEqual<Integer>(1, Length(Rank), 'found by caption');
+  Assert.AreEqual<Integer>(0, Rank[0], 'the right entry');
+  Rank := PaletteRank(Entries, 'keyboard');
+  Assert.AreEqual<Integer>(1, Length(Rank), 'found by section');
+  Rank := PaletteRank(Entries, 'settings vim');
+  Assert.AreEqual<Integer>(1, Length(Rank), 'found by the word settings');
+  Assert.AreEqual<Integer>(1, Rank[0], 'the right entry for the word');
 end;
 
 procedure TTestCommandPalette.TestShortcutColumnIsSearched;

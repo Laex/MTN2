@@ -1265,6 +1265,7 @@
     "tip.groupby": "Tipp: {GroupBy} gruppiert die Zeilen nach Typ oder Datum",
     "tip.workspace": "Tipp: {NewWorkspace} öffnet einen eigenen Arbeitsbereich mit eigenen Panels und Terminals",
     "palette.keysCategory": "Tasten",
+    "palette.settingsAlias": "einstellungen,optionen",
     "toast.refreshed": "Panel aktualisiert",
     "toast.restored": "\"%s\" aus dem Papierkorb wiederhergestellt",
     "toast.selectionUnchanged": "Auswahl unverändert (Maske \"%s\")",

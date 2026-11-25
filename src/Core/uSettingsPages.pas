@@ -35,6 +35,23 @@ function MergeSettingsPages(const ASources: TArray<TDialogDeclaration>;
   const ASingleCaptions: TArray<string>; const ATitle: string;
   out APages: TSettingsPages): TDialogDeclaration;
 
+type
+  /// <summary>A field of the settings window as the command palette lists it.</summary>
+  TSettingField = record
+    Id: string;
+    /// <summary>Caption of the field without mnemonic marks.</summary>
+    Caption: string;
+    Hint: string;
+    /// <summary>Caption of the section the field is on.</summary>
+    Section: string;
+  end;
+
+/// <summary>The check boxes, inputs, drop-downs and lists of ADecl that have an
+/// id, a caption (own text, the label on the same row, or the title of the frame
+/// around it) and a section in APages.</summary>
+function SettingsFields(const ADecl: TDialogDeclaration;
+  const APages: TSettingsPages): TArray<TSettingField>;
+
 /// <summary>The sections whose caption or whose page's captions contain AQuery
 /// (case-insensitive, mnemonic marks ignored). An empty query keeps all of them.</summary>
 function SettingsSectionsMatching(const ADecl: TDialogDeclaration;
@@ -236,6 +253,63 @@ begin
     end;
   end;
   Result := Length(AMatches.Captions) > 0;
+end;
+
+function FieldCaption(const ADecl: TDialogDeclaration; AIndex: Integer): string;
+var
+  C, L: TDialogControl;
+  I: Integer;
+begin
+  C := ADecl.Controls[AIndex];
+  if C.Kind = dckCheckbox then
+    Exit(StringReplace(C.Text, '&', '', [rfReplaceAll]));
+  for I := 0 to High(ADecl.Controls) do
+  begin
+    L := ADecl.Controls[I];
+    if (L.Kind = dckLabel) and not L.GroupFrame and (L.TabPage = C.TabPage) and
+       (L.Row = C.Row) and (L.Col < C.Col) and (L.Text <> '') then
+      Exit(StringReplace(Trim(L.Text), '&', '', [rfReplaceAll]).TrimRight([':']));
+  end;
+  for I := 0 to High(ADecl.Controls) do
+  begin
+    L := ADecl.Controls[I];
+    if (L.Kind = dckLabel) and L.GroupFrame and (L.TabPage = C.TabPage) and
+       (C.Row > L.Row) and (C.Row < L.Row + L.BoxH) then
+      Exit(StringReplace(L.Text, '&', '', [rfReplaceAll]));
+  end;
+  Result := '';
+end;
+
+function SettingsFields(const ADecl: TDialogDeclaration;
+  const APages: TSettingsPages): TArray<TSettingField>;
+var
+  List: TList<TSettingField>;
+  F: TSettingField;
+  C: TDialogControl;
+  I, S: Integer;
+begin
+  List := TList<TSettingField>.Create;
+  try
+    for I := 0 to High(ADecl.Controls) do
+    begin
+      C := ADecl.Controls[I];
+      if (C.Id = '') or (C.TabPage = 0) or
+         not (C.Kind in [dckCheckbox, dckInput, dckDropDown, dckList]) then
+        Continue;
+      F.Section := '';
+      for S := 0 to High(APages.Pages) do
+        if APages.Pages[S] = C.TabPage then
+          F.Section := APages.Captions[S];
+      F.Id := C.Id;
+      F.Caption := FieldCaption(ADecl, I);
+      F.Hint := C.Hint;
+      if (F.Section <> '') and (F.Caption <> '') then
+        List.Add(F);
+    end;
+    Result := List.ToArray;
+  finally
+    List.Free;
+  end;
 end;
 
 end.

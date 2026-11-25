@@ -21,6 +21,7 @@ type
     [Test] procedure TestDividerJoinsFrameAndRuleOnDoubleFrame;
     [Test] procedure TestDividerJoinsFrameAndRuleOnAsciiFrame;
     [Test] procedure TestEveryFieldHasAHint;
+    [Test] procedure TestFieldsCarryCaptionHintAndSection;
     [Test] procedure TestHintAreaShowsTheFocusedFieldHint;
     [Test] procedure TestHintSurvivesJsonRoundTrip;
     [Test] procedure TestEmptyQueryKeepsEverySection;
@@ -218,6 +219,41 @@ begin
       if Decl.Controls[I].Hint = '' then
         Bad := Bad + ' ' + Decl.Controls[I].Id;
   Assert.AreEqual('', Bad, 'fields without a hint');
+end;
+
+procedure TTestSettingsPages.TestFieldsCarryCaptionHintAndSection;
+
+  function Find(const AFields: TArray<TSettingField>; const AId: string): TSettingField;
+  var
+    F: TSettingField;
+  begin
+    for F in AFields do
+      if F.Id = AId then
+        Exit(F);
+    Result := Default(TSettingField);
+  end;
+
+var
+  Pages: TSettingsPages;
+  Decl: TDialogDeclaration;
+  Fields: TArray<TSettingField>;
+  F: TSettingField;
+begin
+  Decl := Merge(Pages);
+  Fields := SettingsFields(Decl, Pages);
+  F := Find(Fields, 'editor_autowrap');
+  Assert.AreEqual('Editor', F.Section, 'section of a check box');
+  Assert.AreEqual('Auto-wrap long lines while typing', F.Caption, 'caption of a check box');
+  Assert.IsTrue(F.Hint <> '', 'hint carried');
+  F := Find(Fields, 'reflow_width');
+  Assert.AreEqual('Wrap width', F.Caption, 'caption of an input is the label on its row');
+  F := Find(Fields, 'scrollback');
+  Assert.AreEqual('Console', F.Section, 'section of a drop-down');
+  Assert.AreEqual('Scrollback', F.Caption, 'caption of a drop-down');
+  F := Find(Fields, 'ok');
+  Assert.AreEqual('', F.Id, 'buttons are not fields');
+  for F in Fields do
+    Assert.IsTrue((F.Caption <> '') and (F.Section <> '') and (F.Hint <> ''), 'complete: ' + F.Id);
 end;
 
 procedure TTestSettingsPages.TestHintAreaShowsTheFocusedFieldHint;

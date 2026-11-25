@@ -1264,6 +1264,7 @@
     "tip.groupby": "提示: {GroupBy} 按类型或日期给行分组",
     "tip.workspace": "提示: {NewWorkspace} 打开独立的工作区,有自己的面板和终端",
     "palette.keysCategory": "按键",
+    "palette.settingsAlias": "设置,选项,配置",
     "toast.refreshed": "面板已刷新",
     "toast.restored": "\"%s\"已从回收站还原",
     "toast.selectionUnchanged": "选择未变化(掩码\"%s\")",
