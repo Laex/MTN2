@@ -2426,6 +2426,9 @@ begin
     Line := C.Items[Idx]
   else
     Line := '';
+  // The arrow takes the last cell; text that does not fit before it ends in an ellipsis.
+  if (R.Width >= 2) and (Length(Line) > R.Width - 1) then
+    Line := Copy(Line, 1, TextFitChars(Line, R.Width - 2)) + WideChar($2026);
   Line := PadGridLine(Line, Max(R.Width, 1));
   // Focused / open: black-on-cyan like Sort menu cursor; else cyan field.
   if (AIndex = FFocusIndex) or (FDropOpenIndex = AIndex) then

@@ -21,13 +21,15 @@ type
     [Test] procedure TestFittingDialogUnchanged;
     [Test] procedure TestNoResourceOverflows;
     [Test] procedure TestConsoleProfileCheckboxesFit;
+    [Test] procedure TestLongDropDownItemEndsInEllipsis;
   end;
 
 implementation
 
 uses
   System.SysUtils, System.Classes, System.IOUtils,
-  uDialogTypes, uDialogBuilders, uDialogJson, uDialogResources, uDialogLocaleLayout, uDialogHost, uStrings;
+  uDialogTypes, uDialogBuilders, uDialogJson, uDialogResources, uDialogLocaleLayout, uDialogHost, uStrings,
+  System.UITypes, uTerminalTypes;
 
 function Ctl(const AKind: TDialogControlKind; const AId, AText: string;
   ACol, ARow, AW: Integer): TDialogControl;
@@ -181,6 +183,36 @@ begin
       end;
   finally
     SetLocale('');
+  end;
+end;
+
+procedure TTestDialogCaptionFit.TestLongDropDownItemEndsInEllipsis;
+const
+  cDecl = '{"type":"dialog","version":"2.0","title":"t","width":30,"height":6,"children":[' +
+    '{"type":"dropdown","id":"d","selected":0,"items":["abcdefghijklmnopqrstuvwxyz","ab"],"col":1,"row":1,"width":12,"height":1}]}';
+var
+  Host: TDialogHost;
+  Grid: TTerminalGrid;
+  X, Y: Integer;
+  Text: string;
+begin
+  Host := TDialogHost.Create(nil);
+  try
+    Assert.IsTrue(Host.OpenJson(cDecl, nil), 'opens');
+    AllocTerminalGrid(Grid, 60, 12);
+    ClearTerminalGrid(Grid, TAlphaColorRec.White, TAlphaColorRec.Navy, ' ');
+    Host.Draw(Grid, 60, 12);
+    Text := '';
+    for Y := 0 to High(Grid) do
+    begin
+      for X := 0 to High(Grid[Y]) do
+        Text := Text + Grid[Y][X].CharValue;
+      Text := Text + #10;
+    end;
+    Assert.IsTrue(Pos('abcdefghij' + WideChar($2026), Text) > 0, 'cut text ends in an ellipsis before the arrow');
+    Assert.IsTrue(Pos('abcdefghijk', Text) = 0, 'no more than fits');
+  finally
+    Host.Free;
   end;
 end;
 
