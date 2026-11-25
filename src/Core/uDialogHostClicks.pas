@@ -370,12 +370,15 @@ begin
 end;
 
 procedure DialogHandleTabClick(const Ops: TDialogClickOps; AIndex: Integer;
-  const R: TRectI; const C: TDialogControl; ALocalCol: Integer);
+  const R: TRectI; const C: TDialogControl; ALocalCol, ALocalRow: Integer);
 var
   Hit: Integer;
 begin
   Ops.SetFocusIndex(AIndex);
-  Hit := DialogTabAtOffset(C, ALocalCol - R.Left);
+  if C.Vertical then
+    Hit := DialogTabAtRow(C, ALocalRow - R.Top)
+  else
+    Hit := DialogTabAtOffset(C, ALocalCol - R.Left);
   if Hit >= 0 then
     Ops.SelectTab(AIndex, Hit)
   else
@@ -433,7 +436,7 @@ begin
         end;
       dckTab:
         begin
-          DialogHandleTabClick(Ops, I, R, C, ALocalCol);
+          DialogHandleTabClick(Ops, I, R, C, ALocalCol, ALocalRow);
           Exit(True);
         end;
       dckDatePicker:

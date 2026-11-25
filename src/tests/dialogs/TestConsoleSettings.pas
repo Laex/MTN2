@@ -1,7 +1,7 @@
 unit TestConsoleSettings;
 
 { Console options: scrollback choices, multi-line detection, trimming of
-  trailing spaces, and the Options > Console dialog. }
+  trailing spaces, and the Console page of the Interface dialog. }
 
 interface
 
@@ -17,7 +17,7 @@ type
     [Test] procedure TestTrimTrailingSpaces;
     [Test] procedure TestLineBreaksToEnter;
     [Test] procedure TestBackgroundShowChoices;
-    [Test] procedure TestConsoleOptionsDialog;
+    [Test] procedure TestConsolePageDrawn;
   end;
 
 implementation
@@ -25,7 +25,8 @@ implementation
 uses
   System.SysUtils, System.UITypes,
   uTerminalTypes, uThemeTypes, uThemeDrawing, uStrings,
-  uConsoleSettings, uDialogTypes, uDialogBuilders, uDialogHost, uThemeRegistry;
+  uConsoleSettings, uDialogTypes, uDialogBuilders, uDialogHost, uThemeRegistry,
+  uDialogResources, uDialogTabs;
 
 procedure TTestConsoleSettings.TestScrollbackChoices;
 begin
@@ -98,9 +99,10 @@ begin
   Assert.AreEqual(#13#13, LineBreaksToEnter(#10#10), 'blank lines stay');
 end;
 
-procedure TTestConsoleSettings.TestConsoleOptionsDialog;
+procedure TTestConsoleSettings.TestConsolePageDrawn;
 var
   Host: TDialogHost;
+  Decl: TDialogDeclaration;
   Grid: TTerminalGrid;
   Text: string;
   X, Y: Integer;
@@ -108,7 +110,12 @@ begin
   SetLocale('');
   Host := TDialogHost.Create(CreateThemeByName('NDN'));
   try
-    Host.Open(BuildConsoleOptionsDialog(3, True, False, True, True, 4), nil);
+    Decl := BuildInterfaceDialog(['English'], 0, True);
+    DialogSetListItems(Decl, 'scrollback', ScrollbackItems, 3);
+    DialogSetCheckbox(Decl, 'confirm_paste', True);
+    DialogSetListItems(Decl, 'bg_show', BackgroundShowItems, 4);
+    Decl.Controls[DialogTabStripIndex(Decl.Controls)].SelectedIndex := 5;
+    Host.Open(Decl, nil);
     AllocTerminalGrid(Grid, 100, 30);
     ClearTerminalGrid(Grid, TAlphaColorRec.White, TAlphaColorRec.Navy, ' ');
     Host.Draw(Grid, 100, 30);
@@ -125,7 +132,7 @@ begin
     Assert.IsTrue(Pos('on copy', Text) > 0, 'copy trimming drawn');
     Assert.IsTrue(Pos('on paste', Text) > 0, 'paste trimming drawn');
     Assert.IsTrue(Pos('return to the panels', Text) > 0, 'return to the panels drawn');
-    Assert.IsTrue(Pos('Background run:', Text) > 0, 'background time label drawn');
+    Assert.IsTrue(Pos('Background', Text) > 0, 'background time label drawn');
     Assert.IsTrue(Pos('5 s', Text) > 0, 'saved time shown');
   finally
     Host.Free;

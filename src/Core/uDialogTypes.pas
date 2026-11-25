@@ -92,6 +92,23 @@ type
     /// <summary>dckLabel: drawn in bold cyan (dark blue on a light dialog), for
     /// paths and other values that must stand out from the text (JSON "marked": true).</summary>
     Marked: Boolean;
+    /// <summary>dckLabel: a text line drawn like an input field (full width, input
+    /// colors) for text the program edits itself. FieldCaretId names the control
+    /// that owns the keyboard: the caret shows while that control has focus.</summary>
+    Field: Boolean;
+    /// <summary>dckLabel: a one-cell-wide vertical rule that joins the frame at its
+    /// top and a full-width rule at its bottom.</summary>
+    VRule: Boolean;
+    /// <summary>Any control: the description a hint area shows while the control
+    /// has focus (JSON "hint"; translated as "<id>_hint").</summary>
+    Hint: string;
+    /// <summary>dckLabel: shows the Hint of the focused control, wrapped to the
+    /// label's box (JSON "hint_area": true).</summary>
+    HintArea: Boolean;
+    /// <summary>dckLabel: a single-line frame around the box, Text as its title
+    /// (JSON "group": true); the controls inside are separate and sit within the box.</summary>
+    GroupFrame: Boolean;
+    FieldCaretId: string;
     /// <summary>dckList: a single-line frame is drawn around the list, one cell
     /// outside its box (JSON "frame": true); the author leaves those cells free.</summary>
     Framed: Boolean;
@@ -142,6 +159,13 @@ type
     /// control sits on, 1-based (JSON "tab": N, 0-based). 0 = shown on every
     /// page. A control of another page has no box and no focus.</summary>
     TabPage: Integer;
+    /// <summary>dckTab: the captions stand in a column, one per row, and the
+    /// selected one is highlighted over the full width (JSON "vertical": true).</summary>
+    Vertical: Boolean;
+    /// <summary>dckTab: the page each caption shows, 1-based, same order as Items.
+    /// Empty = caption N shows page N + 1. A search narrows Items while the
+    /// controls keep their pages.</summary>
+    TabPages: TArray<Integer>;
   end;
 
   TDialogControls = TArray<TDialogControl>;
@@ -657,6 +681,7 @@ function MakeTabs(const AId: string; const AItems: TArray<string>;
 begin
   Result := MakeDropDown(AId, AItems, ASelectedIndex);
   Result.Kind := dckTab;
+  Result.Vertical := False;
 end;
 
 end.

@@ -8,7 +8,8 @@ interface
 uses
   System.SysUtils, System.Classes, System.UITypes,
   uDialogHost, uDialogTypes, uDialogBuilders, uDualPanelUiTypes, uDualPanelTypes, uPanelColumns, uPluginColumns,
-  uShellProfiles, uEnvProfiles, uScreenSaver, uDisplaySettings, uStrings, uExternalTools, uMarkdownColors, uThemeTypes;
+  uShellProfiles, uEnvProfiles, uScreenSaver, uDisplaySettings, uStrings, uExternalTools, uMarkdownColors, uThemeTypes,
+  uSettingsPages;
 
 type
   TSettingsKindSetter = reference to procedure(AKind: THostDialogKind);
@@ -23,6 +24,8 @@ type
   TSettingsShowStub = reference to procedure(const ATitle, ADetail: string);
   TSettingsGetDisplay = reference to function: TDisplaySettings;
   TSettingsApplyDisplay = reference to procedure(const ASettings: TDisplaySettings);
+  /// <summary>Section the Settings window opens on.</summary>
+  TSettingsStart = (ssDisplay, ssInterface, ssConsole);
 
   TSettingsDialogController = class
   private
@@ -79,6 +82,11 @@ type
     FOpenFontSize: Single;
     FOpenDisplay: TDisplaySettings;
     FOpenFontSizeIdx: Integer;
+    /// <summary>Settings window: the merged declaration, the sections of the
+    /// full list and the search text that narrows them.</summary>
+    FSettingsDecl: TDialogDeclaration;
+    FSettingsPages: TSettingsPages;
+    FSettingsQuery: string;
     procedure SetKind(AKind: THostDialogKind);
     procedure Notify;
     procedure ShowMarkdownColors(const ASet: TMdColorSet; const AStatus: string;
@@ -92,6 +100,13 @@ type
     procedure ShowTerminalProfiles(const ASelectId: string);
     procedure ShowTerminalEnvChoice(const AShellId: string);
     procedure LaunchTerminalProfile(AIndex: Integer);
+    function BuildDisplaySource(const ACur: TDisplaySettings): TDialogDeclaration;
+    function BuildInterfaceSource(const ACur: TDisplaySettings): TDialogDeclaration;
+    procedure ReadDisplayFields(var ADisp: TDisplaySettings);
+    procedure ReadInterfaceFields(var ADisp: TDisplaySettings);
+    procedure ReadConsoleFields;
+    procedure OpenSettings(AStart: TSettingsStart);
+    procedure ApplySettingsQuery;
   public
     constructor Create(ADialog: TDialogHost; const AOnCommand: TDialogCommandEvent;
       const AOnSetKind: TSettingsKindSetter; const AOnNotify: TProc;
@@ -150,8 +165,11 @@ type
     procedure DispatchMaskGroupsCommand(const AControlId: string);
     procedure DispatchDisplayCommand(const AControlId: string);
     procedure DispatchInterfaceCommand(const AControlId: string);
+    /// <summary>Type-to-search on the section list of the settings window:
+    /// printable keys and Backspace edit the search text.</summary>
+    function HandleSettingsFilter(var AKey: Word; AShift: TShiftState;
+      var AKeyChar: Char): Boolean;
     procedure DispatchExternalToolsCommand(const AControlId: string);
-    procedure DispatchConsoleOptionsCommand(const AControlId: string);
     procedure DispatchMarkdownColorsCommand(const AControlId: string);
     procedure DispatchMarkdownImportCommand(const AControlId: string);
     procedure DispatchMarkdownPickerCommand(const AControlId: string);
@@ -173,12 +191,12 @@ implementation
 
 uses
   System.Math, uDialogResources, uColorCoding, uColorPickerControl, uConsoleSettings,
-  uShellProfileOptions, uColumnSets, uMaskGroups;
+  uShellProfileOptions, uColumnSets, uMaskGroups, uDialogTabs, uKeyChord;
 
 // Drops the controls that only matter when the host draws with a font of its own.
 procedure RemoveFontControls(var ADecl: TDialogDeclaration);
 const
-  cIds: array[0..15] of string = ('lbl_font', 'fonts', 'lbl_size', 'font_size',
+  cIds: array[0..16] of string = ('grp_text', 'lbl_font', 'fonts', 'lbl_size', 'font_size',
     'lbl_zoom', 'zoom', 'line_spacing', 'snap_font_size', 'lbl_text_contrast',
     'text_contrast', 'lbl_cell_w', 'cell_w', 'lbl_cell_h', 'cell_h',
     'lbl_font_fallback', 'font_fallback');
@@ -363,109 +381,199 @@ begin
     ShowMaskGroups(Names[Idx], Names[Idx], MaskGroupMasks(Names[Idx]));
 end;
 
-procedure TSettingsDialogController.OpenDisplay;
+function TSettingsDialogController.BuildDisplaySource(
+  const ACur: TDisplaySettings): TDialogDeclaration;
 var
-  Cur: TDisplaySettings;
-  Decl: TDialogDeclaration;
   Fonts: TArray<string>;
   ResolvedName, Note: string;
   FontIdx: Integer;
 begin
-  if Assigned(FOnCanStart) and not FOnCanStart() then
-    Exit;
-  if Assigned(FOnPrepareUi) then
-    FOnPrepareUi();
-
-  if Assigned(FOnGetDisplay) then
-    Cur := FOnGetDisplay()
-  else
-    Cur := DefaultDisplaySettings;
-  ResolvedName := ResolveMonospaceFontFamily(Cur.FontName);
+  ResolvedName := ResolveMonospaceFontFamily(ACur.FontName);
   Fonts := EnumerateMonospaceFontFamilies;
   EnsureFontInList(Fonts, ResolvedName);
   FontIdx := IndexOfFontName(Fonts, ResolvedName);
   Note := '';
-  if (Trim(Cur.FontName) <> '') and not SameText(Cur.FontName, ResolvedName) then
+  if (Trim(ACur.FontName) <> '') and not SameText(ACur.FontName, ResolvedName) then
     Note := Format('Using %s (saved font not found)', [ResolvedName]);
-
-  SetKind(hdkDisplay);
-  FOpenDisplay := Cur;
   if not GFontSettingsApply then
     Note := T('ui.display.terminalFont',
       'The terminal sets the font and cell size.');
-  FOpenFontSize := Cur.FontSize;
-  FOpenFontSizeIdx := IndexOfDisplayFontSize(Cur.FontSize);
-  Decl := BuildDisplayDialog(Fonts, FontIdx,
-    FOpenFontSizeIdx, IndexOfDisplayZoom(Cur.Zoom),
-    IndexOfDisplayBlinkMs(Cur.CursorBlinkMs), Cur.CursorBlink,
-    Cur.ShowPanelIcons, Note, Ord(Cur.ShadowStyle), Cur.LineSpacing,
-    Ord(Cur.MarkedRowStyle), Cur.SnapFontSize, ClampTextContrast(Cur.TextContrast),
-    ClampCellExtra(Cur.CellWidthExtra), ClampCellExtra(Cur.CellHeightExtra));
-  DialogSetInputValue(Decl, 'font_fallback', Cur.FallbackFont);
+  FOpenFontSize := ACur.FontSize;
+  FOpenFontSizeIdx := IndexOfDisplayFontSize(ACur.FontSize);
+  Result := BuildDisplayDialog(Fonts, FontIdx,
+    FOpenFontSizeIdx, IndexOfDisplayZoom(ACur.Zoom),
+    IndexOfDisplayBlinkMs(ACur.CursorBlinkMs), ACur.CursorBlink,
+    ACur.ShowPanelIcons, Note, Ord(ACur.ShadowStyle), ACur.LineSpacing,
+    Ord(ACur.MarkedRowStyle), ACur.SnapFontSize, ClampTextContrast(ACur.TextContrast),
+    ClampCellExtra(ACur.CellWidthExtra), ClampCellExtra(ACur.CellHeightExtra));
+  DialogSetInputValue(Result, 'font_fallback', ACur.FallbackFont);
   if not GFontSettingsApply then
-    RemoveFontControls(Decl);
-  DialogSetCheckbox(Decl, 'caret_underline', Cur.CaretUnderline);
-  DialogSetCheckbox(Decl, 'edge_borders', Cur.EdgeBorders);
-  FDialog.Open(Decl, FOnCommand);
-  Notify;
+    RemoveFontControls(Result);
+  DialogSetCheckbox(Result, 'caret_underline', ACur.CaretUnderline);
+  DialogSetCheckbox(Result, 'edge_borders', ACur.EdgeBorders);
 end;
 
-procedure TSettingsDialogController.OpenInterface;
+function TSettingsDialogController.BuildInterfaceSource(
+  const ACur: TDisplaySettings): TDialogDeclaration;
 var
-  Cur: TDisplaySettings;
-  Decl: TDialogDeclaration;
   LanguageNames: TArray<string>;
   LanguageIdx, I: Integer;
+begin
+  FLanguageCodes := DisplayLanguageItems;
+  SetLength(LanguageNames, Length(FLanguageCodes));
+  for I := 0 to High(FLanguageCodes) do
+    LanguageNames[I] := DisplayLanguageName(FLanguageCodes[I]);
+  LanguageIdx := IndexOfFontName(FLanguageCodes, ACur.Language);
+  Result := BuildInterfaceDialog(LanguageNames, LanguageIdx, ACur.ShowNotifications);
+  DialogSetCheckbox(Result, 'key_hints', ACur.ShowKeyHints);
+  DialogSetCheckbox(Result, 'show_title_bar', ACur.ShowTitleBar);
+  DialogSetCheckbox(Result, 'show_menu_bar', ACur.ShowMenuBar);
+  DialogSetCheckbox(Result, 'show_key_bar', ACur.ShowKeyBar);
+  DialogSetCheckbox(Result, 'show_status_line', ACur.ShowStatusLine);
+  DialogSetCheckbox(Result, 'alt_menu', ACur.AltOpensMenu);
+  DialogSetCheckbox(Result, 'file_drag', ACur.FileDrag);
+  DialogSetCheckbox(Result, 'select_folders', ACur.SelectFolders);
+  DialogSetCheckbox(Result, 'pack_same_panel', ACur.PackInSamePanel);
+  DialogSetCheckbox(Result, 'backspace_drive_menu', ACur.BackspaceDriveMenu);
+  DialogSetCheckbox(Result, 'drive_other_folder', ACur.DriveToOtherFolder);
+  DialogSetCheckbox(Result, 'space_selects', ACur.SpaceSelects);
+  DialogSetCheckbox(Result, 'vim_keys', ACur.VimKeys);
+  DialogSetCheckbox(Result, 'keep_panel_focus', ACur.KeepPanelFocus);
+  DialogSetCheckbox(Result, 'sticky_quick_search', ACur.StickyQuickSearch);
+  DialogSetCheckbox(Result, 'quick_search_keep_empty', ACur.QuickSearchKeepEmpty);
+  DialogSetCheckbox(Result, 'quick_search_filter', ACur.QuickSearchFilter);
+  DialogSetCheckbox(Result, 'quick_search_keep_filter', ACur.QuickSearchKeepFilter);
+  DialogSetCheckbox(Result, 'quick_search_fuzzy', ACur.QuickSearchFuzzy);
+  DialogSetCheckbox(Result, 'passive_cursor', ACur.PassiveCursor);
+  DialogSetCheckbox(Result, 'column_separators', ACur.ColumnSeparators);
+  DialogSetCheckbox(Result, 'show_column_headers', ACur.ShowColumnHeaders);
+  DialogSetCheckbox(Result, 'show_sort_letter', ACur.ShowSortLetter);
+  DialogSetCheckbox(Result, 'editor_autoindent', ACur.EditorAutoIndent);
+  DialogSetCheckbox(Result, 'editor_autowrap', ACur.EditorAutoWrap);
+  DialogSetInputValue(Result, 'reflow_width', IntToStr(ACur.EditorReflowWidth));
+  DialogSetCheckbox(Result, 'exact_sizes', ACur.ExactSelectionSize);
+  DialogSetCheckbox(Result, 'dir_slash', ACur.DirSlash);
+  DialogSetCheckbox(Result, 'mark_links', ACur.MarkLinks);
+  DialogSetCheckbox(Result, 'ndn_footer', ACur.NdnFooter);
+  DialogSetListItems(Result, 'scrollback', ScrollbackItems,
+    ScrollbackIndexOf(GConsoleSettings.ScrollbackLines));
+  DialogSetCheckbox(Result, 'confirm_paste', GConsoleSettings.ConfirmMultiLinePaste);
+  DialogSetCheckbox(Result, 'trim_copy', GConsoleSettings.TrimCopiedSpaces);
+  DialogSetCheckbox(Result, 'trim_paste', GConsoleSettings.TrimPastedSpaces);
+  DialogSetCheckbox(Result, 'return_panels', GConsoleSettings.ReturnToPanels);
+  DialogSetListItems(Result, 'bg_show', BackgroundShowItems,
+    BackgroundShowIndexOf(GConsoleSettings.BackgroundShowMs));
+end;
+
+procedure TSettingsDialogController.ReadConsoleFields;
+begin
+  GConsoleSettings.ScrollbackLines :=
+    ScrollbackAt(FDialog.GetListSelectedIndex('scrollback'));
+  GConsoleSettings.ConfirmMultiLinePaste := FDialog.GetCheckbox('confirm_paste');
+  GConsoleSettings.TrimCopiedSpaces := FDialog.GetCheckbox('trim_copy');
+  GConsoleSettings.TrimPastedSpaces := FDialog.GetCheckbox('trim_paste');
+  GConsoleSettings.ReturnToPanels := FDialog.GetCheckbox('return_panels');
+  GConsoleSettings.BackgroundShowMs :=
+    BackgroundShowAt(FDialog.GetListSelectedIndex('bg_show'));
+end;
+
+procedure TSettingsDialogController.OpenSettings(AStart: TSettingsStart);
+var
+  Cur: TDisplaySettings;
+  Display, Iface: TDialogDeclaration;
+  InterfaceStart, Start, I: Integer;
 begin
   if Assigned(FOnCanStart) and not FOnCanStart() then
     Exit;
   if Assigned(FOnPrepareUi) then
     FOnPrepareUi();
-
   if Assigned(FOnGetDisplay) then
     Cur := FOnGetDisplay()
   else
     Cur := DefaultDisplaySettings;
 
-  FLanguageCodes := DisplayLanguageItems;
-  SetLength(LanguageNames, Length(FLanguageCodes));
-  for I := 0 to High(FLanguageCodes) do
-    LanguageNames[I] := DisplayLanguageName(FLanguageCodes[I]);
-  LanguageIdx := IndexOfFontName(FLanguageCodes, Cur.Language);
-
-  SetKind(hdkInterface);
+  SetKind(hdkDisplay);
   FOpenDisplay := Cur;
-  Decl := BuildInterfaceDialog(LanguageNames, LanguageIdx, Cur.ShowNotifications);
-  DialogSetCheckbox(Decl, 'key_hints', Cur.ShowKeyHints);
-  DialogSetCheckbox(Decl, 'show_title_bar', Cur.ShowTitleBar);
-  DialogSetCheckbox(Decl, 'show_menu_bar', Cur.ShowMenuBar);
-  DialogSetCheckbox(Decl, 'show_key_bar', Cur.ShowKeyBar);
-  DialogSetCheckbox(Decl, 'show_status_line', Cur.ShowStatusLine);
-  DialogSetCheckbox(Decl, 'alt_menu', Cur.AltOpensMenu);
-  DialogSetCheckbox(Decl, 'file_drag', Cur.FileDrag);
-  DialogSetCheckbox(Decl, 'select_folders', Cur.SelectFolders);
-  DialogSetCheckbox(Decl, 'pack_same_panel', Cur.PackInSamePanel);
-  DialogSetCheckbox(Decl, 'backspace_drive_menu', Cur.BackspaceDriveMenu);
-  DialogSetCheckbox(Decl, 'drive_other_folder', Cur.DriveToOtherFolder);
-  DialogSetCheckbox(Decl, 'space_selects', Cur.SpaceSelects);
-  DialogSetCheckbox(Decl, 'vim_keys', Cur.VimKeys);
-  DialogSetCheckbox(Decl, 'keep_panel_focus', Cur.KeepPanelFocus);
-  DialogSetCheckbox(Decl, 'sticky_quick_search', Cur.StickyQuickSearch);
-  DialogSetCheckbox(Decl, 'quick_search_keep_empty', Cur.QuickSearchKeepEmpty);
-  DialogSetCheckbox(Decl, 'quick_search_filter', Cur.QuickSearchFilter);
-  DialogSetCheckbox(Decl, 'quick_search_keep_filter', Cur.QuickSearchKeepFilter);
-  DialogSetCheckbox(Decl, 'quick_search_fuzzy', Cur.QuickSearchFuzzy);
-  DialogSetCheckbox(Decl, 'passive_cursor', Cur.PassiveCursor);
-  DialogSetCheckbox(Decl, 'column_separators', Cur.ColumnSeparators);
-  DialogSetCheckbox(Decl, 'show_column_headers', Cur.ShowColumnHeaders);
-  DialogSetCheckbox(Decl, 'show_sort_letter', Cur.ShowSortLetter);
-  DialogSetCheckbox(Decl, 'editor_autoindent', Cur.EditorAutoIndent);
-  DialogSetCheckbox(Decl, 'exact_sizes', Cur.ExactSelectionSize);
-  DialogSetCheckbox(Decl, 'dir_slash', Cur.DirSlash);
-  DialogSetCheckbox(Decl, 'mark_links', Cur.MarkLinks);
-  DialogSetCheckbox(Decl, 'ndn_footer', Cur.NdnFooter);
-  FDialog.Open(Decl, FOnCommand);
+  Display := BuildDisplaySource(Cur);
+  Iface := BuildInterfaceSource(Cur);
+  InterfaceStart := Length(Display.Controls[DialogTabStripIndex(Display.Controls)].Items);
+  FSettingsDecl := MergeSettingsPages([Display, Iface], [],
+    T('ui.settings.title', 'Settings'), FSettingsPages);
+  FSettingsDecl.Controls[DialogTabStripIndex(FSettingsDecl.Controls)].Hint :=
+    T('ui.settings.sections', 'Up and Down choose a section; typing narrows the list.');
+  FSettingsQuery := '';
+  FDialog.Open(FSettingsDecl, FOnCommand);
+  FDialog.SetLabelText('search_caption', T('ui.settings.search', 'Search'));
+  FDialog.SetLabelText(cSettingsQueryId, '');
+  Start := -1;
+  case AStart of
+    // The first section of the Interface source: the pages after Display's own.
+    ssInterface:
+      for I := 0 to High(FSettingsPages.Pages) do
+        if FSettingsPages.Pages[I] > InterfaceStart then
+        begin
+          Start := I;
+          Break;
+        end;
+    // The Console section is the last page of the Interface source.
+    ssConsole:
+      Start := High(FSettingsPages.Pages);
+  end;
+  if Start >= 0 then
+    FDialog.SetTabItems(cSettingsStripId, FSettingsPages.Captions,
+      FSettingsPages.Pages, Start);
   Notify;
+end;
+
+procedure TSettingsDialogController.OpenDisplay;
+begin
+  OpenSettings(ssDisplay);
+end;
+
+procedure TSettingsDialogController.OpenInterface;
+begin
+  OpenSettings(ssInterface);
+end;
+
+procedure TSettingsDialogController.ApplySettingsQuery;
+var
+  Matches: TSettingsPages;
+begin
+  SettingsSectionsMatching(FSettingsDecl, FSettingsPages, FSettingsQuery, Matches);
+  FDialog.BeginUpdate;
+  try
+    FDialog.SetTabItems(cSettingsStripId, Matches.Captions, Matches.Pages, 0);
+    FDialog.SetLabelText(cSettingsQueryId, FSettingsQuery);
+  finally
+    FDialog.EndUpdate;
+  end;
+end;
+
+function TSettingsDialogController.HandleSettingsFilter(var AKey: Word;
+  AShift: TShiftState; var AKeyChar: Char): Boolean;
+var
+  Chord: TKeyChord;
+begin
+  Result := False;
+  if FDialog.FocusedControlId <> cSettingsStripId then
+    Exit;
+  Chord := TKeyChord.Make(AKey, AKeyChar, AShift);
+  if Chord.IsPrintable and Chord.HasMods([], [ssShift]) then
+  begin
+    FSettingsQuery := FSettingsQuery + AKeyChar;
+    ApplySettingsQuery;
+    AKey := 0;
+    AKeyChar := #0;
+    Exit(True);
+  end;
+  if (AKey = vkBack) and (FSettingsQuery <> '') then
+  begin
+    Delete(FSettingsQuery, Length(FSettingsQuery), 1);
+    ApplySettingsQuery;
+    AKey := 0;
+    AKeyChar := #0;
+    Exit(True);
+  end;
 end;
 
 function TSettingsDialogController.CollectAvailableProfiles(
@@ -904,67 +1012,102 @@ begin
   end;
 end;
 
+procedure TSettingsDialogController.ReadDisplayFields(var ADisp: TDisplaySettings);
+var
+  Disp: TDisplaySettings;
+  ShadowIdx, SizeIdx, MarkedIdx: Integer;
+begin
+  Disp := ADisp;
+  Disp.FontName := FDialog.GetListSelectedText('fonts');
+  Disp.FallbackFont := Trim(FDialog.GetInputValue('font_fallback'));
+  SizeIdx := FDialog.GetListSelectedIndex('font_size');
+  if SizeIdx = FOpenFontSizeIdx then
+    Disp.FontSize := FOpenFontSize
+  else
+    Disp.FontSize := DisplayFontSizeAt(SizeIdx);
+  Disp.Zoom := DisplayZoomAt(FDialog.GetListSelectedIndex('zoom'));
+  Disp.CursorBlink := FDialog.GetCheckbox('blink');
+  Disp.CursorBlinkMs := DisplayBlinkMsAt(FDialog.GetListSelectedIndex('blink_ms'));
+  Disp.ShowPanelIcons := FDialog.GetCheckbox('panel_icons');
+  Disp.CaretUnderline := FDialog.GetCheckbox('caret_underline');
+  Disp.EdgeBorders := FDialog.GetCheckbox('edge_borders');
+  Disp.LineSpacing := FDialog.GetCheckbox('line_spacing');
+  Disp.SnapFontSize := FDialog.GetCheckbox('snap_font_size');
+  Disp.TextContrast := ClampTextContrast(FDialog.GetListSelectedIndex('text_contrast'));
+  Disp.CellWidthExtra := ClampCellExtra(FDialog.GetListSelectedIndex('cell_w'));
+  Disp.CellHeightExtra := ClampCellExtra(FDialog.GetListSelectedIndex('cell_h'));
+  ShadowIdx := FDialog.GetListSelectedIndex('shadows');
+  if (ShadowIdx >= Ord(Low(TShadowStyle))) and (ShadowIdx <= Ord(High(TShadowStyle))) then
+    Disp.ShadowStyle := TShadowStyle(ShadowIdx);
+  MarkedIdx := FDialog.GetListSelectedIndex('marked_rows');
+  if (MarkedIdx >= Ord(Low(TMarkedRowStyle))) and (MarkedIdx <= Ord(High(TMarkedRowStyle))) then
+    Disp.MarkedRowStyle := TMarkedRowStyle(MarkedIdx);
+  if not GFontSettingsApply then
+  begin
+    Disp.FontName := FOpenDisplay.FontName;
+    Disp.FallbackFont := FOpenDisplay.FallbackFont;
+    Disp.FontSize := FOpenDisplay.FontSize;
+    Disp.Zoom := FOpenDisplay.Zoom;
+    Disp.LineSpacing := FOpenDisplay.LineSpacing;
+    Disp.SnapFontSize := FOpenDisplay.SnapFontSize;
+    Disp.TextContrast := FOpenDisplay.TextContrast;
+    Disp.CellWidthExtra := FOpenDisplay.CellWidthExtra;
+    Disp.CellHeightExtra := FOpenDisplay.CellHeightExtra;
+  end;
+  ADisp := Disp;
+end;
+
+procedure TSettingsDialogController.ReadInterfaceFields(var ADisp: TDisplaySettings);
+var
+  Disp: TDisplaySettings;
+  LanguageIdx: Integer;
+begin
+  Disp := ADisp;
+  Disp.ShowNotifications := FDialog.GetCheckbox('notifications');
+  Disp.ShowKeyHints := FDialog.GetCheckbox('key_hints');
+  Disp.ShowTitleBar := FDialog.GetCheckbox('show_title_bar');
+  Disp.ShowMenuBar := FDialog.GetCheckbox('show_menu_bar');
+  Disp.ShowKeyBar := FDialog.GetCheckbox('show_key_bar');
+  Disp.ShowStatusLine := FDialog.GetCheckbox('show_status_line');
+  Disp.AltOpensMenu := FDialog.GetCheckbox('alt_menu');
+  Disp.FileDrag := FDialog.GetCheckbox('file_drag');
+  Disp.SelectFolders := FDialog.GetCheckbox('select_folders');
+  Disp.PackInSamePanel := FDialog.GetCheckbox('pack_same_panel');
+  Disp.BackspaceDriveMenu := FDialog.GetCheckbox('backspace_drive_menu');
+  Disp.DriveToOtherFolder := FDialog.GetCheckbox('drive_other_folder');
+  Disp.SpaceSelects := FDialog.GetCheckbox('space_selects');
+  Disp.VimKeys := FDialog.GetCheckbox('vim_keys');
+  Disp.KeepPanelFocus := FDialog.GetCheckbox('keep_panel_focus');
+  Disp.StickyQuickSearch := FDialog.GetCheckbox('sticky_quick_search');
+  Disp.QuickSearchKeepEmpty := FDialog.GetCheckbox('quick_search_keep_empty');
+  Disp.QuickSearchFilter := FDialog.GetCheckbox('quick_search_filter');
+  Disp.QuickSearchKeepFilter := FDialog.GetCheckbox('quick_search_keep_filter');
+  Disp.QuickSearchFuzzy := FDialog.GetCheckbox('quick_search_fuzzy');
+  Disp.PassiveCursor := FDialog.GetCheckbox('passive_cursor');
+  Disp.ColumnSeparators := FDialog.GetCheckbox('column_separators');
+  Disp.ShowColumnHeaders := FDialog.GetCheckbox('show_column_headers');
+  Disp.ShowSortLetter := FDialog.GetCheckbox('show_sort_letter');
+  Disp.EditorAutoIndent := FDialog.GetCheckbox('editor_autoindent');
+  Disp.EditorAutoWrap := FDialog.GetCheckbox('editor_autowrap');
+  Disp.EditorReflowWidth := EnsureRange(StrToIntDef(Trim(FDialog.GetInputValue('reflow_width')),
+    FOpenDisplay.EditorReflowWidth), cEditorReflowMin, cEditorReflowMax);
+  Disp.ExactSelectionSize := FDialog.GetCheckbox('exact_sizes');
+  Disp.DirSlash := FDialog.GetCheckbox('dir_slash');
+  Disp.MarkLinks := FDialog.GetCheckbox('mark_links');
+  Disp.NdnFooter := FDialog.GetCheckbox('ndn_footer');
+  LanguageIdx := FDialog.GetListSelectedIndex('language');
+  if (LanguageIdx >= 0) and (LanguageIdx <= High(FLanguageCodes)) then
+    Disp.Language := FLanguageCodes[LanguageIdx]
+  else
+    Disp.Language := '';
+  ADisp := Disp;
+end;
+
 procedure TSettingsDialogController.DispatchDisplayCommand(
   const AControlId: string);
 var
   Accepted: Boolean;
   Disp: TDisplaySettings;
-  ShadowIdx, SizeIdx, MarkedIdx: Integer;
-begin
-  Accepted := DialogCmdIsAccept(AControlId);
-  if Accepted then
-  begin
-    Disp := FOpenDisplay;
-    Disp.FontName := FDialog.GetListSelectedText('fonts');
-    Disp.FallbackFont := Trim(FDialog.GetInputValue('font_fallback'));
-    SizeIdx := FDialog.GetListSelectedIndex('font_size');
-    if SizeIdx = FOpenFontSizeIdx then
-      Disp.FontSize := FOpenFontSize
-    else
-      Disp.FontSize := DisplayFontSizeAt(SizeIdx);
-    Disp.Zoom := DisplayZoomAt(FDialog.GetListSelectedIndex('zoom'));
-    Disp.CursorBlink := FDialog.GetCheckbox('blink');
-    Disp.CursorBlinkMs := DisplayBlinkMsAt(FDialog.GetListSelectedIndex('blink_ms'));
-    Disp.ShowPanelIcons := FDialog.GetCheckbox('panel_icons');
-    Disp.CaretUnderline := FDialog.GetCheckbox('caret_underline');
-    Disp.EdgeBorders := FDialog.GetCheckbox('edge_borders');
-    Disp.LineSpacing := FDialog.GetCheckbox('line_spacing');
-    Disp.SnapFontSize := FDialog.GetCheckbox('snap_font_size');
-    Disp.TextContrast := ClampTextContrast(FDialog.GetListSelectedIndex('text_contrast'));
-    Disp.CellWidthExtra := ClampCellExtra(FDialog.GetListSelectedIndex('cell_w'));
-    Disp.CellHeightExtra := ClampCellExtra(FDialog.GetListSelectedIndex('cell_h'));
-    ShadowIdx := FDialog.GetListSelectedIndex('shadows');
-    if (ShadowIdx >= Ord(Low(TShadowStyle))) and (ShadowIdx <= Ord(High(TShadowStyle))) then
-      Disp.ShadowStyle := TShadowStyle(ShadowIdx);
-    MarkedIdx := FDialog.GetListSelectedIndex('marked_rows');
-    if (MarkedIdx >= Ord(Low(TMarkedRowStyle))) and (MarkedIdx <= Ord(High(TMarkedRowStyle))) then
-      Disp.MarkedRowStyle := TMarkedRowStyle(MarkedIdx);
-    if not GFontSettingsApply then
-    begin
-      Disp.FontName := FOpenDisplay.FontName;
-      Disp.FallbackFont := FOpenDisplay.FallbackFont;
-      Disp.FontSize := FOpenDisplay.FontSize;
-      Disp.Zoom := FOpenDisplay.Zoom;
-      Disp.LineSpacing := FOpenDisplay.LineSpacing;
-      Disp.SnapFontSize := FOpenDisplay.SnapFontSize;
-      Disp.TextContrast := FOpenDisplay.TextContrast;
-      Disp.CellWidthExtra := FOpenDisplay.CellWidthExtra;
-      Disp.CellHeightExtra := FOpenDisplay.CellHeightExtra;
-    end;
-    if Assigned(FOnApplyDisplay) then
-      FOnApplyDisplay(Disp);
-  end;
-  FDialog.Close;
-  if Accepted then
-    Notify;
-end;
-
-procedure TSettingsDialogController.DispatchInterfaceCommand(
-  const AControlId: string);
-var
-  Accepted: Boolean;
-  Disp: TDisplaySettings;
-  LanguageIdx: Integer;
 begin
   if AControlId = 'reset_hints' then
   begin
@@ -976,40 +1119,9 @@ begin
   if Accepted then
   begin
     Disp := FOpenDisplay;
-    Disp.ShowNotifications := FDialog.GetCheckbox('notifications');
-    Disp.ShowKeyHints := FDialog.GetCheckbox('key_hints');
-    Disp.ShowTitleBar := FDialog.GetCheckbox('show_title_bar');
-    Disp.ShowMenuBar := FDialog.GetCheckbox('show_menu_bar');
-    Disp.ShowKeyBar := FDialog.GetCheckbox('show_key_bar');
-    Disp.ShowStatusLine := FDialog.GetCheckbox('show_status_line');
-    Disp.AltOpensMenu := FDialog.GetCheckbox('alt_menu');
-    Disp.FileDrag := FDialog.GetCheckbox('file_drag');
-    Disp.SelectFolders := FDialog.GetCheckbox('select_folders');
-    Disp.PackInSamePanel := FDialog.GetCheckbox('pack_same_panel');
-    Disp.BackspaceDriveMenu := FDialog.GetCheckbox('backspace_drive_menu');
-    Disp.DriveToOtherFolder := FDialog.GetCheckbox('drive_other_folder');
-    Disp.SpaceSelects := FDialog.GetCheckbox('space_selects');
-    Disp.VimKeys := FDialog.GetCheckbox('vim_keys');
-    Disp.KeepPanelFocus := FDialog.GetCheckbox('keep_panel_focus');
-    Disp.StickyQuickSearch := FDialog.GetCheckbox('sticky_quick_search');
-    Disp.QuickSearchKeepEmpty := FDialog.GetCheckbox('quick_search_keep_empty');
-    Disp.QuickSearchFilter := FDialog.GetCheckbox('quick_search_filter');
-    Disp.QuickSearchKeepFilter := FDialog.GetCheckbox('quick_search_keep_filter');
-    Disp.QuickSearchFuzzy := FDialog.GetCheckbox('quick_search_fuzzy');
-    Disp.PassiveCursor := FDialog.GetCheckbox('passive_cursor');
-    Disp.ColumnSeparators := FDialog.GetCheckbox('column_separators');
-    Disp.ShowColumnHeaders := FDialog.GetCheckbox('show_column_headers');
-    Disp.ShowSortLetter := FDialog.GetCheckbox('show_sort_letter');
-    Disp.EditorAutoIndent := FDialog.GetCheckbox('editor_autoindent');
-    Disp.ExactSelectionSize := FDialog.GetCheckbox('exact_sizes');
-    Disp.DirSlash := FDialog.GetCheckbox('dir_slash');
-    Disp.MarkLinks := FDialog.GetCheckbox('mark_links');
-    Disp.NdnFooter := FDialog.GetCheckbox('ndn_footer');
-    LanguageIdx := FDialog.GetListSelectedIndex('language');
-    if (LanguageIdx >= 0) and (LanguageIdx <= High(FLanguageCodes)) then
-      Disp.Language := FLanguageCodes[LanguageIdx]
-    else
-      Disp.Language := '';
+    ReadDisplayFields(Disp);
+    ReadInterfaceFields(Disp);
+    ReadConsoleFields;
     if Assigned(FOnApplyDisplay) then
       FOnApplyDisplay(Disp);
   end;
@@ -1017,6 +1129,12 @@ begin
   SetLength(FLanguageCodes, 0);
   if Accepted then
     Notify;
+end;
+
+procedure TSettingsDialogController.DispatchInterfaceCommand(
+  const AControlId: string);
+begin
+  DispatchDisplayCommand(AControlId);
 end;
 
 procedure TSettingsDialogController.OpenExternalTools;
@@ -1036,39 +1154,7 @@ end;
 
 procedure TSettingsDialogController.OpenConsoleOptions;
 begin
-  if Assigned(FOnCanStart) and not FOnCanStart() then
-    Exit;
-  if Assigned(FOnPrepareUi) then
-    FOnPrepareUi();
-  SetKind(hdkConsoleOptions);
-  FDialog.Open(BuildConsoleOptionsDialog(
-    ScrollbackIndexOf(GConsoleSettings.ScrollbackLines),
-    GConsoleSettings.ConfirmMultiLinePaste, GConsoleSettings.TrimCopiedSpaces,
-    GConsoleSettings.TrimPastedSpaces, GConsoleSettings.ReturnToPanels,
-    BackgroundShowIndexOf(GConsoleSettings.BackgroundShowMs)), FOnCommand);
-  Notify;
-end;
-
-procedure TSettingsDialogController.DispatchConsoleOptionsCommand(
-  const AControlId: string);
-var
-  Accepted: Boolean;
-begin
-  Accepted := DialogCmdIsAccept(AControlId);
-  if Accepted then
-  begin
-    GConsoleSettings.ScrollbackLines :=
-      ScrollbackAt(FDialog.GetListSelectedIndex('scrollback'));
-    GConsoleSettings.ConfirmMultiLinePaste := FDialog.GetCheckbox('confirm_paste');
-    GConsoleSettings.TrimCopiedSpaces := FDialog.GetCheckbox('trim_copy');
-    GConsoleSettings.TrimPastedSpaces := FDialog.GetCheckbox('trim_paste');
-    GConsoleSettings.ReturnToPanels := FDialog.GetCheckbox('return_panels');
-    GConsoleSettings.BackgroundShowMs :=
-      BackgroundShowAt(FDialog.GetListSelectedIndex('bg_show'));
-  end;
-  FDialog.Close;
-  if Accepted then
-    Notify;
+  OpenSettings(ssConsole);
 end;
 
 procedure TSettingsDialogController.ShowMarkdownColors(const ASet: TMdColorSet;
@@ -1391,7 +1477,6 @@ begin
     hdkDisplay: DispatchDisplayCommand(AControlId);
     hdkInterface: DispatchInterfaceCommand(AControlId);
     hdkExternalTools: DispatchExternalToolsCommand(AControlId);
-    hdkConsoleOptions: DispatchConsoleOptionsCommand(AControlId);
     hdkMarkdownColors: DispatchMarkdownColorsCommand(AControlId);
     hdkMarkdownImport: DispatchMarkdownImportCommand(AControlId);
     hdkMarkdownPicker: DispatchMarkdownPickerCommand(AControlId);

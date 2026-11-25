@@ -28,7 +28,10 @@ uses
 const
   W = 100;
   H = 40;
-  cSeparators = 1;
+  // Rules in display.json; the one under the tab strip is broken by the open
+  // tab, so one rule is drawn unbroken.
+  cSeparators = 2;
+  cFullRules = 1;
 
 procedure NoopCommand(const AControlId, AValuesJson: string);
 begin
@@ -89,7 +92,7 @@ var
   Grid: TTerminalGrid;
 begin
   Render(CreateThemeByName('NDN'), Grid);
-  Assert.IsTrue(CountJoinedRows(Grid, chDblVSingleHR, chDblVSingleHL, chBoxH) = cSeparators,
+  Assert.IsTrue(CountJoinedRows(Grid, chDblVSingleHR, chDblVSingleHL, chBoxH) = cFullRules,
     'every separator joins the double frame');
 end;
 
@@ -98,7 +101,7 @@ var
   Grid: TTerminalGrid;
 begin
   Render(CreateThemeByName('ASCII'), Grid);
-  Assert.IsTrue(CountJoinedRows(Grid, '+', '+', '-') >= cSeparators,
+  Assert.IsTrue(CountJoinedRows(Grid, '+', '+', '-') >= cFullRules,
     'every separator joins the ASCII frame');
 end;
 

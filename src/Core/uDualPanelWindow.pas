@@ -2685,6 +2685,7 @@ begin
   FModalInputHost.HandleFileHistoryList := FFileHistory.HandleListInput;
   FModalInputHost.HandleFolderHistoryList := FFolderHistory.HandleListInput;
   FModalInputHost.HandleCommandPaletteFilter := FPalette.HandleFilterInput;
+  FModalInputHost.HandleSettingsFilter := FSettings.HandleSettingsFilter;
   FModalInputHost.HandleDialogWidget := FDialog.HandleInput;
   FModalInputHost.DialogDropDownOpen := FDialog.DropDownOpen;
   FModalInputHost.RecordDialogHistory := FDialog.RecordInputHistory;
@@ -7072,8 +7073,7 @@ begin
       Result := FThemeDlg.DispatchCommand(AKind, AControlId);
     hdkColumnsConfig, hdkMaskGroups, hdkDisplay, hdkInterface, hdkTerminalProfile, hdkConsoleProfile,
     hdkTerminalEnv,
-    hdkExternalTools, hdkMarkdownColors, hdkMarkdownImport, hdkMarkdownPicker,
-    hdkConsoleOptions:
+    hdkExternalTools, hdkMarkdownColors, hdkMarkdownImport, hdkMarkdownPicker:
       Result := FSettings.DispatchCommand(AKind, AControlId);
     hdkCmdHistory:
       Result := FCmdHistory.DispatchCommand(AControlId);

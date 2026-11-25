@@ -28,6 +28,11 @@ type
     [Test] procedure TestFocusByIdOpensItsPage;
     [Test] procedure TestStripDrawsMarkedCaption;
     [Test] procedure TestRuleOpensUnderTheShownTab;
+    [Test] procedure TestVerticalStripRoundTripsAndTakesOneRowPerPage;
+    [Test] procedure TestUpDownOnVerticalStripTurnPages;
+    [Test] procedure TestClickOnVerticalStripRowSelectsPage;
+    [Test] procedure TestNarrowedStripShowsTheMappedPage;
+    [Test] procedure TestStripWithoutCaptionsShowsNoPage;
     [Test] procedure TestEveryDialogFitsEightyColumns;
     [Test] procedure TestInterfaceDialogFitsEightyByTwentyFour;
     [Test] procedure TestMarkdownColorsDialogFitsEightyByTwentyFour;
@@ -51,6 +56,20 @@ const
     '{"type":"checkbox","id":"b1","text":"&Beta","col":1,"row":2,"width":20,"height":1,"tab":1},' +
     '{"type":"checkbox","id":"c1","text":"&Gamma","col":1,"row":2,"width":20,"height":1,"tab":2},' +
     '{"type":"button","id":"ok","text":"OK","default":true,"col":10,"row":11,"width":8,"height":1}]}';
+
+const
+  cVerticalJson =
+    '{"type":"dialog","version":"2.0","title":"t","width":50,"height":14,"children":[' +
+    '{"type":"tabs","id":"tabs","items":["One","Longer","Three"],"vertical":true,"col":1,"row":0},' +
+    '{"type":"checkbox","id":"a1","text":"&Alpha","col":14,"row":0,"width":20,"height":1,"tab":0},' +
+    '{"type":"checkbox","id":"b1","text":"&Beta","col":14,"row":0,"width":20,"height":1,"tab":1},' +
+    '{"type":"button","id":"ok","text":"OK","default":true,"col":10,"row":11,"width":8,"height":1}]}';
+
+function OpenVertical: TDialogHost;
+begin
+  Result := TDialogHost.Create(nil);
+  Assert.IsTrue(Result.OpenJson(cVerticalJson, nil), 'dialog opens');
+end;
 
 function OpenHost: TDialogHost;
 begin
@@ -244,6 +263,104 @@ begin
     Press(Host, vkLeft, []);
     Assert.AreEqual(0, ActivePage(Host), 'Left');
     Assert.AreEqual('tabs', Host.FocusedControlId, 'focus stays on the strip');
+  finally
+    Host.Free;
+  end;
+end;
+
+procedure TTestDialogTabs.TestVerticalStripRoundTripsAndTakesOneRowPerPage;
+var
+  Decl, Again: TDialogDeclaration;
+  L: TDialogV2Layout;
+  Strip: Integer;
+begin
+  Assert.IsTrue(TryParseDialogJson(cVerticalJson, Decl), 'parses');
+  Strip := DialogTabStripIndex(Decl.Controls);
+  Assert.IsTrue(Decl.Controls[Strip].Vertical, 'vertical flag');
+  Assert.IsTrue(TryParseDialogJson(DeclarationToJson(Decl), Again), 'round trip parses');
+  Assert.IsTrue(Again.Controls[DialogTabStripIndex(Again.Controls)].Vertical, 'flag survives');
+  L := LayoutDialogV2(Decl.Controls, TRectI.Make(0, 0, Decl.Width - 1, Decl.Height - 1), 0, 0, -1);
+  Assert.AreEqual(3, L.Bounds[Strip].Bottom - L.Bounds[Strip].Top + 1, 'one row per page');
+  Assert.AreEqual(DialogTabColumnWidth(Decl.Controls[Strip]),
+    L.Bounds[Strip].Right - L.Bounds[Strip].Left + 1, 'width of the longest caption');
+end;
+
+procedure TTestDialogTabs.TestUpDownOnVerticalStripTurnPages;
+var
+  Host: TDialogHost;
+  Grid: TTerminalGrid;
+begin
+  Host := OpenVertical;
+  try
+    DrawIn(Host, Grid);
+    Host.FocusControlById('tabs');
+    Press(Host, vkDown, []);
+    Assert.AreEqual(1, ActivePage(Host), 'Down');
+    Press(Host, vkRight, []);
+    Assert.AreEqual(1, ActivePage(Host), 'Right does not turn a vertical strip');
+    Assert.AreEqual('b1', Host.FocusedControlId, 'Right enters the shown page');
+    Press(Host, vkLeft, []);
+    Assert.AreEqual('tabs', Host.FocusedControlId, 'Left goes back to the strip');
+    Press(Host, vkUp, []);
+    Assert.AreEqual(0, ActivePage(Host), 'Up');
+    Assert.AreEqual('tabs', Host.FocusedControlId, 'focus stays on the strip');
+  finally
+    Host.Free;
+  end;
+end;
+
+procedure TTestDialogTabs.TestClickOnVerticalStripRowSelectsPage;
+var
+  Host: TDialogHost;
+  Grid: TTerminalGrid;
+  R: TRectI;
+begin
+  Host := OpenVertical;
+  try
+    DrawIn(Host, Grid);
+    R := Host.ControlBoundsAt(IndexOf(Host, 'tabs'));
+    Assert.IsTrue(Host.HandleClick(R.Left + 1, R.Top + 1, []), 'click taken');
+    Assert.AreEqual(1, ActivePage(Host), 'second row shows the second page');
+    DrawIn(Host, Grid);
+    Host.HandleClick(R.Left + 1, R.Top + 5, []);
+    Assert.AreEqual(1, ActivePage(Host), 'a click below the rows keeps the page');
+  finally
+    Host.Free;
+  end;
+end;
+
+procedure TTestDialogTabs.TestNarrowedStripShowsTheMappedPage;
+var
+  Host: TDialogHost;
+  Grid: TTerminalGrid;
+begin
+  Host := OpenVertical;
+  try
+    DrawIn(Host, Grid);
+    // Only "Longer" (page 2) is left after a search.
+    Host.SetTabItems('tabs', ['Longer'], [2], 0);
+    DrawIn(Host, Grid);
+    Assert.IsTrue(IsShown(Host, 'b1'), 'control of the mapped page is shown');
+    Assert.IsFalse(IsShown(Host, 'a1'), 'control of a filtered-out page is not');
+    Host.FocusControlById('a1');
+    Assert.AreNotEqual('a1', Host.FocusedControlId, 'a filtered-out page cannot take focus');
+  finally
+    Host.Free;
+  end;
+end;
+
+procedure TTestDialogTabs.TestStripWithoutCaptionsShowsNoPage;
+var
+  Host: TDialogHost;
+  Grid: TTerminalGrid;
+begin
+  Host := OpenVertical;
+  try
+    Host.SetTabItems('tabs', [], [], 0);
+    DrawIn(Host, Grid);
+    Assert.IsFalse(IsShown(Host, 'a1'), 'first page hidden');
+    Assert.IsFalse(IsShown(Host, 'b1'), 'second page hidden');
+    Assert.IsTrue(IsShown(Host, 'ok'), 'a control of every page stays');
   finally
     Host.Free;
   end;

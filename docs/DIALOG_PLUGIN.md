@@ -192,7 +192,7 @@ Geometry synonyms: `x`/`y`/`w`/`h` ≡ `col`/`row`/`width`/`height`. If `width`/
 
 | `type` | Behaviour |
 |---|---|
-| `label` | Static text; not in the values without an `id`. `"accent": true` draws it in bold accent colour (for the values entered by the neighbouring caption) |
+| `label` | Static text; not in the values without an `id`. `"accent": true` draws it in bold accent colour (for the values entered by the neighbouring caption). `"hint_area": true` makes the label a description area: it shows the `hint` of the control that has focus, wrapped to the label's box. `"group": true` draws the label as a frame with its text as the title; the controls of the group lie inside the box |
 | `input` | [INPUT_PLUGIN.md](INPUT_PLUGIN.md) / `TInputLine`; fields `id`, `value`, `password` (`true` – asterisks are drawn instead of the typed characters, copying from the field is blocked; the value reaches the plugin as typed), `hotkey` (`true` – key capture field: the pressed combination is stored in the value as text like `Ctrl+Shift+F5`, Backspace and Delete clear the field, Tab, Enter and Esc work as in a dialog; the format is the same as `SendKey` understands), `multi` (together with `hotkey`: the field stores several combinations separated by `; ` – a pressed one is appended, Backspace removes the last, Delete clears the field) |
 | `checkbox` | `id`, `text`, `checked`; Space / click toggles |
 | `radio` / `radiobox` | `id`, `group`, `text`, `checked`; mutual exclusion within a `group`; Space / click selects |
@@ -203,9 +203,11 @@ Geometry synonyms: `x`/`y`/`w`/`h` ≡ `col`/`row`/`width`/`height`. If `width`/
 | `status` | Single-line `text` by `id`; updated through `SetStatus`. Not in the values. STATUS_PLUGIN segments are outside the current Dialog. |
 | `list` | `id`, `items[]`, `selected` (index); arrows / click on a row; in the values – the **text** of the selected item. `"frame": true` outlines the list with a single frame one cell around its area. `"keycommands": true` hands Space (command `toggle`), Delete (`delete`), F2 / F4 / F5 (`f2` / `f4` / `f5`) and Ctrl+Up / Ctrl+Down (commands `up` and `down`) to the dialog owner instead of the buttons while the list has focus; plain arrows still move the selection |
 | `dropdown` / `dropdownlist` / `combo` | `id`, `items[]`, `selected`; collapsed combo (text + `↓`); Space / Alt+Down / F4 / click open the popup; Esc closes without a change; in the values – the **text** |
-| `tabs` / `tab_strip` | A strip of tabs: `id`, `items[]` (captions), `selected` (index of the shown page, 0-based). Takes one row, usually at the top (`row` 0, `width` of the client area). Every other control belongs to a page through `"tab": N` (0-based); a control without `tab` is shown on all pages. Controls of the other pages get no box and take no part in focus or scrolling. Captions are translated through `<id>_items`. Not in the values. |
+| `tabs` / `tab_strip` | A strip of tabs: `id`, `items[]` (captions), `selected` (index of the shown page, 0-based). Takes one row, usually at the top (`row` 0, `width` of the client area). Every other control belongs to a page through `"tab": N` (0-based); a control without `tab` is shown on all pages. Controls of the other pages get no box and take no part in focus or scrolling. Captions are translated through `<id>_items`. `vertical` (`true`) draws the strip as a column, one caption per row, `width` x `height` = column width x number of captions; Up / Down switch pages instead of Left / Right. Not in the values. |
 
 Not implemented: `panel` (see [PANEL_PLUGIN.md](PANEL_PLUGIN.md) separately), arbitrary `set_control_json` other than `SetStatus`.
+
+Any control may carry `"hint": "text"`, the description a `hint_area` label shows while the control has focus. With an `id` the text is translated through `<id>_hint`.
 
 ### 3.4. Values snapshot
 

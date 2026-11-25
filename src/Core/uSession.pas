@@ -75,6 +75,8 @@ type
     FileDrag: Boolean;
     AltOpensMenu: Boolean;
     EditorAutoIndent: Boolean;
+    EditorAutoWrap: Boolean;
+    EditorReflowWidth: Integer;
     ExactSelectionSize: Boolean;
     /// <summary>uDisplaySettings.GDirSlash.</summary>
     DirSlash: Boolean;
@@ -643,6 +645,8 @@ begin
       Root.AddPair('fileDrag', TJSONBool.Create(ASession.FileDrag));
       Root.AddPair('altOpensMenu', TJSONBool.Create(ASession.AltOpensMenu));
       Root.AddPair('editorAutoIndent', TJSONBool.Create(ASession.EditorAutoIndent));
+      Root.AddPair('editorAutoWrap', TJSONBool.Create(ASession.EditorAutoWrap));
+      Root.AddPair('editorReflowWidth', TJSONNumber.Create(ASession.EditorReflowWidth));
       Root.AddPair('exactSelectionSize', TJSONBool.Create(ASession.ExactSelectionSize));
       Root.AddPair('dirSlash', TJSONBool.Create(ASession.DirSlash));
       Root.AddPair('markLinks', TJSONBool.Create(ASession.MarkLinks));
@@ -748,6 +752,8 @@ begin
   ASession.FileDrag := True;
   ASession.AltOpensMenu := True;
   ASession.EditorAutoIndent := True;
+  ASession.EditorAutoWrap := False;
+  ASession.EditorReflowWidth := 72;
   ASession.ExactSelectionSize := False;
   ASession.DirSlash := True;
   ASession.MarkLinks := True;
@@ -877,6 +883,8 @@ begin
       ASession.FileDrag := JsonBool(Root, 'fileDrag', True);
       ASession.AltOpensMenu := JsonBool(Root, 'altOpensMenu', True);
       ASession.EditorAutoIndent := JsonBool(Root, 'editorAutoIndent', True);
+      ASession.EditorAutoWrap := JsonBool(Root, 'editorAutoWrap', False);
+      ASession.EditorReflowWidth := JsonInt(Root, 'editorReflowWidth', 72);
       ASession.ExactSelectionSize := JsonBool(Root, 'exactSelectionSize', False);
       ASession.DirSlash := JsonBool(Root, 'dirSlash', True);
       ASession.MarkLinks := JsonBool(Root, 'markLinks', True);

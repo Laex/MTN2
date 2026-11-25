@@ -20,13 +20,6 @@ uses
   uEditorInput, uFilePositions, uMarkdownParser, uMarkdownIndex, uMarkdownPainter,
   uHistoryPopup, uKeymap, uStatusSegments, uPluginHighlight, uEditorLineOps, uCoreTimer;
 
-var
-  /// <summary>Width the last Format text command used; the dialog opens with
-  /// it and auto-wrap breaks lines at it.</summary>
-  GEditorReflowWidth: Integer = 72;
-  /// <summary>Break the line at the last space when typing passes
-  /// GEditorReflowWidth; lasts until the program ends.</summary>
-  GEditorAutoWrap: Boolean = False;
 
 const
   /// <summary>TNoticeRequest.Tag of the toast with the indexing progress.</summary>

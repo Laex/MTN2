@@ -97,9 +97,14 @@ begin
       Result := Min(AClientW, cCalendarWidth);
     dckTab:
       begin
-        Result := 0;
-        for I := 0 to High(C.Items) do
-          Inc(Result, TextDisplayWidth(C.Items[I]) + 4);
+        if C.Vertical then
+          Result := DialogTabColumnWidth(C)
+        else
+        begin
+          Result := 0;
+          for I := 0 to High(C.Items) do
+            Inc(Result, TextDisplayWidth(C.Items[I]) + 4);
+        end;
         Result := Min(AClientW, Max(Result, 1));
       end;
   else
@@ -114,6 +119,11 @@ begin
       Result := ControlRowSpan(C);
     dckDropDown:
       Result := 1;
+    dckTab:
+      if C.Vertical then
+        Result := Max(Length(C.Items), 1)
+      else
+        Result := 1;
     dckColorPicker:
       Result := cPickerHeight;
     dckDatePicker:

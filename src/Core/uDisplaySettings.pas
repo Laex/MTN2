@@ -38,6 +38,17 @@ var
   /// <summary>Enter in the editor starts the new line with the indent of the line it
   /// continues.</summary>
   GEditorAutoIndent: Boolean = True;
+  /// <summary>Typing past GEditorReflowWidth breaks the line at the last space.</summary>
+  GEditorAutoWrap: Boolean = False;
+  /// <summary>Width auto-wrap breaks lines at and the Format text command starts from.</summary>
+  GEditorReflowWidth: Integer = 72;
+
+const
+  /// <summary>Range of GEditorReflowWidth accepted from the settings.</summary>
+  cEditorReflowMin = 20;
+  cEditorReflowMax = 500;
+
+var
   /// <summary>Sizes in the panel footer (totals, cursor line) and the status line are
   /// shown as the exact number of bytes with the system digit grouping, not as 1.5 M.</summary>
   GExactSelectionSize: Boolean = False;
@@ -99,6 +110,10 @@ type
     AltOpensMenu: Boolean;
     /// <summary>uDisplaySettings.GEditorAutoIndent.</summary>
     EditorAutoIndent: Boolean;
+    /// <summary>uDisplaySettings.GEditorAutoWrap.</summary>
+    EditorAutoWrap: Boolean;
+    /// <summary>uDisplaySettings.GEditorReflowWidth.</summary>
+    EditorReflowWidth: Integer;
     /// <summary>uDisplaySettings.GExactSelectionSize.</summary>
     ExactSelectionSize: Boolean;
     /// <summary>uDisplaySettings.GDirSlash.</summary>
@@ -416,6 +431,8 @@ begin
   Result.FileDrag := True;
   Result.AltOpensMenu := True;
   Result.EditorAutoIndent := True;
+  Result.EditorAutoWrap := False;
+  Result.EditorReflowWidth := 72;
   Result.ExactSelectionSize := False;
   Result.DirSlash := True;
   Result.MarkLinks := True;

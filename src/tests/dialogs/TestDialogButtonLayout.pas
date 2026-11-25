@@ -253,6 +253,7 @@ begin
     else if not RowUsed(Frame.Top + 1) and not SameText(AName, 'DIALOG_MULTIRENAME') and
             not SameText(AName, 'DIALOG_SSHCONNECTIONEDIT') and
             not SameText(AName, 'DIALOG_INTERFACE') and
+            not SameText(AName, 'DIALOG_DISPLAY') and
             not SameText(AName, 'DIALOG_MARKDOWNCOLORS') and
             not SameText(AName, 'DIALOG_SEARCH') and
             not SameText(AName, 'DIALOG_JOBPROGRESSPLUGIN') and

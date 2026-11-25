@@ -95,12 +95,17 @@ type
     /// <summary>Shows page ANew of the tab strip at AStrip. Focus moves to the
     /// strip when its control is on the page that goes away.</summary>
     procedure SelectTab(AStrip, ANew: Integer);
+    procedure DrawVerticalTabStrip(const AGrid: TTerminalGrid; const R: TRectI;
+      AIndex: Integer; const C: TDialogControl; ALabelFg, ALabelBg: TAlphaColor);
     procedure DrawTabStrip(const AGrid: TTerminalGrid; const R: TRectI;
       AIndex: Integer; const C: TDialogControl; ALabelFg, ALabelBg: TAlphaColor);
     function NextFocusable(AFrom: Integer; AForward: Boolean): Integer;
     /// <summary>Joins full-width separator rules to the dialog frame:
     /// ╟─╢ on a double frame, ├─┤ on a single one, +-+ on an ASCII one.</summary>
     procedure JoinSeparatorsToFrame(const AGrid: TTerminalGrid);
+    /// <summary>Vertical rules (VRule labels) with tees into the frame and into the
+    /// full-width rule under them.</summary>
+    procedure DrawVerticalRules(const AGrid: TTerminalGrid);
     procedure OpenRuleUnderActiveTab(const AGrid: TTerminalGrid);
     function FocusedIsInput: Boolean;
     /// <summary>Fires the first button whose command is Yes (AYes) or No.</summary>
@@ -219,6 +224,8 @@ type
     /// light dialog and yellow on a dark one; a marked label is bold dark
     /// blue or bright cyan. Accent clips by cell count, marked by character
     /// width, so a wide glyph does not spill into the next control.</summary>
+    procedure DrawGroupFrame(const AGrid: TTerminalGrid; const R: TRectI;
+      const ATitle: string; AFg, ABg: TAlphaColor);
     procedure DrawLabelControl(const AGrid: TTerminalGrid; const R: TRectI;
       const C: TDialogControl; ALabelFg, ALabelBg: TAlphaColor);
     /// <summary>Half-block shadows of buttons that are not pressed. Painted
@@ -325,6 +332,10 @@ type
     function GetRadio(const AGroupId: string): string;
     /// <summary>Selects the radio AId of group AGroupId on the open dialog.</summary>
     procedure SetRadio(const AGroupId, ASelectedId: string);
+    /// <summary>Replaces the captions of an open tab strip (a search narrows them)
+    /// and selects one; APages gives the page each caption shows.</summary>
+    procedure SetTabItems(const AId: string; const AItems: TArray<string>;
+      const APages: TArray<Integer>; ASelectedIndex: Integer);
     /// <summary>Replaces the items of an open drop-down and selects one.</summary>
     procedure SetDropDownItems(const AId: string; const AItems: TArray<string>;
       ASelectedIndex: Integer);
@@ -712,14 +723,19 @@ end;
 
 procedure TDialogHost.FocusControlById(const AId: string);
 var
-  I: Integer;
+  I, Item: Integer;
 begin
   for I := 0 to High(FDecl.Controls) do
     if SameText(FDecl.Controls[I].Id, AId) then
     begin
       if DialogControlHiddenByTab(FDecl.Controls, I) then
-        FDecl.Controls[DialogTabStripIndex(FDecl.Controls)].SelectedIndex :=
-          FDecl.Controls[I].TabPage - 1;
+      begin
+        Item := DialogTabItemOfPage(FDecl.Controls[DialogTabStripIndex(FDecl.Controls)],
+          FDecl.Controls[I].TabPage);
+        if Item < 0 then
+          Exit;
+        FDecl.Controls[DialogTabStripIndex(FDecl.Controls)].SelectedIndex := Item;
+      end;
       FFocusIndex := I;
       NotifyChanged;
       Exit;
@@ -1538,6 +1554,30 @@ begin
        SameText(FDecl.Controls[I].Group, AGroupId) then
       FDecl.Controls[I].Checked := SameText(FDecl.Controls[I].Id, ASelectedId);
   NotifyChanged;
+end;
+
+procedure TDialogHost.SetTabItems(const AId: string; const AItems: TArray<string>;
+  const APages: TArray<Integer>; ASelectedIndex: Integer);
+var
+  I: Integer;
+begin
+  for I := 0 to High(FDecl.Controls) do
+    if (FDecl.Controls[I].Kind = dckTab) and SameText(FDecl.Controls[I].Id, AId) then
+    begin
+      FDecl.Controls[I].Items := Copy(AItems);
+      FDecl.Controls[I].TabPages := Copy(APages);
+      if Length(AItems) = 0 then
+        FDecl.Controls[I].SelectedIndex := 0
+      else
+        FDecl.Controls[I].SelectedIndex := EnsureRange(ASelectedIndex, 0, High(AItems));
+      if (FFocusIndex >= 0) and (FFocusIndex <= High(FDecl.Controls)) and
+         DialogControlHiddenByTab(FDecl.Controls, FFocusIndex) then
+        FFocusIndex := I;
+      FScrollY := 0;
+      FScrollFollow := -1;
+      NotifyChanged;
+      Exit;
+    end;
 end;
 
 procedure TDialogHost.SetDropDownItems(const AId: string;
@@ -2546,10 +2586,71 @@ begin
   end;
 end;
 
+procedure TDialogHost.DrawGroupFrame(const AGrid: TTerminalGrid; const R: TRectI;
+  const ATitle: string; AFg, ABg: TAlphaColor);
+var
+  Edge, H, V, TL, TR, BL, BR: Char;
+  Head: string;
+  Y: Integer;
+  Ascii: Boolean;
+begin
+  if (R.Width < 4) or (R.Height < 2) or (R.Top < 0) or (R.Bottom > High(AGrid)) or
+     (FBounds.Left < 0) or (FBounds.Left > High(AGrid[R.Top])) then
+    Exit;
+  Edge := AGrid[R.Top][FBounds.Left].CharValue;
+  Ascii := Edge = '|';
+  if Ascii then
+  begin
+    H := '-'; V := '|'; TL := '+'; TR := '+'; BL := '+'; BR := '+';
+  end
+  else
+  begin
+    H := chBoxH; V := chBoxV; TL := chBoxTL; TR := chBoxTR; BL := chBoxBL; BR := chBoxBR;
+  end;
+  Head := TL + H;
+  if ATitle <> '' then
+    Head := Head + ' ' + Copy(ATitle, 1, Max(R.Width - 6, 0)) + ' ';
+  Head := Head + StringOfChar(H, Max(R.Width - Length(Head) - 1, 0)) + TR;
+  PutGridText(AGrid, R.Left, R.Top, Head, AFg, ABg);
+  for Y := R.Top + 1 to R.Bottom - 1 do
+  begin
+    PutGridText(AGrid, R.Left, Y, V, AFg, ABg);
+    PutGridText(AGrid, R.Right, Y, V, AFg, ABg);
+  end;
+  PutGridText(AGrid, R.Left, R.Bottom, BL + StringOfChar(H, R.Width - 2) + BR, AFg, ABg);
+end;
+
 procedure TDialogHost.DrawLabelControl(const AGrid: TTerminalGrid; const R: TRectI;
   const C: TDialogControl; ALabelFg, ALabelBg: TAlphaColor);
+var
+  Colors: TInputLineColors;
+  Shown: string;
+  Lines: TArray<string>;
+  I: Integer;
 begin
-  if (C.Kind = dckLabel) and C.Accent then
+  if (C.Kind = dckLabel) and C.GroupFrame then
+    DrawGroupFrame(AGrid, R, C.Text, ALabelFg, ALabelBg)
+  else if (C.Kind = dckLabel) and C.HintArea then
+  begin
+    if (FFocusIndex >= 0) and (FFocusIndex <= High(FDecl.Controls)) then
+      Lines := TDialogRenderer.WrapLabelLines(FDecl.Controls[FFocusIndex].Hint, R.Width)
+    else
+      Lines := nil;
+    for I := 0 to R.Height - 1 do
+      PutGridText(AGrid, R.Left, R.Top + I,
+        PadGridLine(IfThen(I <= High(Lines), Lines[I], ''), R.Width), ALabelFg, ALabelBg);
+  end
+  else if (C.Kind = dckLabel) and C.Field then
+  begin
+    Colors := InputLineDialogColors(False);
+    Shown := C.Text;
+    if (C.FieldCaretId <> '') and (C.FieldCaretId = FocusedControlId) then
+      Shown := Shown + '_';
+    PutGridText(AGrid, R.Left, R.Top,
+      PadGridLine(Copy(Shown, Max(Length(Shown) - R.Width + 1, 1), R.Width), R.Width),
+      Colors.Fg, Colors.Bg);
+  end
+  else if (C.Kind = dckLabel) and C.Accent then
     // Dark red on a light dialog, yellow on a dark one.
     PutGridText(AGrid, R.Left, R.Top, Copy(C.Text, 1, Max(R.Width, 1)),
       ContrastingGlyphFg(ALabelBg, cListAccentFg, TAlphaColor($FFFFFF55)),
@@ -2678,6 +2779,11 @@ var
   Fg, Bg: TAlphaColor;
   Colors: TInputLineColors;
 begin
+  if C.Vertical then
+  begin
+    DrawVerticalTabStrip(AGrid, R, AIndex, C, ALabelFg, ALabelBg);
+    Exit;
+  end;
   Spans := DialogTabSpans(C);
   for I := 0 to High(Spans) do
   begin
@@ -2706,6 +2812,34 @@ begin
   end;
 end;
 
+procedure TDialogHost.DrawVerticalTabStrip(const AGrid: TTerminalGrid; const R: TRectI;
+  AIndex: Integer; const C: TDialogControl; ALabelFg, ALabelBg: TAlphaColor);
+var
+  I: Integer;
+  Cap: string;
+  Fg, Bg: TAlphaColor;
+  Colors: TInputLineColors;
+begin
+  for I := 0 to Min(High(C.Items), R.Height - 1) do
+  begin
+    Cap := ' ' + C.Items[I];
+    if I = C.SelectedIndex then
+    begin
+      if AIndex = FFocusIndex then
+        ResolveSelectedRowColors(Fg, Bg)
+      else
+      begin
+        Colors := InputLineDialogColors(False);
+        Fg := Colors.Fg;
+        Bg := Colors.Bg;
+      end;
+      PutGridText(AGrid, R.Left, R.Top + I, PadGridLine(Cap, R.Width), Fg, Bg);
+    end
+    else
+      PutGridText(AGrid, R.Left, R.Top + I, PadGridLine(Cap, R.Width), ALabelFg, ALabelBg);
+  end;
+end;
+
 procedure TDialogHost.Draw(const AGrid: TTerminalGrid; AAreaW, AAreaH: Integer);
 var
   LabelFg, LabelBg: TAlphaColor;
@@ -2717,6 +2851,7 @@ begin
   ResolveDialogContentColors(LabelFg, LabelBg);
   DrawControls(AGrid, LabelFg, LabelBg);
   JoinSeparatorsToFrame(AGrid);
+  DrawVerticalRules(AGrid);
   OpenRuleUnderActiveTab(AGrid);
   DrawButtonShadows(AGrid);
   DrawDropDownPopup(AGrid);
@@ -2735,7 +2870,7 @@ begin
   for I := 0 to High(FDecl.Controls) do
   begin
     if (I > High(FControlBounds)) or (FDecl.Controls[I].Kind <> dckTab) or
-       DialogControlHiddenByTab(FDecl.Controls, I) then
+       FDecl.Controls[I].Vertical or DialogControlHiddenByTab(FDecl.Controls, I) then
       Continue;
     Spans := DialogTabSpans(FDecl.Controls[I]);
     if (FDecl.Controls[I].SelectedIndex < 0) or (FDecl.Controls[I].SelectedIndex > High(Spans)) then
@@ -2775,6 +2910,68 @@ begin
     Cell := AGrid[Y][X1 + 1];
     Cell.CharValue := CornerR;
     AGrid[Y][X1 + 1] := Cell;
+  end;
+end;
+
+procedure TDialogHost.DrawVerticalRules(const AGrid: TTerminalGrid);
+var
+  I, Y: Integer;
+  R: TRectI;
+  Edge, LineCh, TopCh, BottomCh: Char;
+  Cell: TCharCell;
+begin
+  for I := 0 to Min(High(FDecl.Controls), High(FControlBounds)) do
+  begin
+    if (FDecl.Controls[I].Kind <> dckLabel) or not FDecl.Controls[I].VRule then
+      Continue;
+    R := FControlBounds[I];
+    if (R.Left <= FBounds.Left) or (R.Left >= FBounds.Right) or
+       (R.Top <= FBounds.Top) or (R.Bottom + 1 >= FBounds.Bottom) or
+       (R.Bottom + 1 > High(AGrid)) or (FBounds.Left < 0) or
+       (FBounds.Right > High(AGrid[R.Top])) then
+      Continue;
+    Edge := AGrid[R.Top][FBounds.Left].CharValue;
+    if (Edge = chDblV) or (Edge = chBoxV) then
+      LineCh := chBoxV
+    else if Edge = '|' then
+      LineCh := '|'
+    else
+      Continue;
+    for Y := R.Top to R.Bottom do
+    begin
+      Cell := AGrid[Y][R.Left];
+      Cell.CharValue := LineCh;
+      AGrid[Y][R.Left] := Cell;
+    end;
+    // A tee where the divider meets the frame's top edge and the rule under it.
+    TopCh := AGrid[FBounds.Top][R.Left].CharValue;
+    if TopCh = chDblH then
+      TopCh := chDblHSingleHD
+    else if TopCh = chBoxH then
+      TopCh := chBoxHD
+    else if TopCh = '-' then
+      TopCh := '+'
+    else
+      TopCh := #0;
+    if TopCh <> #0 then
+    begin
+      Cell := AGrid[FBounds.Top][R.Left];
+      Cell.CharValue := TopCh;
+      AGrid[FBounds.Top][R.Left] := Cell;
+    end;
+    BottomCh := AGrid[R.Bottom + 1][R.Left].CharValue;
+    if BottomCh = chBoxH then
+      BottomCh := chBoxHU
+    else if BottomCh = '-' then
+      BottomCh := '+'
+    else
+      BottomCh := #0;
+    if BottomCh <> #0 then
+    begin
+      Cell := AGrid[R.Bottom + 1][R.Left];
+      Cell.CharValue := BottomCh;
+      AGrid[R.Bottom + 1][R.Left] := Cell;
+    end;
   end;
 end;
 
@@ -3197,7 +3394,7 @@ end;
 
 function TDialogHost.TryMnemonic(ACh: Char): Boolean;
 var
-  I: Integer;
+  I, Item: Integer;
   C: TDialogControl;
 begin
   if ACh = #0 then
@@ -3212,8 +3409,11 @@ begin
       Continue;
     if DialogControlHiddenByTab(FDecl.Controls, I) then
     begin
-      FDecl.Controls[DialogTabStripIndex(FDecl.Controls)].SelectedIndex :=
-        C.TabPage - 1;
+      Item := DialogTabItemOfPage(FDecl.Controls[DialogTabStripIndex(FDecl.Controls)],
+        C.TabPage);
+      if Item < 0 then
+        Continue;
+      FDecl.Controls[DialogTabStripIndex(FDecl.Controls)].SelectedIndex := Item;
       FScrollFollow := -1;
     end;
     FFocusIndex := I;

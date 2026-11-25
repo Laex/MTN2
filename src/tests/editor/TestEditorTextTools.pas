@@ -37,7 +37,7 @@ implementation
 
 uses
   System.SysUtils, System.Classes, System.IOUtils, System.UITypes,
-  uTerminalTypes, uVfsTypes, uThemeRegistry, uEditorWindow, uEditorLineOps;
+  uTerminalTypes, uVfsTypes, uThemeRegistry, uDisplaySettings, uEditorWindow, uEditorLineOps;
 
 const
   Horiz = #$2500;

@@ -244,8 +244,10 @@ begin
   begin
     Order := nil;
     for I := 0 to High(ADecl.Controls) do
+      // A group frame is a backdrop: the controls inside it are not to its right.
       if (Max(ADecl.Controls[I].Row, 0) <= Row) and
          (Row <= Max(ADecl.Controls[I].Row, 0) + Max(ADecl.Controls[I].BoxH, 1) - 1) and
+         not ((ADecl.Controls[I].Kind = dckLabel) and ADecl.Controls[I].GroupFrame) and
          ((ADecl.Controls[I].TabPage = 0) or (ADecl.Controls[I].TabPage = Page)) then
         Order := Order + [I];
     for J := 1 to High(Order) do
@@ -534,6 +536,28 @@ var
     Result := ADecl.Controls[AIndex].Row + Max(ADecl.Controls[AIndex].BoxH, 1) - 1;
   end;
 
+  // A group frame is a backdrop for the controls inside it: it never pushes
+  // them and grows with the client area instead.
+  function IsFrame(AIndex: Integer): Boolean;
+  begin
+    Result := (ADecl.Controls[AIndex].Kind = dckLabel) and ADecl.Controls[AIndex].GroupFrame;
+  end;
+
+  // The frame that holds the control in its authored layout, or -1.
+  function FrameOf(AIndex: Integer): Integer;
+  var
+    K: Integer;
+  begin
+    for K := 0 to High(ADecl.Controls) do
+      if IsFrame(K) and (K <> AIndex) and ShareScreen(ADecl.Controls[K], ADecl.Controls[AIndex]) and
+         (OrigCol[K] <= OrigCol[AIndex]) and
+         (OrigCol[AIndex] + OrigW[AIndex] <= OrigCol[K] + OrigW[K]) and
+         (ADecl.Controls[AIndex].Row >= ADecl.Controls[K].Row) and
+         (LastRow(AIndex) <= LastRow(K)) then
+        Exit(K);
+    Result := -1;
+  end;
+
   function ColumnOf(ACol: Integer): Integer;
   var
     K: Integer;
@@ -574,8 +598,8 @@ begin
       IsRuleText(ADecl.Controls[I].Text);
     NeedW[I] := Max(OrigW[I], CaptionCells(ADecl.Controls[I]));
     Inset[I] := Max(ClientW - (OrigCol[I] + OrigW[I]), 0);
-    Stretch[I] := not IsButton(I) and (Inset[I] <= 1);
-    if not IsButton(I) and (ColumnOf(OrigCol[I]) < 0) then
+    Stretch[I] := not IsButton(I) and (IsFrame(I) or (Inset[I] <= 1));
+    if not IsButton(I) and not IsFrame(I) and (ColumnOf(OrigCol[I]) < 0) then
       Cols := Cols + [OrigCol[I]];
   end;
 
@@ -583,10 +607,11 @@ begin
   for I := 0 to High(ADecl.Controls) do
   begin
     Next[I] := -1;
-    if IsButton(I) then
+    // A tab strip sits above its pages and never pushes their controls.
+    if IsButton(I) or IsFrame(I) or (ADecl.Controls[I].Kind = dckTab) then
       Continue;
     for J := 0 to High(ADecl.Controls) do
-      if (J <> I) and not IsButton(J) and (OrigCol[J] > OrigCol[I]) and
+      if (J <> I) and not IsButton(J) and not IsFrame(J) and (OrigCol[J] > OrigCol[I]) and
          ShareScreen(ADecl.Controls[I], ADecl.Controls[J]) and
          (ADecl.Controls[J].Row <= LastRow(I)) and
          (ADecl.Controls[I].Row <= LastRow(J)) and
@@ -618,6 +643,12 @@ begin
   begin
     if IsButton(I) then
       Continue;
+    if IsFrame(I) then
+    begin
+      NewCol[I] := OrigCol[I];
+      NewW[I] := OrigW[I];
+      Continue;
+    end;
     NewCol[I] := Pos[ColumnOf(OrigCol[I])];
     NewW[I] := NeedW[I];
     // A field pushed right narrows only if it would pass the frame (its
@@ -644,6 +675,11 @@ begin
     // authored right up to it.
     if (ADecl.Controls[I].Kind in [dckLabel, dckCheckbox, dckRadio]) and not Rule[I] then
       NewClient := Max(NewClient, NewCol[I] + CaptionCells(ADecl.Controls[I]) + 1);
+    // Inside a frame the control keeps its authored distance to the frame's
+    // right border, which in turn keeps its own distance to the client edge.
+    if FrameOf(I) >= 0 then
+      NewClient := Max(NewClient, NewCol[I] + Max(NewW[I], CaptionCells(ADecl.Controls[I])) +
+        (ClientW - (OrigCol[I] + OrigW[I])));
   end;
   NewClient := Max(NewClient, PackButtonRows(ADecl));
   NewClient := Max(NewClient, TitleMinWidth(ADecl.Title) - 2);

@@ -6,18 +6,13 @@ This file describes what changes for the user from version to version: new featu
 
 ## Unreleased
 
-### Added
+### Changed
 
-- The Markdown viewer shows Obsidian wiki links (`[[note]]`, `[[note|label]]`) as links and opens the note, adding `.md` when the name has no extension. An underscore between letters, including Cyrillic ones, no longer turns the text into italics.
-- The "File already exists" prompt has a "Compare" button: it opens both files in the comparison view (the new one on the left, the existing one on the right) and brings the prompt back when the view is closed. Files that cannot be shown as a text comparison (binary, identical) get a one-line verdict instead.
-- "Split / combine..." in the File menu cuts the file under the cursor into numbered parts (`name.001`, `name.002`, ...) of a chosen size (`700M`, `1.44M`, `4G`) and joins the parts back into one file when the cursor is on any part. Existing files are never overwritten; Esc cancels and removes the unfinished result.
-- "Test archive" in the File menu checks every file of the archive under the cursor against its stored checksums without unpacking it, and lists the damaged ones. ZIP is checked by the program, 7z, RAR, TAR and the other formats of the 7-Zip plugin by the plugin (also in its Plugins menu).
-- Split archives (`name.7z.001`, `name.7z.002`, ...) open like a folder from their first volume through the 7-Zip plugin, on Windows; the other volumes are read from the same folder.
-- Thumbnails plugin: "Thumbnails of the folder" in the Plugins menu shows the pictures of the active panel's folder as a sheet of thumbnails. Arrows, Home, End and Page Up / Down move the selection, Enter, F3 or a double click opens the picture in the viewer, F4 in the editor, the function-key bar names F3, F4 and S, S or F9 changes the order (name, date, size, extension), Esc closes the sheet.
-- "Make self-extracting archive (.exe)" in the Plugins menu (Windows) turns the .7z under the cursor into a program next to it that unpacks the archive without 7-Zip; it needs the `7z.sfx` module from 7-Zip or Far ArcLite.
-- "Pack each item" in the File menu packs every selected file or folder into its own ZIP archive in the other panel's folder, without replacing existing archives.
-- A download from FTP, SFTP, WebDAV or S3 that was cut off by a lost connection continues from the partial file on the next attempt, as long as the file on the server has not changed.
-- Copying, moving or packing files that exist only in the cloud (OneDrive, Dropbox and similar placeholders) warns how many of them will be downloaded first.
+- The Settings window has a Console section: scrollback size, multi-line paste confirmation, trimming of spaces on copy and paste, return to the panels and the background-run time. "Console..." in the Options menu opens the Settings window on this section.
+- The Settings window has an Editor section: auto-indent on Enter (moved from Keyboard), auto-wrap of long lines while typing and the wrap width. Auto-wrap and the width are now kept between runs.
+- "Font / Display..." and "User interface..." open one Settings window: a list of sections on the left (Font, Text, Display, Window, Panels, Behavior, Keyboard, Editor, Console), the fields of the chosen section on the right. Up and Down in the list switch sections, and typing narrows the list to the sections whose name or field captions contain the text; Backspace removes the last letter. A two-line description of the field under the cursor is shown under the fields, a vertical line separates the list of sections from them, and the fields of a section are grouped in frames with titles.
+
+## Dev v0.5.12.32 – 2026-11-25
 
 ### Changed
 
@@ -51,6 +46,19 @@ This file describes what changes for the user from version to version: new featu
 - The thumbnail sheet no longer reads the date and size of every picture on opening; it does so only when sorted by date or size.
 - A folder without plugin cells no longer costs extra time per row when a plugin reads the panel list.
 - The Lua macros plugin messages about failed, stopped and unfit macros are translated into Russian.
+
+### Added
+
+- The Markdown viewer shows Obsidian wiki links (`[[note]]`, `[[note|label]]`) as links and opens the note, adding `.md` when the name has no extension. An underscore between letters, including Cyrillic ones, no longer turns the text into italics.
+- The "File already exists" prompt has a "Compare" button: it opens both files in the comparison view (the new one on the left, the existing one on the right) and brings the prompt back when the view is closed. Files that cannot be shown as a text comparison (binary, identical) get a one-line verdict instead.
+- "Split / combine..." in the File menu cuts the file under the cursor into numbered parts (`name.001`, `name.002`, ...) of a chosen size (`700M`, `1.44M`, `4G`) and joins the parts back into one file when the cursor is on any part. Existing files are never overwritten; Esc cancels and removes the unfinished result.
+- "Test archive" in the File menu checks every file of the archive under the cursor against its stored checksums without unpacking it, and lists the damaged ones. ZIP is checked by the program, 7z, RAR, TAR and the other formats of the 7-Zip plugin by the plugin (also in its Plugins menu).
+- Split archives (`name.7z.001`, `name.7z.002`, ...) open like a folder from their first volume through the 7-Zip plugin, on Windows; the other volumes are read from the same folder.
+- Thumbnails plugin: "Thumbnails of the folder" in the Plugins menu shows the pictures of the active panel's folder as a sheet of thumbnails. Arrows, Home, End and Page Up / Down move the selection, Enter, F3 or a double click opens the picture in the viewer, F4 in the editor, the function-key bar names F3, F4 and S, S or F9 changes the order (name, date, size, extension), Esc closes the sheet.
+- "Make self-extracting archive (.exe)" in the Plugins menu (Windows) turns the .7z under the cursor into a program next to it that unpacks the archive without 7-Zip; it needs the `7z.sfx` module from 7-Zip or Far ArcLite.
+- "Pack each item" in the File menu packs every selected file or folder into its own ZIP archive in the other panel's folder, without replacing existing archives.
+- A download from FTP, SFTP, WebDAV or S3 that was cut off by a lost connection continues from the partial file on the next attempt, as long as the file on the server has not changed.
+- Copying, moving or packing files that exist only in the cloud (OneDrive, Dropbox and similar placeholders) warns how many of them will be downloaded first.
 
 ## Dev v0.5.12.4 – 2026-11-24
 

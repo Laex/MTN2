@@ -1663,6 +1663,8 @@ begin
   Result.FileDrag := GFileDragEnabled;
   Result.AltOpensMenu := GAltOpensMenu;
   Result.EditorAutoIndent := GEditorAutoIndent;
+  Result.EditorAutoWrap := GEditorAutoWrap;
+  Result.EditorReflowWidth := GEditorReflowWidth;
   Result.ExactSelectionSize := GExactSelectionSize;
   Result.DirSlash := GDirSlash;
   Result.MarkLinks := GMarkLinks;
@@ -1722,6 +1724,8 @@ begin
   FSession.AltOpensMenu := ASettings.AltOpensMenu;
   GAltOpensMenu := ASettings.AltOpensMenu;
   FSession.EditorAutoIndent := ASettings.EditorAutoIndent;
+  FSession.EditorAutoWrap := ASettings.EditorAutoWrap;
+  FSession.EditorReflowWidth := ASettings.EditorReflowWidth;
   FSession.ExactSelectionSize := ASettings.ExactSelectionSize;
   FSession.DirSlash := ASettings.DirSlash;
   FSession.MarkLinks := ASettings.MarkLinks;
@@ -1732,6 +1736,8 @@ begin
   FSession.SaverRandom := ASettings.SaverRandom;
   FSession.CaretUnderline := ASettings.CaretUnderline;
   GEditorAutoIndent := ASettings.EditorAutoIndent;
+  GEditorAutoWrap := ASettings.EditorAutoWrap;
+  GEditorReflowWidth := ASettings.EditorReflowWidth;
   GExactSelectionSize := ASettings.ExactSelectionSize;
   GDirSlash := ASettings.DirSlash;
   GMarkLinks := ASettings.MarkLinks;
@@ -1888,6 +1894,8 @@ begin
   GFileDragEnabled := Sess.FileDrag;
   GAltOpensMenu := Sess.AltOpensMenu;
   GEditorAutoIndent := Sess.EditorAutoIndent;
+  GEditorAutoWrap := Sess.EditorAutoWrap;
+  GEditorReflowWidth := Sess.EditorReflowWidth;
   GExactSelectionSize := Sess.ExactSelectionSize;
   GDirSlash := Sess.DirSlash;
   GMarkLinks := Sess.MarkLinks;
@@ -2023,6 +2031,8 @@ begin
   Sess.FileDrag := GFileDragEnabled;
   Sess.AltOpensMenu := GAltOpensMenu;
   Sess.EditorAutoIndent := GEditorAutoIndent;
+  Sess.EditorAutoWrap := GEditorAutoWrap;
+  Sess.EditorReflowWidth := GEditorReflowWidth;
   Sess.ExactSelectionSize := GExactSelectionSize;
   Sess.DirSlash := GDirSlash;
   Sess.MarkLinks := GMarkLinks;
@@ -2930,6 +2940,8 @@ begin
   FSession.FileDrag := True;
   FSession.AltOpensMenu := True;
   FSession.EditorAutoIndent := True;
+  FSession.EditorAutoWrap := False;
+  FSession.EditorReflowWidth := 72;
   FSession.ExactSelectionSize := False;
   FSession.DirSlash := True;
   FSession.MarkLinks := True;

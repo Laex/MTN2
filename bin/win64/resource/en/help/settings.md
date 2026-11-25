@@ -24,6 +24,8 @@ If the theme of the saved session is not found, the program says so and uses the
 - **Marked files:** “Text color” – only the letters change colour, as in Far; “Row background” – a background band across the whole row as well.
 <!--interface-->- **User interface...** – the interface language, notifications, the visibility of the window rows, dragging, the menu on Alt, auto-indent and a few more boxes; everything applies without a restart.
 
+Both items open one **Settings** window. The sections (Font, Text, Display, Window, Panels, Behavior, Keyboard, Editor, Console) are listed on the left; Up and Down switch them. Typing while the list has focus narrows it to the sections whose name or field captions contain the text, Backspace removes the last letter. Under the fields a short description of the field in focus is shown.
+
 **What it sets**
 - The **interface language** (English / Русский / Deutsch / 简体中文) and pop-up notifications.
 - The **window title bar, menu bar, F-key bar and status line.** A hidden row goes to the panels.
@@ -45,7 +47,7 @@ If the theme of the saved session is not found, the program says so and uses the
 - **g / G** – jump to the first / last row;
 - **/** – start the quick search; **:** – move to the command line.
 <!--columns-->- **Columns...** – the width of the columns in the Brief view and the columns of the Wide views.
-<!--console-->- **Console...** – the scrollback size of the console and terminals, confirmation of a multi-line paste, removal of trailing spaces on copy and paste, return to the panels when a command from the command line ends (more in the command line help).
+<!--console-->- **Console...** – opens the Settings window on its Console section: the scrollback size of the console and terminals, confirmation of a multi-line paste, removal of trailing spaces on copy and paste, return to the panels when a command from the command line ends (more in the command line help).
 <!--save-settings-->- **Save settings** – writes the settings, the panels and the tabs to the settings file now, not only when the program closes; a toast confirms it or names the problem. Options changed in dialogs are applied at once; this item makes sure they are on disk, for example before a copy of the settings folder is taken.
 <!--settings-file-->- **Export settings... / Import settings...** – the settings as one zip file.
 

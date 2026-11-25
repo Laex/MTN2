@@ -155,7 +155,8 @@ begin
       Problem(Format('%s outside the frame (%d..%d, row %d; client %dx%d)',
         [Named(I), Box[I].L, Box[I].R, Box[I].T, ClientW, ClientH]));
     for J := I + 1 to N - 1 do
-      if SameScreen(I, J) and (Box[I].L <= Box[J].R) and (Box[J].L <= Box[I].R) and
+      if SameScreen(I, J) and not Ctl[I].GroupFrame and not Ctl[J].GroupFrame and
+         (Box[I].L <= Box[J].R) and (Box[J].L <= Box[I].R) and
          (Box[I].T <= Box[J].B) and (Box[J].T <= Box[I].B) then
         Problem(Format('%s overlaps %s', [Named(I), Named(J)]));
     case Ctl[I].Kind of
@@ -166,7 +167,7 @@ begin
             Problem(Format('%s caption cut (%d > %d)', [Named(I), Need, Box[I].R - Box[I].L + 1]));
         end;
       dckLabel:
-        if not IsRule(Ctl[I]) and (Ctl[I].Text <> '') then
+        if not IsRule(Ctl[I]) and not Ctl[I].GroupFrame and (Ctl[I].Text <> '') then
         begin
           Lines := TDialogRenderer.WrapLabelLines(Ctl[I].Text, Box[I].R - Box[I].L + 1);
           if Length(Lines) > Box[I].B - Box[I].T + 1 then
@@ -192,7 +193,8 @@ begin
   SetLength(LabelText, 0);
   for I := 0 to N - 1 do
   begin
-    if (Ctl[I].Kind <> dckLabel) or IsRule(Ctl[I]) or (Ctl[I].Text = '') then
+    if (Ctl[I].Kind <> dckLabel) or IsRule(Ctl[I]) or Ctl[I].GroupFrame or
+       (Ctl[I].Text = '') then
       Continue;
     Need := -1; // nearest control right of the label in its row
     for J := 0 to N - 1 do

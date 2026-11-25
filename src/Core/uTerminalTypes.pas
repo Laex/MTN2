@@ -74,6 +74,8 @@ const
   // Mixed: double vertical + single horizontal (T-junction into ─)
   chDblVSingleHR = #$255F; // ╟
   chDblVSingleHL = #$2562; // ╢
+  // Double horizontal + single vertical down (T-junction of a divider into ═)
+  chDblHSingleHD = #$2564; // ╤
 
   chShadeLight = #$2591; // ░
   chBlock      = #$2588; // █

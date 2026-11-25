@@ -6,7 +6,7 @@ unit uDialogTabs;
 interface
 
 uses
-  System.SysUtils, uDialogTypes;
+  System.SysUtils, System.Math, uDialogTypes;
 
 type
   /// <summary>One caption of the strip: Left is a cell offset from the strip's
@@ -19,8 +19,12 @@ type
 /// strip counts.</summary>
 function DialogTabStripIndex(const AControls: TArray<TDialogControl>): Integer;
 
-/// <summary>1-based page the strip shows; 0 without a strip.</summary>
+/// <summary>1-based page the strip shows; 0 without a strip, -1 when its captions
+/// are all gone (no page is shown).</summary>
 function DialogActiveTabPage(const AControls: TArray<TDialogControl>): Integer;
+
+/// <summary>Caption of the strip that shows 1-based APage, -1 when none does.</summary>
+function DialogTabItemOfPage(const AStrip: TDialogControl; APage: Integer): Integer;
 
 /// <summary>True for a control of a page other than the shown one.</summary>
 function DialogControlHiddenByTab(const AControls: TArray<TDialogControl>;
@@ -33,6 +37,12 @@ function DialogTabSpans(const AStrip: TDialogControl): TArray<TDialogTabSpan>;
 
 /// <summary>Page under cell offset AOffset of the strip, -1 between captions.</summary>
 function DialogTabAtOffset(const AStrip: TDialogControl; AOffset: Integer): Integer;
+
+/// <summary>Page of a vertical strip on row ARow (from its top edge), -1 below the last.</summary>
+function DialogTabAtRow(const AStrip: TDialogControl; ARow: Integer): Integer;
+
+/// <summary>Widest caption of a strip plus the cells its marker takes.</summary>
+function DialogTabColumnWidth(const AStrip: TDialogControl): Integer;
 
 /// <summary>Page after moving ADelta pages from ASelected, wrapping around.</summary>
 function DialogTabStep(ASelected, ACount, ADelta: Integer): Integer;
@@ -57,10 +67,31 @@ var
   S: Integer;
 begin
   S := DialogTabStripIndex(AControls);
-  if (S < 0) or (Length(AControls[S].Items) = 0) then
-    Result := 0
+  if S < 0 then
+    Exit(0);
+  if Length(AControls[S].Items) = 0 then
+    Exit(-1);
+  if (AControls[S].SelectedIndex >= 0) and
+     (AControls[S].SelectedIndex <= High(AControls[S].TabPages)) then
+    Result := AControls[S].TabPages[AControls[S].SelectedIndex]
   else
     Result := AControls[S].SelectedIndex + 1;
+end;
+
+function DialogTabItemOfPage(const AStrip: TDialogControl; APage: Integer): Integer;
+var
+  I: Integer;
+begin
+  if Length(AStrip.TabPages) = 0 then
+  begin
+    if (APage >= 1) and (APage <= Length(AStrip.Items)) then
+      Exit(APage - 1);
+    Exit(-1);
+  end;
+  for I := 0 to High(AStrip.TabPages) do
+    if AStrip.TabPages[I] = APage then
+      Exit(I);
+  Result := -1;
 end;
 
 function DialogControlHiddenByTab(const AControls: TArray<TDialogControl>;
@@ -72,7 +103,7 @@ begin
   if (AIndex < 0) or (AIndex > High(AControls)) or (AControls[AIndex].TabPage <= 0) then
     Exit;
   Page := DialogActiveTabPage(AControls);
-  Result := (Page > 0) and (AControls[AIndex].TabPage <> Page);
+  Result := (Page <> 0) and (AControls[AIndex].TabPage <> Page);
 end;
 
 function DialogTabSpans(const AStrip: TDialogControl): TArray<TDialogTabSpan>;
@@ -99,6 +130,23 @@ begin
     if (AOffset >= Spans[I].Left) and (AOffset < Spans[I].Left + Spans[I].Width) then
       Exit(I);
   Result := -1;
+end;
+
+function DialogTabAtRow(const AStrip: TDialogControl; ARow: Integer): Integer;
+begin
+  if (ARow >= 0) and (ARow <= High(AStrip.Items)) then
+    Result := ARow
+  else
+    Result := -1;
+end;
+
+function DialogTabColumnWidth(const AStrip: TDialogControl): Integer;
+var
+  I: Integer;
+begin
+  Result := 1;
+  for I := 0 to High(AStrip.Items) do
+    Result := Max(Result, TextDisplayWidth(AStrip.Items[I]) + 2);
 end;
 
 function DialogTabStep(ASelected, ACount, ADelta: Integer): Integer;

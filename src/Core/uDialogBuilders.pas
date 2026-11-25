@@ -174,12 +174,6 @@ function BuildInterfaceDialog(const ALanguageNames: TArray<string>;
 /// <summary>Options > External viewer/editor...: the Alt+F3 / Alt+F4 command
 /// templates (uExternalTools).</summary>
 function BuildExternalToolsDialog(const AViewer, AEditor: string): TDialogDeclaration;
-/// <summary>Options > Console...: scrollback size (index in
-/// uConsoleSettings.ScrollbackItems), paste confirmation, trimming of spaces,
-/// return to the panels after a command from the panels' command line.</summary>
-function BuildConsoleOptionsDialog(AScrollbackIndex: Integer; AConfirmPaste,
-  ATrimCopy, ATrimPaste: Boolean; AReturnToPanels: Boolean = False;
-  ABackgroundShowIndex: Integer = 2): TDialogDeclaration;
 /// <summary>Export / import of the settings: a path field with a drop-down list
 /// of the files used before (input history "settingsfile").</summary>
 function BuildSettingsFileDialog(const ATitle, APrompt, APath: string): TDialogDeclaration;
@@ -1029,19 +1023,6 @@ begin
   DialogSetCheckbox(Result, 'by_time', AByTime);
   DialogSetCheckbox(Result, 'by_size', ABySize);
   DialogSetCheckbox(Result, 'by_content', AByContent);
-end;
-
-function BuildConsoleOptionsDialog(AScrollbackIndex: Integer; AConfirmPaste,
-  ATrimCopy, ATrimPaste: Boolean; AReturnToPanels: Boolean;
-  ABackgroundShowIndex: Integer): TDialogDeclaration;
-begin
-  RequireDialogResource(cResDialogConsoleOptions, Result);
-  DialogSetListItems(Result, 'scrollback', ScrollbackItems, AScrollbackIndex);
-  DialogSetCheckbox(Result, 'confirm_paste', AConfirmPaste);
-  DialogSetCheckbox(Result, 'trim_copy', ATrimCopy);
-  DialogSetCheckbox(Result, 'trim_paste', ATrimPaste);
-  DialogSetCheckbox(Result, 'return_panels', AReturnToPanels);
-  DialogSetListItems(Result, 'bg_show', BackgroundShowItems, ABackgroundShowIndex);
 end;
 
 function BuildConfigLocationDialog(const ATitle: string;

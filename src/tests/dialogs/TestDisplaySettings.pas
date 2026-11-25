@@ -115,6 +115,8 @@ begin
   Result.ColumnSeparators := True;
   Result.AltOpensMenu := False;
   Result.EditorAutoIndent := False;
+  Result.EditorAutoWrap := True;
+  Result.EditorReflowWidth := 66;
   Result.ExactSelectionSize := True;
   Result.DirSlash := False;
   Result.MarkLinks := False;
@@ -167,6 +169,8 @@ begin
     Assert.IsTrue(Loaded.ColumnSeparators, 'columnSeparators saved');
     Assert.IsTrue(not Loaded.AltOpensMenu, 'altOpensMenu saved');
     Assert.IsTrue(not Loaded.EditorAutoIndent, 'editorAutoIndent saved');
+    Assert.IsTrue(Loaded.EditorAutoWrap, 'editorAutoWrap saved');
+    Assert.AreEqual(66, Loaded.EditorReflowWidth, 'editorReflowWidth saved');
     Assert.IsTrue(Loaded.ExactSelectionSize, 'exactSelectionSize saved');
     Assert.IsTrue(not Loaded.DirSlash, 'dirSlash saved');
     Assert.IsTrue(not Loaded.MarkLinks, 'markLinks saved');
@@ -243,6 +247,12 @@ begin
     Pair := Root.RemovePair('editorAutoIndent');
     if Assigned(Pair) then
       Pair.Free;
+    Pair := Root.RemovePair('editorAutoWrap');
+    if Assigned(Pair) then
+      Pair.Free;
+    Pair := Root.RemovePair('editorReflowWidth');
+    if Assigned(Pair) then
+      Pair.Free;
     Pair := Root.RemovePair('ndnFooter');
     if Assigned(Pair) then
       Pair.Free;
@@ -295,6 +305,8 @@ begin
     Assert.IsTrue(not Sess.ColumnSeparators, 'missing columnSeparators -> no rules');
     Assert.IsTrue(Sess.AltOpensMenu, 'missing altOpensMenu -> a bare Alt opens the menu');
     Assert.IsTrue(Sess.EditorAutoIndent, 'missing editorAutoIndent -> auto-indent on');
+    Assert.IsFalse(Sess.EditorAutoWrap, 'missing editorAutoWrap -> no auto-wrap');
+    Assert.AreEqual(72, Sess.EditorReflowWidth, 'missing editorReflowWidth -> 72');
     Assert.IsTrue(not Sess.ExactSelectionSize, 'missing exactSelectionSize -> short sizes');
     Assert.IsTrue(Sess.DirSlash, 'missing dirSlash -> slash shown');
     Assert.IsTrue(Sess.MarkLinks, 'missing markLinks -> links marked');
@@ -364,13 +376,16 @@ procedure TestDialogShowsMarkedFiles;
   function DrawnText: string;
   var
     Host: TDialogHost;
+    Decl: TDialogDeclaration;
     Grid: TTerminalGrid;
     X, Y: Integer;
   begin
     Host := TDialogHost.Create(CreateThemeByName('NDN'));
     try
-      Host.Open(BuildDisplayDialog(['Consolas'], 0, 0, 0, 0, True, True, '',
-        0, False, Ord(mrsBand)), nil);
+      Decl := BuildDisplayDialog(['Consolas'], 0, 0, 0, 0, True, True, '',
+        0, False, Ord(mrsBand));
+      Decl.Controls[DialogTabStripIndex(Decl.Controls)].SelectedIndex := 2;
+      Host.Open(Decl, nil);
       AllocTerminalGrid(Grid, 100, 40);
       ClearTerminalGrid(Grid, TAlphaColorRec.White, TAlphaColorRec.Navy, ' ');
       Host.Draw(Grid, 100, 40);
@@ -410,9 +425,9 @@ var
   Path, Text, Line: string;
   Saved, Loaded: TMtnSession;
   Host: TDialogHost;
+  Decl: TDialogDeclaration;
   Grid: TTerminalGrid;
   X, Y: Integer;
-  SameRow: Boolean;
 begin
   Assert.IsFalse(DefaultDisplaySettings.SnapFontSize, 'snapping is off by default');
   Assert.AreEqual(0, DefaultDisplaySettings.TextContrast, 'contrast is off by default');
@@ -464,32 +479,28 @@ begin
   SetLocale('');
   Host := TDialogHost.Create(CreateThemeByName('NDN'));
   try
-    Host.Open(BuildDisplayDialog(['Consolas'], 0, 0, 0, 0, True, True, '',
-      0, False, 0, True, 2, 1, 3), nil);
+    Decl := BuildDisplayDialog(['Consolas'], 0, 0, 0, 0, True, True, '',
+      0, False, 0, True, 2, 1, 3);
+    Decl.Controls[DialogTabStripIndex(Decl.Controls)].SelectedIndex := 1;
+    Host.Open(Decl, nil);
     AllocTerminalGrid(Grid, 120, 40);
     ClearTerminalGrid(Grid, TAlphaColorRec.White, TAlphaColorRec.Navy, ' ');
     Host.Draw(Grid, 120, 40);
     Text := '';
-    SameRow := False;
     for Y := 0 to High(Grid) do
     begin
       Line := '';
       for X := 0 to High(Grid[Y]) do
         Line := Line + Grid[Y][X].CharValue;
       Text := Text + Line + #10;
-      // Two columns: the right one starts a row under the "Font" caption, level
-      // with the top edge of the framed font list.
-      if (Pos(chBoxTL, Line) > 0) and (Pos('Blink cursor', Line) > 0) then
-        SameRow := True;
     end;
-    Assert.IsTrue(SameRow, 'cursor options sit level with the top of the font list');
-    Assert.IsTrue(Pos(chBoxBR, Text) > 0, 'the font list has a frame');
+    Assert.IsTrue(Pos('Blink cursor', Text) = 0, 'cursor options are on the other page');
+    Assert.IsTrue(Pos(chBoxBR, Text) > 0, 'the groups have a frame');
     Assert.IsTrue(Pos('Text contrast', Text) > 0, 'contrast label drawn');
     Assert.IsTrue(Pos('Medium', Text) > 0, 'saved contrast level shown');
     Assert.IsTrue(Pos('Snap font size', Text) > 0, 'snap checkbox drawn');
     Assert.IsTrue(Pos('Cell width', Text) > 0, 'cell width row drawn');
     Assert.IsTrue(Pos('3 px', Text) > 0, 'saved cell height shown');
-    Assert.IsTrue(Pos('Fallback font', Text) > 0, 'fallback font row drawn');
     Assert.IsTrue(Pos('Language', Text) = 0, 'language row belongs to the interface dialog');
     Assert.IsTrue(Pos('OK', Text) > 0, 'buttons drawn');
   finally
@@ -543,7 +554,9 @@ begin
     Assert.IsTrue(Pos('Font', Text) = 0, 'no font controls');
     Text := DrawnText(2);
     Assert.IsTrue(Pos('Open menu on a single Alt press', Text) > 0, 'Alt menu checkbox drawn');
+    Text := DrawnText(4);
     Assert.IsTrue(Pos('Editor auto-indent on Enter', Text) > 0, 'auto-indent checkbox drawn');
+    Assert.IsTrue(Pos('Wrap width', Text) > 0, 'wrap width row drawn');
     SetLocale('ru');
     Text := DrawnText(2);
     Assert.IsTrue(Pos('Открывать меню по одиночному Alt', Text) > 0, 'Russian caption drawn in full');

@@ -16,6 +16,7 @@ uses
   TestDialogHistory in 'TestDialogHistory.pas',
   TestDialogScroll in 'TestDialogScroll.pas',
   TestDialogTabs in 'TestDialogTabs.pas',
+  TestSettingsPages in 'TestSettingsPages.pas',
   TestDialogScreenFit in 'TestDialogScreenFit.pas',
   TestDialogMnemonics in 'TestDialogMnemonics.pas',
   TestDialogAlignment in 'TestDialogAlignment.pas',

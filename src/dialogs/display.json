@@ -2,114 +2,183 @@
   "type": "dialog",
   "version": "2.0",
   "title": "Font / Display",
-  "width": 88,
-  "height": 25,
+  "width": 62,
+  "height": 22,
   "children": [
+    {
+      "type": "tabs",
+      "id": "tabs",
+      "items": [
+        "Font",
+        "Text",
+        "Display"
+      ],
+      "selected": 0,
+      "col": 1,
+      "row": 1,
+      "width": 58,
+      "height": 1
+    },
+    {
+      "type": "separator",
+      "col": 0,
+      "row": 2,
+      "width": 60,
+      "height": 1
+    },
     {
       "type": "label",
       "text": "Font",
       "id": "lbl_font",
+      "group": true,
       "col": 1,
-      "row": 0,
-      "width": 44,
-      "height": 1
+      "row": 3,
+      "width": 58,
+      "height": 13,
+      "tab": 0
     },
     {
       "type": "list",
       "id": "fonts",
+      "hint": "Monospace font of the graphical interface.",
       "selected": 0,
       "items": [
         "Consolas"
       ],
-      "col": 2,
-      "row": 2,
-      "width": 42,
-      "height": 7,
-      "frame": true
+      "col": 3,
+      "row": 4,
+      "width": 55,
+      "height": 8,
+      "tab": 0
     },
     {
       "type": "label",
       "text": "",
       "id": "font_note",
-      "col": 1,
-      "row": 10,
-      "width": 44,
-      "height": 1
+      "col": 3,
+      "row": 12,
+      "width": 53,
+      "height": 1,
+      "tab": 0
     },
     {
       "type": "label",
       "text": "Size",
       "id": "lbl_size",
-      "col": 1,
-      "row": 11,
+      "col": 3,
+      "row": 13,
       "width": 6,
-      "height": 1
+      "height": 1,
+      "tab": 0
     },
     {
       "type": "dropdown",
       "id": "font_size",
+      "hint": "Font size in points.",
       "selected": 0,
       "items": [
         "14 pt"
       ],
-      "col": 18,
-      "row": 11,
+      "col": 20,
+      "row": 13,
       "width": 10,
-      "height": 1
+      "height": 1,
+      "tab": 0
     },
     {
       "type": "label",
       "text": "Zoom",
       "id": "lbl_zoom",
-      "col": 29,
-      "row": 11,
+      "col": 32,
+      "row": 13,
       "width": 8,
-      "height": 1
+      "height": 1,
+      "tab": 0
     },
     {
       "type": "dropdown",
       "id": "zoom",
+      "hint": "Scales the whole window: text and cells together.",
       "selected": 0,
       "items": [
         "100%"
       ],
-      "col": 37,
-      "row": 11,
+      "col": 40,
+      "row": 13,
       "width": 8,
-      "height": 1
+      "height": 1,
+      "tab": 0
+    },
+    {
+      "type": "label",
+      "text": "Fallback font",
+      "id": "lbl_font_fallback",
+      "col": 3,
+      "row": 14,
+      "width": 16,
+      "height": 1,
+      "tab": 0
+    },
+    {
+      "type": "input",
+      "id": "font_fallback",
+      "hint": "Font for characters the main font does not have.",
+      "value": "",
+      "col": 20,
+      "row": 14,
+      "width": 26,
+      "height": 1,
+      "tab": 0
+    },
+    {
+      "type": "label",
+      "text": "Rendering",
+      "id": "grp_text",
+      "group": true,
+      "col": 1,
+      "row": 3,
+      "width": 58,
+      "height": 7,
+      "tab": 1
     },
     {
       "type": "checkbox",
       "id": "line_spacing",
+      "hint": "Rows are 15% of the font size taller, as in a terminal. Off: rows are as tall as the font's line.",
       "text": "&Line spacing (as in a terminal)",
       "checked": false,
-      "col": 1,
-      "row": 12,
-      "width": 44,
-      "height": 1
+      "col": 3,
+      "row": 4,
+      "width": 53,
+      "height": 1,
+      "tab": 1
     },
     {
       "type": "checkbox",
       "id": "snap_font_size",
+      "hint": "Rounds the size so that evener strokes appear on scaled displays.",
       "text": "Snap font size to &device pixels",
       "checked": false,
-      "col": 1,
-      "row": 13,
-      "width": 44,
-      "height": 1
+      "col": 3,
+      "row": 5,
+      "width": 53,
+      "height": 1,
+      "tab": 1
     },
     {
       "type": "label",
       "text": "Text contrast",
       "id": "lbl_text_contrast",
-      "col": 1,
-      "row": 14,
+      "col": 3,
+      "row": 6,
       "width": 16,
-      "height": 1
+      "height": 1,
+      "tab": 1
     },
     {
       "type": "dropdown",
       "id": "text_contrast",
+      "hint": "Heavier glyph edges for thin text on a background.",
       "selected": 0,
       "items": [
         "Off",
@@ -117,23 +186,26 @@
         "Medium",
         "High"
       ],
-      "col": 18,
-      "row": 14,
+      "col": 20,
+      "row": 6,
       "width": 14,
-      "height": 1
+      "height": 1,
+      "tab": 1
     },
     {
       "type": "label",
       "text": "Cell width",
       "id": "lbl_cell_w",
-      "col": 1,
-      "row": 15,
+      "col": 3,
+      "row": 7,
       "width": 16,
-      "height": 1
+      "height": 1,
+      "tab": 1
     },
     {
       "type": "dropdown",
       "id": "cell_w",
+      "hint": "Extra pixels added to the width of every character cell.",
       "selected": 0,
       "items": [
         "0 px",
@@ -142,23 +214,26 @@
         "3 px",
         "4 px"
       ],
-      "col": 18,
-      "row": 15,
+      "col": 20,
+      "row": 7,
       "width": 14,
-      "height": 1
+      "height": 1,
+      "tab": 1
     },
     {
       "type": "label",
       "text": "Cell height",
       "id": "lbl_cell_h",
-      "col": 1,
-      "row": 16,
+      "col": 3,
+      "row": 8,
       "width": 16,
-      "height": 1
+      "height": 1,
+      "tab": 1
     },
     {
       "type": "dropdown",
       "id": "cell_h",
+      "hint": "Extra pixels added to the height of every character cell.",
       "selected": 0,
       "items": [
         "0 px",
@@ -167,139 +242,161 @@
         "3 px",
         "4 px"
       ],
-      "col": 18,
-      "row": 16,
+      "col": 20,
+      "row": 8,
       "width": 14,
-      "height": 1
+      "height": 1,
+      "tab": 1
     },
     {
       "type": "label",
-      "text": "Fallback font",
-      "id": "lbl_font_fallback",
+      "text": "Cursor",
+      "id": "grp_cursor",
+      "group": true,
       "col": 1,
-      "row": 17,
-      "width": 16,
-      "height": 1
-    },
-    {
-      "type": "input",
-      "id": "font_fallback",
-      "value": "",
-      "col": 18,
-      "row": 17,
-      "width": 26,
-      "height": 1
+      "row": 3,
+      "width": 58,
+      "height": 4,
+      "tab": 2
     },
     {
       "type": "checkbox",
       "id": "blink",
+      "hint": "The text cursor blinks.",
       "text": "&Blink cursor",
       "checked": true,
-      "col": 47,
-      "row": 1,
+      "col": 3,
+      "row": 4,
       "width": 18,
-      "height": 1
+      "height": 1,
+      "tab": 2
     },
     {
       "type": "label",
       "text": "Interval",
       "id": "lbl_interval",
-      "col": 66,
-      "row": 1,
+      "col": 22,
+      "row": 4,
       "width": 9,
-      "height": 1
+      "height": 1,
+      "tab": 2
     },
     {
       "type": "dropdown",
       "id": "blink_ms",
+      "hint": "Interval of the cursor blinking.",
       "selected": 0,
       "items": [
         "530 ms"
       ],
-      "col": 76,
-      "row": 1,
+      "col": 32,
+      "row": 4,
       "width": 9,
-      "height": 1
+      "height": 1,
+      "tab": 2
     },
     {
       "type": "checkbox",
       "id": "caret_underline",
+      "hint": "The text cursor is an underline instead of a block.",
       "text": "&Cursor as underline",
       "checked": false,
-      "col": 47,
-      "row": 2,
-      "width": 38,
-      "height": 1
+      "col": 3,
+      "row": 5,
+      "width": 53,
+      "height": 1,
+      "tab": 2
+    },
+    {
+      "type": "label",
+      "text": "Appearance",
+      "id": "grp_appearance",
+      "group": true,
+      "col": 1,
+      "row": 7,
+      "width": 58,
+      "height": 6,
+      "tab": 2
     },
     {
       "type": "checkbox",
       "id": "panel_icons",
+      "hint": "File-type icons before the names in the panels.",
       "text": "Show panel &icons",
       "checked": true,
-      "col": 47,
-      "row": 3,
-      "width": 38,
-      "height": 1
+      "col": 3,
+      "row": 8,
+      "width": 53,
+      "height": 1,
+      "tab": 2
     },
     {
       "type": "checkbox",
       "id": "edge_borders",
+      "hint": "Drop-down lists are framed with thin lines, whatever frame the theme draws.",
       "text": "&Thin lines in dropdown lists only",
       "checked": true,
-      "col": 47,
-      "row": 4,
-      "width": 38,
-      "height": 1
+      "col": 3,
+      "row": 9,
+      "width": 53,
+      "height": 1,
+      "tab": 2
     },
     {
       "type": "label",
       "text": "Shadows",
       "id": "lbl_shadows",
-      "col": 47,
-      "row": 5,
+      "col": 3,
+      "row": 10,
       "width": 16,
-      "height": 1
+      "height": 1,
+      "tab": 2
     },
     {
       "type": "dropdown",
       "id": "shadows",
+      "hint": "How strong the shadows of windows and buttons are.",
       "selected": 0,
       "items": [
         "Classic",
         "Soft",
         "None"
       ],
-      "col": 64,
-      "row": 5,
+      "col": 20,
+      "row": 10,
       "width": 20,
-      "height": 1
+      "height": 1,
+      "tab": 2
     },
     {
       "type": "label",
       "text": "Marked files",
       "id": "lbl_marked_rows",
-      "col": 47,
-      "row": 6,
+      "col": 3,
+      "row": 11,
       "width": 16,
-      "height": 1
+      "height": 1,
+      "tab": 2
     },
     {
       "type": "dropdown",
       "id": "marked_rows",
+      "hint": "How marked files look: only the theme's mark colour, or a band over the whole row.",
       "selected": 0,
       "items": [
         "Text color"
       ],
-      "col": 64,
-      "row": 6,
+      "col": 20,
+      "row": 11,
       "width": 20,
-      "height": 1
+      "height": 1,
+      "tab": 2
     },
     {
       "type": "separator",
       "col": 0,
-      "row": 19,
-      "width": 86,
+      "row": 16,
+      "width": 60,
       "height": 1
     },
     {
@@ -307,8 +404,8 @@
       "id": "ok",
       "text": "OK",
       "default": true,
-      "col": 30,
-      "row": 21,
+      "col": 17,
+      "row": 18,
       "width": 12,
       "height": 1
     },
@@ -317,8 +414,8 @@
       "id": "cancel",
       "text": "Cancel",
       "cancel": true,
-      "col": 44,
-      "row": 21,
+      "col": 31,
+      "row": 18,
       "width": 12,
       "height": 1
     }

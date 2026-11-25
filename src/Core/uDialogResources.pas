@@ -67,7 +67,6 @@ const
   cResDialogDisplay = 'DIALOG_DISPLAY';
   cResDialogInterface = 'DIALOG_INTERFACE';
   cResDialogExternalTools = 'DIALOG_EXTERNALTOOLS';
-  cResDialogConsoleOptions = 'DIALOG_CONSOLEOPTIONS';
   cResDialogSettingsFile = 'DIALOG_SETTINGSFILE';
   cResDialogConfigLocation = 'DIALOG_CONFIGLOCATION';
   cResDialogMarkdownColors = 'DIALOG_MARKDOWNCOLORS';
@@ -386,6 +385,9 @@ begin
         ADecl.Controls[I].Text :=
           TDialog(ANamespace, ADecl.Controls[I].Id, ADecl.Controls[I].Text);
     end;
+    if ADecl.Controls[I].Hint <> '' then
+      ADecl.Controls[I].Hint :=
+        TDialog(ANamespace, ADecl.Controls[I].Id + '_hint', ADecl.Controls[I].Hint);
     if ADecl.Controls[I].Kind in [dckDropDown, dckRadioGroup, dckTab] then
       TranslateItems(ADecl.Controls[I]);
   end;

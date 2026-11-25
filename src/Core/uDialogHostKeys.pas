@@ -552,13 +552,21 @@ begin
     Exit;
   C := Ops.GetControl(Strip);
   Focus := Ops.FocusIndex();
-  // Left / Right on the focused strip turn the pages too.
+  // Left / Right on the focused strip turn the pages too; Up / Down on a vertical one.
   if (Delta = 0) and (Focus = Strip) and (AShift * [ssShift, ssCtrl, ssAlt] = []) then
     case AKey of
       vkLeft:
-        Delta := -1;
+        if not C.Vertical then
+          Delta := -1;
       vkRight:
-        Delta := 1;
+        if not C.Vertical then
+          Delta := 1;
+      vkUp:
+        if C.Vertical then
+          Delta := -1;
+      vkDown:
+        if C.Vertical then
+          Delta := 1;
     end;
   if Delta = 0 then
     Exit;

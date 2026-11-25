@@ -226,6 +226,8 @@ begin
   FSession.ShowStatusLine := True;
   FSession.AltOpensMenu := True;
   FSession.EditorAutoIndent := True;
+  FSession.EditorAutoWrap := False;
+  FSession.EditorReflowWidth := 72;
   FSession.ExactSelectionSize := False;
   FSession.DirSlash := True;
   FSession.MarkLinks := True;
@@ -421,6 +423,8 @@ begin
   Result.FileDrag := GFileDragEnabled;
   Result.AltOpensMenu := GAltOpensMenu;
   Result.EditorAutoIndent := GEditorAutoIndent;
+  Result.EditorAutoWrap := GEditorAutoWrap;
+  Result.EditorReflowWidth := GEditorReflowWidth;
   Result.ExactSelectionSize := GExactSelectionSize;
   Result.DirSlash := GDirSlash;
   Result.MarkLinks := GMarkLinks;
@@ -480,6 +484,8 @@ begin
   FSession.AltOpensMenu := ASettings.AltOpensMenu;
   GAltOpensMenu := ASettings.AltOpensMenu;
   FSession.EditorAutoIndent := ASettings.EditorAutoIndent;
+  FSession.EditorAutoWrap := ASettings.EditorAutoWrap;
+  FSession.EditorReflowWidth := ASettings.EditorReflowWidth;
   FSession.ExactSelectionSize := ASettings.ExactSelectionSize;
   FSession.DirSlash := ASettings.DirSlash;
   FSession.MarkLinks := ASettings.MarkLinks;
@@ -490,6 +496,8 @@ begin
   FSession.SaverRandom := ASettings.SaverRandom;
   FSession.CaretUnderline := ASettings.CaretUnderline;
   GEditorAutoIndent := ASettings.EditorAutoIndent;
+  GEditorAutoWrap := ASettings.EditorAutoWrap;
+  GEditorReflowWidth := ASettings.EditorReflowWidth;
   GExactSelectionSize := ASettings.ExactSelectionSize;
   GDirSlash := ASettings.DirSlash;
   GMarkLinks := ASettings.MarkLinks;

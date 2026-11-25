@@ -123,8 +123,6 @@ begin
       Result := 'settings.md#columns';
     hdkMaskGroups:
       Result := 'selection.md#mask-groups';
-    hdkConsoleOptions:
-      Result := 'settings.md#console';
     hdkExternalTools:
       Result := 'settings.md#external-tools';
     hdkMarkdownColors, hdkMarkdownImport, hdkMarkdownPicker:

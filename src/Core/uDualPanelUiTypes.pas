@@ -197,7 +197,7 @@ type
     hdkKeymap, hdkKeymapEdit, hdkIOError, hdkJobList, hdkJobProgress, hdkStopConfirm,
     hdkWorkspaceTabRename, hdkExternalTools, hdkMarkdownColors, hdkMarkdownImport, hdkMarkdownPicker,
     hdkCompareOptions, hdkDatePicker,
-    hdkFindPipeline, hdkPanelFilter, hdkConsoleOptions, hdkConsoleSave,
+    hdkFindPipeline, hdkPanelFilter, hdkConsoleSave,
     hdkSettingsExport, hdkSettingsImport, hdkConfigLocation,
     // The Plugins list (Options > Plugins): switch plugins on and off.
     hdkPluginList, hdkPluginInfo, hdkPluginPerms,

@@ -96,6 +96,7 @@ var
   C: TDialogControl;
 begin
   C := ACtrl;
+  C.Hint := JsonStr(AObj, 'hint');
   ApplyLayoutFromJson(C, AObj);
   AList.Add(C);
 end;
@@ -174,6 +175,8 @@ begin
   C := MakeLabel(JsonStr(AObj, 'text'), JsonStr(AObj, 'id'));
   C.Accent := JsonBool(AObj, 'accent', False);
   C.Marked := JsonBool(AObj, 'marked', False);
+  C.HintArea := JsonBool(AObj, 'hint_area', False);
+  C.GroupFrame := JsonBool(AObj, 'group', False);
   AppendParsed(AList, C, AObj);
 end;
 
@@ -283,10 +286,12 @@ end;
 procedure ParseTabs(const AObj: TJSONObject; AList: TList<TDialogControl>);
 var
   Items: TArray<string>;
+  Strip: TDialogControl;
 begin
   CopyJsonStrings(AObj.Values['items'] as TJSONArray, Items);
-  AppendParsed(AList,
-    MakeTabs(JsonStr(AObj, 'id'), Items, JsonInt(AObj, 'selected', 0)), AObj);
+  Strip := MakeTabs(JsonStr(AObj, 'id'), Items, JsonInt(AObj, 'selected', 0));
+  Strip.Vertical := JsonBool(AObj, 'vertical', False);
+  AppendParsed(AList, Strip, AObj);
 end;
 
 procedure ParseRadioGroup(const AObj: TJSONObject; AList: TList<TDialogControl>);

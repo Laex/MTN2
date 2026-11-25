@@ -164,7 +164,7 @@ begin
       hdkCompareResult, hdkArchivePassword, hdkFolderHotlistAdd,
       hdkFolderHotlistRename, hdkWorkspaceSave, hdkWorkspaceRename,
       hdkWorkspaceTabRename, hdkWorkspaceConfirm, hdkKeymapEdit,
-      hdkExternalTools, hdkMarkdownColors, hdkMarkdownImport, hdkConsoleOptions, hdkInterface, hdkConsoleSave, hdkSettingsExport, hdkSettingsImport, hdkConfigLocation,
+      hdkExternalTools, hdkMarkdownColors, hdkMarkdownImport, hdkInterface, hdkConsoleSave, hdkSettingsExport, hdkSettingsImport, hdkConfigLocation,
       hdkThemeNew, hdkThemeName, hdkThemeDelete, hdkThemeColors, hdkThemeText,
       hdkThemeChoice:
         Exit(fbcStubEdit);

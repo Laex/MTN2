@@ -867,6 +867,7 @@ begin
     $255D: begin N := 2; W := 2; end;                     // ╝
     $255F: begin N := 2; S := 2; E := 1; end;             // ╟
     $2562: begin N := 2; S := 2; W := 1; end;             // ╢
+    $2564: begin S := 1; E := 2; W := 2; end;             // dbl-h tee, single down
     $2560: begin N := 2; S := 2; E := 2; end;             // ╠
     $2563: begin N := 2; S := 2; W := 2; end;             // ╣
     $2566: begin S := 2; E := 2; W := 2; end;             // ╦

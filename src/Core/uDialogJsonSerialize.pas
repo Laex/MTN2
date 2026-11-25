@@ -66,6 +66,10 @@ begin
             One := One + ',"accent":true';
           if C.Marked then
             One := One + ',"marked":true';
+          if C.HintArea then
+            One := One + ',"hint_area":true';
+          if C.GroupFrame then
+            One := One + ',"group":true';
         end;
       dckInput:
         begin
@@ -173,6 +177,8 @@ begin
             One := One + '"' + EscapeJson(C.Items[J]) + '"';
           end;
           One := One + ']';
+          if C.Vertical then
+            One := One + ',"vertical":true';
         end;
       dckRadio:
         begin
@@ -211,6 +217,8 @@ begin
     else
       Continue;
     end;
+    if C.Hint <> '' then
+      One := One + Format(',"hint":"%s"', [EscapeJson(C.Hint)]);
     if C.TabPage > 0 then
       One := One + Format(',"tab":%d', [C.TabPage - 1]);
     One := One + ControlGeometryJson(C, ForceGeom) + '}';

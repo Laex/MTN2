@@ -295,6 +295,7 @@ type
     HandleKeymapList: TKeymapInputFn;
     HandleCmdHistoryFilter: TKeymapInputFn;
     HandleCommandPaletteFilter: TKeymapInputFn;
+    HandleSettingsFilter: TKeymapInputFn;
     HandleFileHistoryList: TKeymapInputFn;
     HandleFolderHistoryList: TKeymapInputFn;
     HandleDialogWidget: TKeymapInputFn;
@@ -1818,6 +1819,9 @@ begin
       Result := AHost.HandleCmdHistoryFilter(AKey, AShift, AKeyChar);
     hdkCommandPalette:
       Result := AHost.HandleCommandPaletteFilter(AKey, AShift, AKeyChar);
+    hdkDisplay, hdkInterface:
+      Result := Assigned(AHost.HandleSettingsFilter) and
+        AHost.HandleSettingsFilter(AKey, AShift, AKeyChar);
   else
     Result := False;
   end;
