@@ -6,25 +6,17 @@ This file describes what changes for the user from version to version: new featu
 
 ## Unreleased
 
+## v0.5.13 – 2026-11-26
+
 ### New
 
 - Dialogs that have a help page show a **[?]** mark in the top frame next to the close mark; a click on it opens the help of that dialog, like F1.
+- The Interface settings have an option to confirm before exiting. With it on, F10, the Exit command and the window close button ask first, naming the running jobs and open terminals the exit would end. Off by default.
 
 ### Changed
 
 - On Linux, passwords and key passphrases of network connections can be saved: they go to the desktop keyring through `secret-tool` (package `libsecret-tools`). Without it, or without a desktop session, they are asked for at every connection, as before. The Linux guide no longer says the processes and services plugin is missing on Linux.
 - The German and Chinese help now has the sections on plugin search, quick search, column sets, paired folders and grouping, and the multi-rename link in the help opens its own section. The ripgrep plugin has a help page. The language pack guide describes installing a pack, including plugin strings, by hand.
-
-## Dev v0.5.12.42 – 2026-11-25
-
-### New
-
-- The Interface settings have an option to confirm before exiting. With it on, F10, the Exit command and the window close button ask first, naming the running jobs and open terminals the exit would end. Off by default.
-
-## Dev v0.5.12.41 – 2026-11-25
-
-### Changed
-
 - The command palette (Shift+F9) lists the fields of the Settings window: a setting is found by its caption, its section or the word "settings", its description is shown under the list, and Enter opens the Settings window with the focus on that field.
 - A drop-down item too long for its field ends in an ellipsis instead of being cut under the arrow.
 - While a menu is open, the status line explains the command under the cursor.
@@ -33,16 +25,6 @@ This file describes what changes for the user from version to version: new featu
 - The Settings window has a Console section: scrollback size, multi-line paste confirmation, trimming of spaces on copy and paste, return to the panels and the background-run time. "Console..." in the Options menu opens the Settings window on this section.
 - The Settings window has an Editor section: auto-indent on Enter (moved from Keyboard), auto-wrap of long lines while typing and the wrap width. Auto-wrap and the width are now kept between runs.
 - "Font / Display..." and "User interface..." open one Settings window: a list of sections on the left (Font, Text, Display, Window, Panels, Behavior, Keyboard, Editor, Console, Notices), the fields of the chosen section on the right. Up and Down in the list switch sections, and typing narrows the list to the sections whose name, field captions or field descriptions contain the text; Backspace removes the last letter. A two-line description of the field under the cursor is shown under the fields, a vertical line separates the list of sections from them, and the fields of a section are grouped in frames with titles.
-
-### Added
-
-- Plugins > Unpack each archive (7-Zip plugin): every selected archive is unpacked into its own folder, named after the archive, in the other panel's folder; an existing folder is never reused (`name (2)`), and an archive that cannot be unpacked is listed without leaving a half-filled folder. It runs in the background.
-- A file search for text or bytes (`Alt+F7`) and the checksums command warn when the folder holds cloud-only files (OneDrive, Dropbox and the like), because reading them downloads each one.
-
-## Dev v0.5.12.32 – 2026-11-25
-
-### Changed
-
 - Checksums moved out of the program core into the `mtn.checksums` plugin. The command, its Ctrl+Alt+H key and the dialogs work as before, but the item is now at the end of the Files menu after a line, the Ctrl+Alt+F3 key bar hint and the "Checksums" tip are gone, and turning the plugin off in Plugins... removes the command. A plugin menu item can now name `Files` or `Commands` as its parent to sit in that menu.
 - Split / combine moved out of the program core into the `mtn.splitfile` plugin. The command works as before and stays in the Files menu, but turning the plugin off in Plugins... removes it.
 - "Test archive" and "Pack each item" moved out of the program core into the `mtn.archivetools` plugin. Both commands work as before and stay in the Files menu, but turning the plugin off in Plugins... removes them.
@@ -73,9 +55,16 @@ This file describes what changes for the user from version to version: new featu
 - The thumbnail sheet no longer reads the date and size of every picture on opening; it does so only when sorted by date or size.
 - A folder without plugin cells no longer costs extra time per row when a plugin reads the panel list.
 - The Lua macros plugin messages about failed, stopped and unfit macros are translated into Russian.
+- The "Extra patterns" caption of the folder comparison dialog showed a stray "&" in its text.
+- The "Skipped" counter of a copy or move now includes files of the selection that were left alone because they already exist at the destination (skip mode, a remembered or chosen "Skip", or "only newer"); before, only files inside folders and files skipped after an error were counted.
+- Copying only newer files, overwrite-newer, folder synchronization and Compare folders now share one rule for which file is newer: when both modification times carry fractions of a second they are compared almost exactly, and the two-second tolerance applies only when one of them is a whole-second time (FAT, some network shares). Files copied to such volumes are no longer reported as newer because of timestamp rounding.
+- After a copy, move, pack or unpack that ended early (cancelled, stopped by an error) or skipped some items, the items that did go through are deselected in the panel and the rest stay selected, so the selection shows what is still to be done. Ctrl+M brings the whole selection back.
+- A search by text in a folder on a network share found nothing when the Everything plugin was used to list the files: Everything does not index network shares. The names are now listed by the built-in walk in that case.
 
 ### Added
 
+- Plugins > Unpack each archive (7-Zip plugin): every selected archive is unpacked into its own folder, named after the archive, in the other panel's folder; an existing folder is never reused (`name (2)`), and an archive that cannot be unpacked is listed without leaving a half-filled folder. It runs in the background.
+- A file search for text or bytes (`Alt+F7`) and the checksums command warn when the folder holds cloud-only files (OneDrive, Dropbox and the like), because reading them downloads each one.
 - The Markdown viewer shows Obsidian wiki links (`[[note]]`, `[[note|label]]`) as links and opens the note, adding `.md` when the name has no extension. An underscore between letters, including Cyrillic ones, no longer turns the text into italics.
 - The "File already exists" prompt has a "Compare" button: it opens both files in the comparison view (the new one on the left, the existing one on the right) and brings the prompt back when the view is closed. Files that cannot be shown as a text comparison (binary, identical) get a one-line verdict instead.
 - "Split / combine..." in the File menu cuts the file under the cursor into numbered parts (`name.001`, `name.002`, ...) of a chosen size (`700M`, `1.44M`, `4G`) and joins the parts back into one file when the cursor is on any part. Existing files are never overwritten; Esc cancels and removes the unfinished result.
@@ -86,19 +75,6 @@ This file describes what changes for the user from version to version: new featu
 - "Pack each item" in the File menu packs every selected file or folder into its own ZIP archive in the other panel's folder, without replacing existing archives.
 - A download from FTP, SFTP, WebDAV or S3 that was cut off by a lost connection continues from the partial file on the next attempt, as long as the file on the server has not changed.
 - Copying, moving or packing files that exist only in the cloud (OneDrive, Dropbox and similar placeholders) warns how many of them will be downloaded first.
-
-## Dev v0.5.12.4 – 2026-11-24
-
-### Fixed
-
-- The "Extra patterns" caption of the folder comparison dialog showed a stray "&" in its text.
-- The "Skipped" counter of a copy or move now includes files of the selection that were left alone because they already exist at the destination (skip mode, a remembered or chosen "Skip", or "only newer"); before, only files inside folders and files skipped after an error were counted.
-- Copying only newer files, overwrite-newer, folder synchronization and Compare folders now share one rule for which file is newer: when both modification times carry fractions of a second they are compared almost exactly, and the two-second tolerance applies only when one of them is a whole-second time (FAT, some network shares). Files copied to such volumes are no longer reported as newer because of timestamp rounding.
-- After a copy, move, pack or unpack that ended early (cancelled, stopped by an error) or skipped some items, the items that did go through are deselected in the panel and the rest stay selected, so the selection shows what is still to be done. Ctrl+M brings the whole selection back.
-- A search by text in a folder on a network share found nothing when the Everything plugin was used to list the files: Everything does not index network shares. The names are now listed by the built-in walk in that case.
-
-### Added
-
 - The dialog before the folder comparison has an "Only files matching" field: name masks such as `*.md;*.txt` limit the synchronization to files of those types (folders are still entered). The field starts as `*.*` and accepts mask groups such as `@Video`.
 - The list that drops down from a mask field now also shows the mask groups (`@Video`, `@Images`, ...) and ends with a "Mask groups..." row that opens the groups editor over the dialog; closing the editor brings the dialog back as it was.
 
