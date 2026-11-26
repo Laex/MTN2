@@ -12,6 +12,10 @@ uses
 
 type
   TEditorScanJob = record
+    /// <summary>What is looked for, for the progress window.</summary>
+    Subject: string;
+    /// <summary>The pass replaces what it finds.</summary>
+    Replacing: Boolean;
     /// <summary>Does one unit of work (a line, a block of bytes); True when
     /// the pass is over.</summary>
     Step: TFunc<Boolean>;
@@ -37,18 +41,20 @@ type
     procedure Run(ABudgetMs: Cardinal);
   public
     /// <summary>AOnProgress is called after a portion that left work to do and
-    /// when the user stops the pass.</summary>
+    /// whenever a pass ends or is dropped (Active is False then).</summary>
     constructor Create(const AOnProgress: TProc);
     destructor Destroy; override;
     /// <summary>Drops the pass in progress and starts AJob.</summary>
     procedure Start(const AJob: TEditorScanJob);
     /// <summary>Stops the pass and calls its Cancel.</summary>
     procedure Cancel;
-    /// <summary>Drops the pass without calling anything.</summary>
+    /// <summary>Drops the pass without calling its Finish or Cancel.</summary>
     procedure Abort;
     property Active: Boolean read FActive;
     function Percent: Integer;
     function Note: string;
+    function Subject: string;
+    function Replacing: Boolean;
   end;
 
 var
@@ -72,6 +78,8 @@ end;
 
 destructor TEditorScan.Destroy;
 begin
+  // The owner is going away: nothing is reported to it.
+  FOnProgress := nil;
   Abort;
   FreeAndNil(FTimer);
   inherited Destroy;
@@ -141,12 +149,17 @@ begin
 end;
 
 procedure TEditorScan.Abort;
+var
+  WasActive: Boolean;
 begin
+  WasActive := FActive;
   Inc(FSerial);
   FActive := False;
   if Assigned(FTimer) then
     FTimer.Enabled := False;
   FJob := Default(TEditorScanJob);
+  if WasActive and Assigned(FOnProgress) then
+    FOnProgress();
 end;
 
 function TEditorScan.Percent: Integer;
@@ -161,6 +174,16 @@ begin
   Result := '';
   if FActive and Assigned(FJob.Note) then
     Result := FJob.Note();
+end;
+
+function TEditorScan.Subject: string;
+begin
+  Result := FJob.Subject;
+end;
+
+function TEditorScan.Replacing: Boolean;
+begin
+  Result := FJob.Replacing;
 end;
 
 end.

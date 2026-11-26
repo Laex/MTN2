@@ -709,6 +709,10 @@
       "cancel": "Abbrechen",
       "lbl_find": "Suchen:"
     },
+    "DIALOG_SEARCHPROGRESS": {
+      "$title": "Suchen",
+      "cancel": "Abbrechen"
+    },
     "DIALOG_REPLACEASK": {
       "$title": "Ersetzen",
       "replace": "Ersetzen",
@@ -1031,7 +1035,8 @@
     "editor.follow": "Folgen",
     "editor.indexingNotice": "Datei wird indiziert: %s",
     "editor.loadingHint": "Esc bricht ab",
-    "editor.searching": "Suche... %d%%",
+    "editor.searchingFor": "Gesucht wird:",
+    "editor.replacing": "Ersetzt wird:",
     "editor.searchMatches": "Treffer: %d",
     "editor.loadingProgress": "%d%%  %s von %s",
     "editor.loadingSpeed": "%s/s",

@@ -708,6 +708,10 @@
       "selection": "选区(&L)",
       "cancel": "取消"
     },
+    "DIALOG_SEARCHPROGRESS": {
+      "$title": "搜索",
+      "cancel": "取消"
+    },
     "DIALOG_REPLACEASK": {
       "$title": "替换",
       "replace": "替换",
@@ -1030,7 +1034,8 @@
     "editor.follow": "跟随",
     "editor.indexingNotice": "正在为文件建立索引：%s",
     "editor.loadingHint": "Esc 取消",
-    "editor.searching": "正在搜索... %d%%",
+    "editor.searchingFor": "正在搜索:",
+    "editor.replacing": "正在替换:",
     "editor.searchMatches": "匹配：%d",
     "editor.loadingProgress": "%d%%  %s / %s",
     "editor.loadingSpeed": "%s/秒",

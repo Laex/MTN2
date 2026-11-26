@@ -9,7 +9,8 @@ This file describes what changes for the user from version to version: new featu
 ### Changed
 
 - Search in the viewer and editor and replace in the editor are faster on large documents, above all in large files opened as a stream and with regular expressions.
-- A search or replace that takes more than a quarter of a second shows a progress bar with the percentage (for replace also the number of matches); Esc stops it, and the text cannot be edited until it ends. A stopped Replace All changes nothing; after "All" in step-by-step replace the replacements already made stay and one Ctrl+Z takes them back.
+- A search or replace that takes more than a quarter of a second opens a progress window with the percentage (for replace also the number of matches); Esc or its Cancel button stops it, and the text cannot be edited until it ends. A stopped Replace All changes nothing; after "All" in step-by-step replace the replacements already made stay and one Ctrl+Z takes them back.
+- Search and moving through large tables in the Markdown view are no longer slow: a search over a table of a few hundred rows took tens of seconds.
 
 ## v0.5.13 – 2026-11-26
 

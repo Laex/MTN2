@@ -27,6 +27,7 @@ const
   cResDialogReplace  = 'DIALOG_REPLACE';
   cResDialogEditFind = 'DIALOG_EDITFIND';
   cResDialogReplaceAsk = 'DIALOG_REPLACEASK';
+  cResDialogSearchProgress = 'DIALOG_SEARCHPROGRESS';
   cResDialogOverwriteAsk = 'DIALOG_OVERWRITEASK';
   cResDialogDeleteError = 'DIALOG_DELETEERROR';
   cResDialogIOError = 'DIALOG_IOERROR';

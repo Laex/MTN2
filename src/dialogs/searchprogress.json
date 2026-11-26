@@ -1,0 +1,64 @@
+{
+  "type": "dialog",
+  "version": "2.0",
+  "title": "Search",
+  "width": 60,
+  "height": 10,
+  "children": [
+    {
+      "type": "label",
+      "id": "what",
+      "text": "",
+      "col": 1,
+      "row": 0,
+      "width": 56,
+      "height": 1
+    },
+    {
+      "type": "label",
+      "id": "subject",
+      "text": "",
+      "accent": true,
+      "col": 1,
+      "row": 1,
+      "width": 56,
+      "height": 1
+    },
+    {
+      "type": "label",
+      "id": "bar",
+      "text": "",
+      "col": 1,
+      "row": 2,
+      "width": 56,
+      "height": 1
+    },
+    {
+      "type": "label",
+      "id": "note",
+      "text": "",
+      "col": 1,
+      "row": 3,
+      "width": 56,
+      "height": 1
+    },
+    {
+      "type": "separator",
+      "col": 0,
+      "row": 4,
+      "width": 58,
+      "height": 1
+    },
+    {
+      "type": "button",
+      "id": "cancel",
+      "text": "Cancel",
+      "default": true,
+      "cancel": true,
+      "col": 22,
+      "row": 6,
+      "width": 14,
+      "height": 1
+    }
+  ]
+}

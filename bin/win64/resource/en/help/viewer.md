@@ -53,7 +53,7 @@ Large files are streamed, not loaded as a whole. If the file changes on disk, th
 - **All** in the Replace dialog replaces every match of the whole text in one go.
 - Both ways show how many replacements were made at the end of **All**, are undone with a single **Ctrl+Z**, and put the cursor back where it was before the replace.
 
-**Long searches.** A search or replace that takes more than a moment shows a progress bar with the percentage (and, while replacing, the number of matches); **Esc** stops it, and the text cannot be edited until it ends. A stopped **All** of the Replace dialog changes nothing; after **All** in the question about a match, the replacements already made stay and one **Ctrl+Z** takes them back.
+**Long searches.** A search or replace that takes more than a moment opens a progress window with the percentage (and, while replacing, the number of matches); **Esc** or its **Cancel** button stops it, and the text cannot be edited until it ends. A stopped **All** of the Replace dialog changes nothing; after **All** in the question about a match, the replacements already made stay and one **Ctrl+Z** takes them back.
 
 **What is remembered.** Case, whole words and regular expressions are remembered between runs; **Reverse search** only until MTN2 closes.
 

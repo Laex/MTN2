@@ -710,6 +710,10 @@
       "cancel": "Cancel",
       "lbl_find": "Find:"
     },
+    "DIALOG_SEARCHPROGRESS": {
+      "$title": "Search",
+      "cancel": "Cancel"
+    },
     "DIALOG_REPLACEASK": {
       "$title": "Replace",
       "replace": "Replace",
@@ -1032,7 +1036,8 @@
     "editor.follow": "Follow",
     "editor.indexingNotice": "Indexing the file: %s",
     "editor.loadingHint": "Esc cancels",
-    "editor.searching": "Searching... %d%%",
+    "editor.searchingFor": "Searching for:",
+    "editor.replacing": "Replacing:",
     "editor.searchMatches": "matches: %d",
     "editor.loadingProgress": "%d%%  %s of %s",
     "editor.loadingSpeed": "%s/s",

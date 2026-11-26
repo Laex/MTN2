@@ -18,7 +18,7 @@ uses
   uTextEncoding, uFunctionBar, uDialogHost, uDialogTypes, uDialogBuilders, uInputLine,
   uEditorUndo, uEditorSearch, uEditorHexView, uEditorPainter, uEditorLayout, uEditorDialogs,
   uEditorInput, uFilePositions, uMarkdownParser, uMarkdownIndex, uMarkdownPainter,
-  uHistoryPopup, uKeymap, uStatusSegments, uPluginHighlight, uEditorLineOps, uCoreTimer, uEditorScan;
+  uHistoryPopup, uKeymap, uStatusSegments, uPluginHighlight, uEditorLineOps, uCoreTimer, uEditorScan, uDualPanelJobRules;
 
 
 const
@@ -169,6 +169,8 @@ type
     FLoadAnimPhase: Integer;
     FPendingEncoding: TTextFileEncoding;
     FDialog: TDialogHost;
+    // The open dialog is the progress window of the running pass.
+    FScanDialog: Boolean;
     FCloseAfterSave: Boolean;
     FUndoBuffer: TEditorUndoBuffer;
     FCoalesceInsert: Boolean;
@@ -408,7 +410,7 @@ type
     /// <summary>Drops a search or replace in progress without a word: the text
     /// it walks is going away.</summary>
     procedure AbortScan;
-    procedure DrawScanProgress;
+    procedure SyncScanDialog;
     /// <summary>The word under the cursor (Word button of the Find dialogs).</summary>
     function WordAtCursor: string;
     /// <summary>First line of the selection, or the current line when nothing
@@ -631,7 +633,7 @@ begin
   FLoadAnim.Interval := cLoadAnimMs;
   FLoadAnim.OnTimer := LoadAnimTick;
   FScan := TEditorScan.Create(
-    procedure begin NotifyHost; end);
+    procedure begin SyncScanDialog; end);
   FDialog := TDialogHost.Create(ATheme);
   FDialog.OnChanged := DialogChanged;
   FUndoBuffer := TEditorUndoBuffer.Create;
@@ -2755,6 +2757,7 @@ begin
   end;
   Walk := TSearchWalk.Create(FIncText, Opts, Row, Col, AForward, True);
   Job := Default(TEditorScanJob);
+  Job.Subject := FIncText;
   Job.Step :=
     function: Boolean
     begin
@@ -2794,6 +2797,46 @@ begin
     Exit;
   FScan.Abort;
   FRepl.Active := False;
+end;
+
+function ClipForDialog(const AText: string; AWidth: Integer): string;
+begin
+  Result := StringReplace(AText, #9, ' ', [rfReplaceAll]);
+  if Length(Result) > AWidth then
+    Result := Copy(Result, 1, AWidth - 3) + '...';
+end;
+
+// A pass that outlives its first portion gets a progress window, closed as
+// soon as the pass ends. A chromeless view (Quick View) draws no dialogs.
+procedure TEditorWindow.SyncScanDialog;
+const
+  cTextW = 54;
+begin
+  if Searching and not FChromeless then
+  begin
+    if not (FScanDialog and FDialog.Visible) and not FDialog.Visible then
+    begin
+      FScanDialog := True;
+      FDialog.Open(BuildSearchProgressDialog(FScan.Replacing,
+        ClipForDialog(FScan.Subject, cTextW)),
+        procedure(const AControlId, AValuesJson: string)
+        begin
+          FScan.Cancel;
+        end);
+    end;
+    if FScanDialog then
+    begin
+      FDialog.SetLabelText('bar',
+        FormatJobProgressBar(cTextW + 2, EnsureRange(FScan.Percent, 0, 100)));
+      FDialog.SetLabelText('note', FScan.Note);
+    end;
+  end
+  else if FScanDialog then
+  begin
+    FScanDialog := False;
+    FDialog.Close;
+  end;
+  NotifyHost;
 end;
 
 procedure TEditorWindow.SelectHit(const AHit: TSearchResult);
@@ -3421,6 +3464,8 @@ begin
   Changed := 0;
   Count := 0;
   Job := Default(TEditorScanJob);
+  Job.Subject := AFind;
+  Job.Replacing := True;
   Job.Step :=
     function: Boolean
     var
@@ -3569,6 +3614,8 @@ begin
     Exit;
   Walk := ReplaceWalk;
   Job := Default(TEditorScanJob);
+  Job.Subject := FRepl.Find;
+  Job.Replacing := True;
   // With All answered the matches are replaced as the walk meets them.
   Job.Step :=
     function: Boolean
@@ -3646,13 +3693,6 @@ begin
   EndReplaceSession;
   if Count = 0 then
     FFindStatus := 'cancelled';
-end;
-
-function ClipForDialog(const AText: string; AWidth: Integer): string;
-begin
-  Result := StringReplace(AText, #9, ' ', [rfReplaceAll]);
-  if Length(Result) > AWidth then
-    Result := Copy(Result, 1, AWidth - 3) + '...';
 end;
 
 procedure TEditorWindow.ReplaceContext(ARow, ACol, ALen: Integer;
@@ -5226,6 +5266,7 @@ begin
   Candidate := 0;
   Skip := 0;
   Job := Default(TEditorScanJob);
+  Job.Subject := Needle;
   // One candidate after another, a block of start positions at a time.
   Job.Step :=
     function: Boolean
@@ -5326,6 +5367,7 @@ begin
     GetSelRange(Row, Col, R2, C2);
   Walk := TSearchWalk.Create(Needle, Opts, Row, Col, Forward, False);
   Job := Default(TEditorScanJob);
+  Job.Subject := Needle;
   Job.Step :=
     function: Boolean
     begin
@@ -6060,35 +6102,6 @@ begin
     FThemeColors.BodyBg);
 end;
 
-// Over the text, once the pass has run long enough to be left to the timer.
-procedure TEditorWindow.DrawScanProgress;
-const
-  cBarMaxW = 50;
-  cRow = 2;
-var
-  BarW, Fill, Percent: Integer;
-  Text, Note: string;
-begin
-  BarW := Min(cBarMaxW, Area.Width - 4);
-  if (BarW < 4) or (Area.Height < cRow + 5) then
-    Exit;
-  Percent := EnsureRange(FScan.Percent, 0, 100);
-  Fill := BarW * Percent div 100;
-  Text := T('ui.editor.searching', 'Searching... %d%%', [Percent]);
-  Note := FScan.Note;
-  if Note <> '' then
-    Text := Text + '  ' + Note;
-  Text := Text + '  ' + T('ui.editor.loadingHint', 'Esc cancels');
-  FillGridRect(Buffer, 1, cRow, Area.Width - 3, cRow + 2, ' ', FThemeColors.BodyFg,
-    FThemeColors.BodyBg);
-  PutGridText(Buffer, 1, cRow, StringOfChar(chBlock, Fill), FThemeColors.ScrollThumb,
-    FThemeColors.BodyBg);
-  PutGridText(Buffer, 1 + Fill, cRow, StringOfChar(chShadeLight, BarW - Fill),
-    FThemeColors.ScrollFg, FThemeColors.BodyBg);
-  PutGridText(Buffer, 1, cRow + 1, Copy(Text, 1, Area.Width - 3), FThemeColors.HintFg,
-    FThemeColors.BodyBg);
-end;
-
 procedure TEditorWindow.DrawContent;
 var
   W, H, ViewH, TextW, Y, X, LineIdx, CharOffset, DrawCol, HighlightId: Integer;
@@ -6211,8 +6224,6 @@ begin
     end;
   end;
 
-  if Searching then
-    DrawScanProgress;
   if FHlPending then
     QueueHighlightRepaint;
   if FSurfaceHandle = 0 then
@@ -6293,6 +6304,14 @@ begin
   Result := False;
   FMouseSelecting := False;
   FPressLink := '';
+  // While searching only the progress window takes clicks: one beside it must
+  // not stop the pass, nor move the cursor under it.
+  if Searching then
+  begin
+    if FDialog.Visible and FDialog.ContainsLocal(ALocalCol, ALocalRow) then
+      FDialog.HandleClick(ALocalCol, ALocalRow, AShift);
+    Exit(True);
+  end;
   // Dialog frame first (may overlap F-bar on short windows); F-bar hints next
   // (Y/N/Esc for AskSave); only then treat outside click as Cancel.
   if Assigned(FDialog) and FDialog.Visible and
@@ -6313,9 +6332,6 @@ begin
     RequestClose;
     Exit(True);
   end;
-  // A click in the text would move the cursor under a search in progress.
-  if Searching then
-    Exit(True);
   W := Area.Width;
   Bottom := ContentBottomRow;
   if (W < 8) or (Bottom < 1) then
@@ -6532,10 +6548,8 @@ begin
   // cannot desync (a dialog-only path would swallow the outcome on Esc/outside).
   if FConfirm = ecAskSave then
     Exit(FDialogs.HandleAskSaveInput(AKey, AShift, AKeyChar));
-  if Assigned(FDialog) and FDialog.Visible then
-    Exit(FDialog.HandleInput(AKey, AShift, AKeyChar));
-  // While searching only Esc is taken; typing into the incremental search
-  // starts it over.
+  // While searching Esc stops the pass and the progress window takes the other
+  // keys; typing into the incremental search starts it over.
   if Searching then
     if (AKey = vkEscape) and (AShift = []) then
     begin
@@ -6548,10 +6562,14 @@ begin
       AbortScan
     else
     begin
+      if FDialog.Visible then
+        FDialog.HandleInput(AKey, AShift, AKeyChar);
       AKey := 0;
       AKeyChar := #0;
       Exit(True);
     end;
+  if Assigned(FDialog) and FDialog.Visible then
+    Exit(FDialog.HandleInput(AKey, AShift, AKeyChar));
   if FSurfaceHandle <> 0 then
     Exit(SurfaceInput(AKey, AShift, AKeyChar));
   if FDoc.Loading and (AKey = vkEscape) and (AShift = []) then

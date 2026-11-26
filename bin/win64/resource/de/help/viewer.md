@@ -53,7 +53,7 @@ Große Dateien werden gestreamt und nicht als Ganzes geladen. Ändert sich die D
 - **Alle** im Dialog „Ersetzen“ ersetzt alle Treffer des ganzen Textes auf einmal.
 - Beide Wege zeigen am Ende von **Alle** an, wie viele Ersetzungen vorgenommen wurden, werden mit einem einzigen **Ctrl+Z** rückgängig gemacht und setzen den Cursor dorthin zurück, wo er vor dem Ersetzen stand.
 
-**Lange Suchläufe.** Dauert das Suchen oder Ersetzen länger als einen Augenblick, erscheint ein Fortschrittsbalken mit Prozentangabe (beim Ersetzen auch mit der Zahl der Treffer); **Esc** bricht ab, und bis zum Ende lässt sich der Text nicht bearbeiten. Ein abgebrochenes **Alle** des Dialogs „Ersetzen“ ändert nichts; nach **Alle** in der Frage zu einem Treffer bleiben die bereits vorgenommenen Ersetzungen erhalten, und ein **Ctrl+Z** macht sie rückgängig.
+**Lange Suchläufe.** Dauert das Suchen oder Ersetzen länger als einen Augenblick, öffnet sich ein Fortschrittsfenster mit Prozentangabe (beim Ersetzen auch mit der Zahl der Treffer); **Esc** oder die Schaltfläche **Abbrechen** bricht ab, und bis zum Ende lässt sich der Text nicht bearbeiten. Ein abgebrochenes **Alle** des Dialogs „Ersetzen“ ändert nichts; nach **Alle** in der Frage zu einem Treffer bleiben die bereits vorgenommenen Ersetzungen erhalten, und ein **Ctrl+Z** macht sie rückgängig.
 
 **Was gemerkt wird.** Groß-/Kleinschreibung, ganze Wörter und reguläre Ausdrücke werden zwischen den Starts gemerkt; **Rückwärts suchen** nur, bis MTN2 geschlossen wird.
 

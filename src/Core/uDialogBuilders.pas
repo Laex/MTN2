@@ -64,6 +64,9 @@ function BuildEditFindDialog(const AFind: string; AMatchCase: Boolean = False;
 /// it is replaced with (both in the accent style) and the line that holds the
 /// match, with the match itself in the accent style (APre + AHit + APost),
 /// buttons Replace / All / Skip / Cancel.</summary>
+/// <summary>Shown while a search or replace over a document goes on.</summary>
+function BuildSearchProgressDialog(AReplacing: Boolean;
+  const ASubject: string): TDialogDeclaration;
 function BuildReplaceAskDialog(const AFind, AReplacement: string; ALineNo: Integer;
   const APre, AHit, APost: string): TDialogDeclaration;
 function BuildReplaceDialog(const AFind, AReplace: string; AMatchCase: Boolean = False;
@@ -561,6 +564,20 @@ begin
   DialogSetCheckbox(Result, 'opt_words', AWholeWord);
   DialogSetCheckbox(Result, 'opt_regex', ARegex);
   DialogSetCheckbox(Result, 'opt_reverse', AReverse);
+end;
+
+function BuildSearchProgressDialog(AReplacing: Boolean;
+  const ASubject: string): TDialogDeclaration;
+begin
+  RequireDialogResource(cResDialogSearchProgress, Result);
+  if AReplacing then
+  begin
+    DialogSetTitle(Result, T('ui.editor.replaceAskReplace', 'Replace'));
+    DialogSetLabelText(Result, 'what', T('ui.editor.replacing', 'Replacing:'));
+  end
+  else
+    DialogSetLabelText(Result, 'what', T('ui.editor.searchingFor', 'Searching for:'));
+  DialogSetLabelText(Result, 'subject', '"' + ASubject + '"');
 end;
 
 function BuildReplaceAskDialog(const AFind, AReplacement: string; ALineNo: Integer;

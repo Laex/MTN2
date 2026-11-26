@@ -22,6 +22,8 @@ type
     [TearDown] procedure TearDown;
     [Test] procedure TestLongFindFinishesInPortions;
     [Test] procedure TestEscStopsFind;
+    [Test] procedure TestProgressWindowIsOpenWhileSearching;
+    [Test] procedure TestProgressWindowButtonStopsReplace;
     [Test] procedure TestKeysDoNotEditWhileSearching;
     [Test] procedure TestReplaceAllFinishesInPortions;
     [Test] procedure TestCancelledReplaceAllChangesNothing;
@@ -29,6 +31,7 @@ type
     [Test] procedure TestIncSearchRestartsOnNextLetter;
     [Test] procedure TestHexFindFinishesInPortions;
     [Test] procedure TestFindBytesTakesPortionOfTheWalk;
+    [Test] procedure TestSearchOfMarkdownTableIsQuick;
   end;
 
 implementation
@@ -191,6 +194,42 @@ begin
   Assert.IsFalse(V.HasSelection, 'nothing selected');
 end;
 
+procedure TTestEditorScan.TestProgressWindowIsOpenWhileSearching;
+var
+  V: TEditorWindow;
+begin
+  V := OpenView(FDir);
+  FView := V;
+  StartFind(V, 'needle');
+  Assert.IsTrue(V.DialogOpen, 'the progress window is up');
+  // A click beside it leaves the pass running.
+  V.HandleMouseDown(2, 2, []);
+  Assert.IsTrue(V.Searching, 'a click outside the window stops nothing');
+  RunToEnd(V);
+  Assert.IsFalse(V.DialogOpen, 'and the window is gone with the pass');
+end;
+
+procedure TTestEditorScan.TestProgressWindowButtonStopsReplace;
+var
+  V: TEditorWindow;
+  I: Integer;
+begin
+  V := OpenView(FDir);
+  FView := V;
+  StartReplaceAll(V, 'two', '2');
+  Key(V, vkReturn);               // the Cancel button of the progress window
+  I := 0;
+  while V.Searching and (I < 30) do
+  begin
+    Turn;
+    Inc(I);
+  end;
+  Assert.IsFalse(V.Searching, 'the button stops the pass');
+  Assert.IsFalse(V.DialogOpen, 'the window is closed');
+  RunTurns(cLines);
+  Assert.AreEqual('line two', V.LineText(0), 'nothing was replaced');
+end;
+
 procedure TTestEditorScan.TestKeysDoNotEditWhileSearching;
 var
   V: TEditorWindow;
@@ -326,6 +365,39 @@ begin
   Assert.AreEqual(-1, Find(2, False, 0, 2), 'starts 1 and 0');
   Assert.AreEqual(7, Find(2, False, 2, 8), 'from the end after the wrap');
   Assert.AreEqual(-1, Find(4, True, 10, 3), 'nothing past the end of the walk');
+end;
+
+procedure TTestEditorScan.TestSearchOfMarkdownTableIsQuick;
+const
+  cRows = 250;
+var
+  V: TEditorWindow;
+  Path, Text: string;
+  I: Integer;
+  T, Started: UInt64;
+begin
+  GEditorScanFirstMs := FFirstMs;
+  GEditorScanSliceMs := FSliceMs;
+  Text := '| N | Name |' + sLineBreak + '|---|---|' + sLineBreak;
+  for I := 1 to cRows do
+    Text := Text + Format('| %d | work number %d |', [I, I]) + sLineBreak;
+  Path := TPath.Combine(FDir, 't.md');
+  TFile.WriteAllText(Path, Text, TEncoding.UTF8);
+  V := TEditorWindow.Create(CreateThemeByName('NDN'), 1);
+  FView := V;
+  V.Open(PathToFileUri(Path), True);
+  T := TThread.GetTickCount64 + 10000;
+  while not V.DocReady and (TThread.GetTickCount64 < T) do
+    CheckSynchronize(10);
+  if not V.MarkdownMode then
+    V.ToggleMarkdownMode;
+  Started := TThread.GetTickCount64;
+  StartFind(V, 'work number 250');
+  RunToEnd(V);
+  // Reading a table row looks at the rows around it; the whole table has to
+  // stay a matter of moments, not of re-reading the document for each row.
+  Assert.IsTrue(TThread.GetTickCount64 - Started < 3000, 'searched quickly');
+  Assert.IsTrue(V.HasSelection, 'the last row is found');
 end;
 
 initialization
