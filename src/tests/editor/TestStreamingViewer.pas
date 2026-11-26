@@ -27,6 +27,7 @@ type
     [Test] procedure TestReadStreamStopsWhenCancelled;
     [Test] procedure TestIndexingToastShownWhileStatusLineHidden;
     [Test] procedure TestCacheEviction;
+    [Test] procedure TestReadingBackward;
     [Test] procedure TestNoTrailingNewline;
     [Test] procedure TestSampleStraddle;
     [Test] procedure TestBinaryHex;
@@ -980,6 +981,24 @@ end;
 procedure TTestStreamingViewer.TestStreamingIsReadOnly;
 begin
   TestStreamingViewer.TestStreamingIsReadOnly;
+end;
+
+procedure TTestStreamingViewer.TestReadingBackward;
+var
+  Path: string;
+  Doc: TEditorDoc;
+  I, Count: Integer;
+begin
+  Path := TempPath('big_backward.txt');
+  Count := MakeBigUtf8(Path, True);
+  Doc := OpenDoc(Path);
+  try
+    // Several read blocks worth of lines, from the last one up.
+    for I := Count - 1 downto Count - 8000 do
+      Assert.AreEqual(LineText(I), Doc.GetLine(I), 'line ' + IntToStr(I));
+  finally
+    Doc.Free;
+  end;
 end;
 
 initialization

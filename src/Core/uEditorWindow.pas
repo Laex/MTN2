@@ -18,7 +18,7 @@ uses
   uTextEncoding, uFunctionBar, uDialogHost, uDialogTypes, uDialogBuilders, uInputLine,
   uEditorUndo, uEditorSearch, uEditorHexView, uEditorPainter, uEditorLayout, uEditorDialogs,
   uEditorInput, uFilePositions, uMarkdownParser, uMarkdownIndex, uMarkdownPainter,
-  uHistoryPopup, uKeymap, uStatusSegments, uPluginHighlight, uEditorLineOps, uCoreTimer;
+  uHistoryPopup, uKeymap, uStatusSegments, uPluginHighlight, uEditorLineOps, uCoreTimer, uEditorScan;
 
 
 const
@@ -165,6 +165,7 @@ type
     // Repaints a loading window, so the bar of a load of unknown size moves
     // and the rate stays current between progress reports.
     FLoadAnim: TCoreTimer;
+    FScan: TEditorScan;
     FLoadAnimPhase: Integer;
     FPendingEncoding: TTextFileEncoding;
     FDialog: TDialogHost;
@@ -357,7 +358,6 @@ type
     /// replaces it when All was answered); at the end of the text asks to go
     /// on from the other end, then finishes.</summary>
     procedure ReplaceNextMatch;
-    function ReplaceFindMatch(out AHit: TSearchResult): Boolean;
     function ReplaceCanWrap: Boolean;
     procedure ReplaceAsk;
     procedure ReplaceAskCommand(const AControlId: string);
@@ -392,8 +392,23 @@ type
     procedure BreakInsertCoalesce;
     function ClipboardGetText: string;
     procedure ClipboardSetText(const AText: string);
-    function FindMatch(AForward: Boolean): Boolean;
-    function HexFindMatch(AForward: Boolean): Boolean;
+    procedure FindMatch(AForward: Boolean);
+    procedure HexFindMatch(AForward: Boolean);
+    /// <summary>Selects what a search found.</summary>
+    procedure SelectHit(const AHit: TSearchResult);
+    procedure StartReplaceAll(const AFind, AReplace: string);
+    procedure ApplyReplaceAll(const ARows: TArray<Integer>;
+      const ALines: TArray<string>; AChanged, ACount: Integer; const AFind: string);
+    /// <summary>The walk from FRepl.Pos on to the next match.</summary>
+    function ReplaceWalk: TSearchWalk;
+    /// <summary>False for a match the wrapped pass has already looked at.</summary>
+    function ReplaceHitCounts(const AHit: TSearchResult): Boolean;
+    procedure ReplaceFound(const AHit: TSearchResult);
+    procedure ReplaceCancelled;
+    /// <summary>Drops a search or replace in progress without a word: the text
+    /// it walks is going away.</summary>
+    procedure AbortScan;
+    procedure DrawScanProgress;
     /// <summary>The word under the cursor (Word button of the Find dialogs).</summary>
     function WordAtCursor: string;
     /// <summary>First line of the selection, or the current line when nothing
@@ -563,6 +578,9 @@ type
     property URI: string read FURI;
     property ViewOnly: Boolean read FViewOnly;
     property HexMode: Boolean read FHexMode;
+    /// <summary>A search or replace is going on; Esc stops it and the text
+    /// takes no edits meanwhile.</summary>
+    function Searching: Boolean;
     /// <summary>The view follows the end of a growing file.</summary>
     property Following: Boolean read FFollow;
     property MarkdownMode: Boolean read FMarkdownMode;
@@ -612,6 +630,8 @@ begin
   FLoadAnim.Enabled := False;
   FLoadAnim.Interval := cLoadAnimMs;
   FLoadAnim.OnTimer := LoadAnimTick;
+  FScan := TEditorScan.Create(
+    procedure begin NotifyHost; end);
   FDialog := TDialogHost.Create(ATheme);
   FDialog.OnChanged := DialogChanged;
   FUndoBuffer := TEditorUndoBuffer.Create;
@@ -769,7 +789,9 @@ end;
 
 function TEditorWindow.CanEdit: Boolean;
 begin
-  if FHexMode then
+  if Searching then
+    Result := False
+  else if FHexMode then
     Result := EditorCanHexEdit(FViewOnly, FDoc.Ready, FDoc.ReadOnly,
       FDoc.Saving, FDoc.Loading)
   else
@@ -780,7 +802,7 @@ end;
 function TEditorWindow.TryUnlockEdit: Boolean;
 begin
   Result := CanEdit;
-  if Result or FViewOnly or (not FDoc.Ready) then
+  if Result or FViewOnly or Searching or (not FDoc.Ready) then
     Exit;
   if FDoc.Streaming then
   begin
@@ -1007,6 +1029,7 @@ destructor TEditorWindow.Destroy;
 begin
   FAlive := False;
   FLife.Alive := False;
+  FreeAndNil(FScan);
   FreeAndNil(FLoadAnim);
   FHlTracker.Free;
   if FSurfaceHandle <> 0 then
@@ -1096,6 +1119,7 @@ begin
   Replaced := FDoc.Ready and (FDoc.ContentGen <> FLastMdContentGen);
   if Replaced then
   begin
+    AbortScan;
     FLastMdContentGen := FDoc.ContentGen;
     FMdFenceIdx.Reset;
     FMdLineCache.Clear;
@@ -1192,6 +1216,7 @@ end;
 
 procedure TEditorWindow.Open(const AURI: string; AViewOnly: Boolean);
 begin
+  AbortScan;
   FFollow := False;
   FURI := AURI;
   FViewOnly := AViewOnly;
@@ -1254,7 +1279,7 @@ end;
 
 function TEditorWindow.PluginDocBusy: Boolean;
 begin
-  Result := FDoc.Loading or FDoc.Saving;
+  Result := Searching or FDoc.Loading or FDoc.Saving;
 end;
 
 function TEditorWindow.PluginDocInfoJson: string;
@@ -1397,6 +1422,7 @@ end;
 
 procedure TEditorWindow.OpenSurface(AHandle: Integer);
 begin
+  AbortScan;
   FSurfaceHandle := AHandle;
   FSurfaceGen := 0;
   FURI := 'plugin-surface:' + IntToStr(AHandle);
@@ -2237,6 +2263,7 @@ end;
 
 procedure TEditorWindow.ForceClose;
 begin
+  AbortScan;
   SaveCurrentPosition;
   FConfirm := ecNone;
   FMouseSelecting := False;
@@ -2259,6 +2286,7 @@ procedure TEditorWindow.RequestClose;
 var
   Name: string;
 begin
+  AbortScan;
   if FDoc.Saving then
     Exit;
   // A load still running is cancelled (FDoc.Close) and the tab goes away.
@@ -2503,6 +2531,7 @@ var
   Texts: TArray<string>;
   I, Sel: Integer;
 begin
+  AbortScan;
   if (not FDoc.Ready) or FHexMode or FMarkdownMode or (FSurfaceHandle <> 0) then
     Exit;
   if FDoc.BookmarkCount = 0 then
@@ -2668,6 +2697,7 @@ procedure TEditorWindow.StartIncSearch;
 var
   R2, C2: Integer;
 begin
+  AbortScan;
   if FHexMode or not FDoc.Ready or (FDoc.LineCount = 0) then
     Exit;
   ClampCursor;
@@ -2688,11 +2718,12 @@ end;
 
 procedure TEditorWindow.IncSearchFind(AForward: Boolean; AFromCursor: Boolean);
 var
-  I, Row, Col, R2, C2: Integer;
-  Lines: TArray<string>;
+  Row, Col, R2, C2: Integer;
   Opts: TSearchOptions;
-  Hit: TSearchResult;
+  Walk: TSearchWalk;
+  Job: TEditorScanJob;
 begin
+  AbortScan;
   if FIncText = '' then
   begin
     ClearSelection;
@@ -2705,9 +2736,6 @@ begin
   Opts := GEditorSearchOptions;
   Opts.SearchBackwards := False;
   Opts.UseRegex := False;
-  SetLength(Lines, FDoc.LineCount);
-  for I := 0 to FDoc.LineCount - 1 do
-    Lines[I] := CursorLineText(I);
   if AFromCursor then
   begin
     Row := FCursorRow;
@@ -2720,36 +2748,66 @@ begin
     Row := FIncFromRow;
     Col := FIncFromCol;
   end;
-  if AForward then
+  if AForward and AFromCursor then
   begin
-    if AFromCursor then
+    Row := FCursorRow;
+    Col := FCursorCol;
+  end;
+  Walk := TSearchWalk.Create(FIncText, Opts, Row, Col, AForward, True);
+  Job := Default(TEditorScanJob);
+  Job.Step :=
+    function: Boolean
     begin
-      Row := FCursorRow;
-      Col := FCursorCol;
+      Result := Walk.Step(FDoc.LineCount, CursorLineText);
     end;
-    Hit := TEditorSearchEngine.FindNextWrapped(Lines, FIncText, Row, Col, Opts, True);
-  end
-  else
-    Hit := TEditorSearchEngine.FindPrevWrapped(Lines, FIncText, Row, Col, Opts, True);
-  if Hit.Found then
-  begin
-    FColumnMode := False;
-    FSelAnchorRow := Hit.LineIndex;
-    FSelAnchorCol := Hit.ColIndex;
-    FCursorRow := Hit.LineIndex;
-    FCursorCol := Hit.ColIndex + Hit.Length;
-    FIncFromRow := Hit.LineIndex;
-    FIncFromCol := Hit.ColIndex;
-    FFindStatus := '';
-  end
-  else
-    FFindStatus := T('ui.editor.incNotFound', 'not found');
-  EnsureCursorVisible;
-  NotifyHost;
+  Job.Percent :=
+    function: Integer
+    begin
+      Result := Walk.Percent(FDoc.LineCount);
+    end;
+  Job.Finish :=
+    procedure
+    begin
+      if Walk.Hit.Found then
+      begin
+        SelectHit(Walk.Hit);
+        FIncFromRow := Walk.Hit.LineIndex;
+        FIncFromCol := Walk.Hit.ColIndex;
+        FFindStatus := '';
+      end
+      else
+        FFindStatus := T('ui.editor.incNotFound', 'not found');
+      EnsureCursorVisible;
+      NotifyHost;
+    end;
+  FScan.Start(Job);
+end;
+
+function TEditorWindow.Searching: Boolean;
+begin
+  Result := Assigned(FScan) and FScan.Active;
+end;
+
+procedure TEditorWindow.AbortScan;
+begin
+  if not Searching then
+    Exit;
+  FScan.Abort;
+  FRepl.Active := False;
+end;
+
+procedure TEditorWindow.SelectHit(const AHit: TSearchResult);
+begin
+  FColumnMode := False;
+  FSelAnchorRow := AHit.LineIndex;
+  FSelAnchorCol := AHit.ColIndex;
+  FCursorRow := AHit.LineIndex;
+  FCursorCol := AHit.ColIndex + AHit.Length;
 end;
 
 procedure TEditorWindow.EndIncSearch(AAccept: Boolean);
 begin
+  AbortScan;
   FIncActive := False;
   FFindStatus := '';
   if AAccept then
@@ -2936,6 +2994,7 @@ end;
 
 procedure TEditorWindow.ToggleViewMode;
 begin
+  AbortScan;
   if not FDoc.Ready then
     Exit;
   if FViewOnly then
@@ -2957,6 +3016,7 @@ end;
 
 procedure TEditorWindow.ToggleMarkdownMode;
 begin
+  AbortScan;
   if not FDoc.Ready then
     Exit;
   if not FViewOnly then
@@ -2982,6 +3042,7 @@ end;
 
 procedure TEditorWindow.ToggleHexMode;
 begin
+  AbortScan;
   if not FDoc.Ready then
     Exit;
   if FHexMode then
@@ -3017,6 +3078,7 @@ end;
 
 procedure TEditorWindow.RequestEncoding(AEncoding: TTextFileEncoding; ARedecode: Boolean);
 begin
+  AbortScan;
   if not FDoc.Ready then
     Exit;
   if ARedecode and FDoc.Dirty then
@@ -3059,6 +3121,7 @@ end;
 
 procedure TEditorWindow.OpenEncodingDialog;
 begin
+  AbortScan;
   if not FDoc.Ready then
     Exit;
   FDialogs.OpenEncoding(TextEncodingName(FDoc.Encoding));
@@ -3066,6 +3129,7 @@ end;
 
 procedure TEditorWindow.OpenGotoDialog;
 begin
+  AbortScan;
   if not FDoc.Ready then
     Exit;
   FDialogs.OpenGoto(FCursorRow + 1);
@@ -3073,6 +3137,7 @@ end;
 
 procedure TEditorWindow.OpenReplaceDialog;
 begin
+  AbortScan;
   if not CanEdit then
     Exit;
   SeedFindFromHistory;
@@ -3296,6 +3361,7 @@ procedure TEditorWindow.OpenReflowDialog;
 var
   First, Last: Integer;
 begin
+  AbortScan;
   if not LineCommandRange(First, Last) then
     Exit;
   FDialogs.OpenReflow(GEditorReflowWidth);
@@ -3314,11 +3380,10 @@ end;
 
 procedure TEditorWindow.ReplaceInDocument(const AFind, AReplace: string; AAll: Boolean);
 var
-  Err, NewLine: string;
-  I, Count, N: Integer;
-  Lines, Fresh: TArray<string>;
+  Err: string;
   Opts: TSearchOptions;
 begin
+  AbortScan;
   if not CanEdit then
     Exit;
   if AFind = '' then
@@ -3337,30 +3402,92 @@ begin
     Exit;
   end;
 
-  // Every match of the text at once; the cursor stays where it was.
+  StartReplaceAll(AFind, AReplace);
+end;
+
+// Every match of the text at once; the cursor stays where it was. The text is
+// changed after the whole of it was looked at, so stopping changes nothing.
+procedure TEditorWindow.StartReplaceAll(const AFind, AReplace: string);
+var
+  Rows: TArray<Integer>;
+  Lines: TArray<string>;
+  Row, Changed, Count: Integer;
+  Opts: TSearchOptions;
+  Job: TEditorScanJob;
+begin
   BreakInsertCoalesce;
+  Opts := GEditorSearchOptions;
+  Row := 0;
+  Changed := 0;
   Count := 0;
-  SetLength(Lines, FDoc.LineCount);
-  for I := 0 to FDoc.LineCount - 1 do
-    Lines[I] := FDoc.GetLine(I);
-  Fresh := Copy(Lines);
-  for I := 0 to High(Lines) do
-  begin
-    NewLine := TEditorSearchEngine.ReplaceAllInLine(Lines[I], AFind, AReplace,
-      Opts, N);
-    if N > 0 then
+  Job := Default(TEditorScanJob);
+  Job.Step :=
+    function: Boolean
+    var
+      NewLine, OldLine: string;
+      N: Integer;
     begin
-      Fresh[I] := NewLine;
-      Inc(Count, N);
+      if Row >= FDoc.LineCount then
+        Exit(True);
+      OldLine := FDoc.GetLine(Row);
+      NewLine := TEditorSearchEngine.ReplaceAllInLine(OldLine, AFind, AReplace, Opts, N);
+      if N > 0 then
+      begin
+        Inc(Count, N);
+        if NewLine <> OldLine then
+        begin
+          if Changed = Length(Rows) then
+          begin
+            SetLength(Rows, Changed * 2 + 16);
+            SetLength(Lines, Length(Rows));
+          end;
+          Rows[Changed] := Row;
+          Lines[Changed] := NewLine;
+          Inc(Changed);
+        end;
+      end;
+      Inc(Row);
+      Result := False;
     end;
-  end;
-  if Count > 0 then
+  Job.Percent :=
+    function: Integer
+    begin
+      Result := Int64(Row) * 100 div Max(FDoc.LineCount, 1);
+    end;
+  Job.Note :=
+    function: string
+    begin
+      Result := T('ui.editor.searchMatches', 'matches: %d', [Count]);
+    end;
+  Job.Finish :=
+    procedure
+    begin
+      ApplyReplaceAll(Rows, Lines, Changed, Count, AFind);
+    end;
+  Job.Cancel :=
+    procedure
+    begin
+      FFindStatus := 'cancelled';
+    end;
+  FScan.Start(Job);
+end;
+
+procedure TEditorWindow.ApplyReplaceAll(const ARows: TArray<Integer>;
+  const ALines: TArray<string>; AChanged, ACount: Integer; const AFind: string);
+var
+  I: Integer;
+begin
+  if ACount > 0 then
   begin
     PushUndo;
-    for I := 0 to High(Lines) do
-      if Fresh[I] <> Lines[I] then
-        FDoc.SetLine(I, Fresh[I]);
-    FFindStatus := Format('replaced %d', [Count]);
+    FDoc.BeginUpdate;
+    try
+      for I := 0 to AChanged - 1 do
+        FDoc.SetLine(ARows[I], ALines[I]);
+    finally
+      FDoc.EndUpdate;
+    end;
+    FFindStatus := Format('replaced %d', [ACount]);
     ClearSelection;
     ClampCursor;
     EnsureCursorVisible;
@@ -3368,8 +3495,8 @@ begin
   else
     FFindStatus := 'not found';
   NotifyHost;
-  if Count > 0 then
-    SearchMessage(T('ui.editor.replacedCount', 'Replaced: %d', [Count]), '')
+  if ACount > 0 then
+    SearchMessage(T('ui.editor.replacedCount', 'Replaced: %d', [ACount]), '')
   else
     NotFoundMessage(AFind);
 end;
@@ -3402,59 +3529,24 @@ begin
   ReplaceNextMatch;
 end;
 
-function TEditorWindow.ReplaceFindMatch(out AHit: TSearchResult): Boolean;
-var
-  I, C, Len, Start, Limit: Integer;
-  Line: string;
+function TEditorWindow.ReplaceWalk: TSearchWalk;
 begin
-  AHit := Default(TSearchResult);
-  if FRepl.Forward then
-  begin
-    for I := FRepl.PosRow to FDoc.LineCount - 1 do
-    begin
-      Line := FDoc.GetLine(I);
-      if I = FRepl.PosRow then
-        Start := FRepl.PosCol
-      else
-        Start := 0;
-      if TEditorSearchEngine.FindInLine(Line, FRepl.Find, Start, FRepl.Opts, C, Len) then
-      begin
-        AHit.Found := True;
-        AHit.LineIndex := I;
-        AHit.ColIndex := C;
-        AHit.Length := Len;
-        Break;
-      end;
-    end;
-  end
-  else
-    for I := Min(FRepl.PosRow, FDoc.LineCount - 1) downto 0 do
-    begin
-      Line := FDoc.GetLine(I);
-      if I = FRepl.PosRow then
-        Limit := FRepl.PosCol
-      else
-        Limit := Length(Line);
-      if TEditorSearchEngine.FindLastInLine(Line, FRepl.Find, Limit, FRepl.Opts, C, Len) then
-      begin
-        AHit.Found := True;
-        AHit.LineIndex := I;
-        AHit.ColIndex := C;
-        AHit.Length := Len;
-        Break;
-      end;
-    end;
+  Result := TSearchWalk.Create(FRepl.Find, FRepl.Opts, FRepl.PosRow, FRepl.PosCol,
+    FRepl.Forward, False);
+end;
+
+// After the wrap only the part not looked at yet counts.
+function TEditorWindow.ReplaceHitCounts(const AHit: TSearchResult): Boolean;
+begin
   Result := AHit.Found;
-  // After the wrap only the part not looked at yet counts.
-  if Result and FRepl.Wrapped then
-  begin
-    if FRepl.Forward then
-      Result := (AHit.LineIndex < FRepl.StartRow) or
-        ((AHit.LineIndex = FRepl.StartRow) and (AHit.ColIndex < FRepl.StartCol))
-    else
-      Result := (AHit.LineIndex > FRepl.StartRow) or
-        ((AHit.LineIndex = FRepl.StartRow) and (AHit.ColIndex >= FRepl.StartCol));
-  end;
+  if not (Result and FRepl.Wrapped) then
+    Exit;
+  if FRepl.Forward then
+    Result := (AHit.LineIndex < FRepl.StartRow) or
+      ((AHit.LineIndex = FRepl.StartRow) and (AHit.ColIndex < FRepl.StartCol))
+  else
+    Result := (AHit.LineIndex > FRepl.StartRow) or
+      ((AHit.LineIndex = FRepl.StartRow) and (AHit.ColIndex >= FRepl.StartCol));
 end;
 
 function TEditorWindow.ReplaceCanWrap: Boolean;
@@ -3470,37 +3562,90 @@ end;
 
 procedure TEditorWindow.ReplaceNextMatch;
 var
-  Hit: TSearchResult;
+  Walk: TSearchWalk;
+  Job: TEditorScanJob;
 begin
-  while FRepl.Active do
+  if not FRepl.Active then
+    Exit;
+  Walk := ReplaceWalk;
+  Job := Default(TEditorScanJob);
+  // With All answered the matches are replaced as the walk meets them.
+  Job.Step :=
+    function: Boolean
+    begin
+      if not Walk.Step(FDoc.LineCount, DocLineOrEmpty) then
+        Exit(False);
+      if not (FRepl.AllMode and ReplaceHitCounts(Walk.Hit)) then
+        Exit(True);
+      FRepl.AnyMatch := True;
+      FRepl.MatchRow := Walk.Hit.LineIndex;
+      FRepl.MatchCol := Walk.Hit.ColIndex;
+      FRepl.MatchLen := Walk.Hit.Length;
+      ReplaceCurrentMatch;
+      Walk := ReplaceWalk;
+      Result := False;
+    end;
+  Job.Percent :=
+    function: Integer
+    var
+      Count, Rest: Integer;
+    begin
+      Count := Max(FDoc.LineCount, 1);
+      if not FRepl.Forward then
+        Exit(Walk.Percent(Count));
+      // Where the walk began plus its share of the lines after that.
+      Rest := Max(Count - FRepl.PosRow, 0);
+      Result := (Int64(FRepl.PosRow) * 100 + Int64(Walk.Percent(Count)) * Rest) div Count;
+    end;
+  Job.Note :=
+    function: string
+    begin
+      Result := T('ui.editor.searchMatches', 'matches: %d', [FRepl.Count]);
+    end;
+  Job.Finish :=
+    procedure
+    begin
+      ReplaceFound(Walk.Hit);
+    end;
+  Job.Cancel :=
+    procedure
+    begin
+      ReplaceCancelled;
+    end;
+  FScan.Start(Job);
+end;
+
+procedure TEditorWindow.ReplaceFound(const AHit: TSearchResult);
+begin
+  if not ReplaceHitCounts(AHit) then
   begin
-    if not ReplaceFindMatch(Hit) then
-    begin
-      if ReplaceCanWrap then
-        ReplaceWrapAsk
-      else
-        EndReplaceSession;
-      Exit;
-    end;
-    FRepl.AnyMatch := True;
-    FRepl.MatchRow := Hit.LineIndex;
-    FRepl.MatchCol := Hit.ColIndex;
-    FRepl.MatchLen := Hit.Length;
-    if FRepl.AllMode then
-      ReplaceCurrentMatch
+    if ReplaceCanWrap then
+      ReplaceWrapAsk
     else
-    begin
-      // The match is shown selected, behind the question.
-      FColumnMode := False;
-      FSelAnchorRow := Hit.LineIndex;
-      FSelAnchorCol := Hit.ColIndex;
-      FCursorRow := Hit.LineIndex;
-      FCursorCol := Hit.ColIndex + Hit.Length;
-      EnsureCursorVisible;
-      ReplaceAsk;
-      Exit;
-    end;
+      EndReplaceSession;
+    Exit;
   end;
+  FRepl.AnyMatch := True;
+  FRepl.MatchRow := AHit.LineIndex;
+  FRepl.MatchCol := AHit.ColIndex;
+  FRepl.MatchLen := AHit.Length;
+  // The match is shown selected, behind the question.
+  SelectHit(AHit);
+  EnsureCursorVisible;
+  ReplaceAsk;
+end;
+
+// What was replaced stays (one undo step); no summary and no "not found".
+procedure TEditorWindow.ReplaceCancelled;
+var
+  Count: Integer;
+begin
+  Count := FRepl.Count;
+  FRepl.AnyMatch := True;
+  FRepl.AllMode := False;
+  EndReplaceSession;
+  if Count = 0 then
+    FFindStatus := 'cancelled';
 end;
 
 function ClipForDialog(const AText: string; AWidth: Integer): string;
@@ -3730,6 +3875,7 @@ end;
 
 procedure TEditorWindow.CloseDocument;
 begin
+  AbortScan;
   LeaveMarkdownOverlay;
   FDoc.Close;
   UpdateIndexNotice;
@@ -4953,6 +5099,7 @@ end;
 
 procedure TEditorWindow.OpenFindDialog;
 begin
+  AbortScan;
   if not FDoc.Ready then
     Exit;
   FFindStatus := '';
@@ -5023,19 +5170,20 @@ end;
 // In the hex dump the cursor and selection are (dump row, byte in row), so the
 // text engine cannot be used: the query is matched against the raw bytes, first
 // as UTF-8 text, then as a hex pattern ("4D 5A ?? 90").
-function TEditorWindow.HexFindMatch(AForward: Boolean): Boolean;
+procedure TEditorWindow.HexFindMatch(AForward: Boolean);
 var
   Needle, Err: string;
-  Per, Start, Hit, Len, I: Integer;
+  Per, Start, Hit, Len, I, Candidate, Skip: Integer;
   Opts: TSearchOptions;
   Forward: Boolean;
   Candidates: TArray<TArray<Integer>>;
-  Pattern, Best: TArray<Integer>;
+  Pattern: TArray<Integer>;
   Bytes: TBytes;
   GetB: TGetByteFunc;
+  Job: TEditorScanJob;
   R1, C1, R2, C2: Integer;
 begin
-  Result := False;
+  AbortScan;
   Needle := FFindText;
   if (Trim(Needle) = '') or (FDoc.ByteCount = 0) then
   begin
@@ -5075,53 +5223,83 @@ begin
     end;
   Hit := -1;
   Len := 0;
-  for I := 0 to High(Candidates) do
-  begin
-    Best := Candidates[I];
-    Hit := TEditorHexFormatter.FindBytes(FDoc.ByteCount, GetB, Best, Start,
-      Forward, not Opts.MatchCase);
-    if Hit >= 0 then
+  Candidate := 0;
+  Skip := 0;
+  Job := Default(TEditorScanJob);
+  // One candidate after another, a block of start positions at a time.
+  Job.Step :=
+    function: Boolean
+    const
+      cBlock = 64 * 1024;
     begin
-      Len := Length(Best);
-      Break;
+      Hit := TEditorHexFormatter.FindBytes(FDoc.ByteCount, GetB, Candidates[Candidate],
+        Start, Forward, not Opts.MatchCase, Skip, cBlock);
+      if Hit >= 0 then
+      begin
+        Len := Length(Candidates[Candidate]);
+        Exit(True);
+      end;
+      Inc(Skip, cBlock);
+      if Skip > FDoc.ByteCount - Length(Candidates[Candidate]) then
+      begin
+        Skip := 0;
+        Inc(Candidate);
+      end;
+      Result := Candidate > High(Candidates);
     end;
-  end;
-
-  if Hit >= 0 then
-  begin
-    FColumnMode := False;
-    FHexHighNibble := True;
-    FSelAnchorRow := Hit div Per;
-    FSelAnchorCol := Hit mod Per;
-    // The cursor sits on the byte after the match (clamped to the last byte
-    // at the end of the file), as in the text editor.
-    FCursorRow := (Hit + Len) div Per;
-    FCursorCol := (Hit + Len) mod Per;
-    ClampCursor;
-    EnsureCursorVisible;
-    FFindStatus := Format('found %.8x', [Hit]);
-    Result := True;
-    NotifyHost;
-    Exit;
-  end;
-
-  FFindStatus := 'not found';
-  NotFoundMessage(Needle);
-  NotifyHost;
+  Job.Percent :=
+    function: Integer
+    begin
+      Result := (Int64(Candidate) * FDoc.ByteCount + Skip) * 100 div
+        Max(Int64(Length(Candidates)) * FDoc.ByteCount, 1);
+    end;
+  Job.Finish :=
+    procedure
+    begin
+      if Hit >= 0 then
+      begin
+        FColumnMode := False;
+        FHexHighNibble := True;
+        FSelAnchorRow := Hit div Per;
+        FSelAnchorCol := Hit mod Per;
+        // The cursor sits on the byte after the match (clamped to the last byte
+        // at the end of the file), as in the text editor.
+        FCursorRow := (Hit + Len) div Per;
+        FCursorCol := (Hit + Len) mod Per;
+        ClampCursor;
+        EnsureCursorVisible;
+        FFindStatus := Format('found %.8x', [Hit]);
+      end
+      else
+      begin
+        FFindStatus := 'not found';
+        NotFoundMessage(Needle);
+      end;
+      NotifyHost;
+    end;
+  Job.Cancel :=
+    procedure
+    begin
+      FFindStatus := 'cancelled';
+    end;
+  FScan.Start(Job);
 end;
 
-function TEditorWindow.FindMatch(AForward: Boolean): Boolean;
+procedure TEditorWindow.FindMatch(AForward: Boolean);
 var
   Needle, Err: string;
-  I, Row, Col, R2, C2: Integer;
-  Lines: TArray<string>;
+  Row, Col, R2, C2: Integer;
   Opts: TSearchOptions;
-  Hit: TSearchResult;
   Forward: Boolean;
+  Walk: TSearchWalk;
+  Job: TEditorScanJob;
 begin
+  AbortScan;
   if FHexMode then
-    Exit(HexFindMatch(AForward));
-  Result := False;
+  begin
+    HexFindMatch(AForward);
+    Exit;
+  end;
   Needle := FFindText;
   if (Trim(Needle) = '') or not FDoc.Ready or (FDoc.LineCount = 0) then
   begin
@@ -5137,44 +5315,49 @@ begin
     Exit;
   end;
 
-  SetLength(Lines, FDoc.LineCount);
-  for I := 0 to FDoc.LineCount - 1 do
-    Lines[I] := CursorLineText(I);
   ClampCursor;
   // The key (F3 or Shift+F3) against the Reverse box of the Find dialog.
   Forward := AForward <> Opts.SearchBackwards;
-  if Forward then
-    // A found match is selected with the cursor at its end, so the next
-    // search starts after it.
-    Hit := TEditorSearchEngine.FindNextWrapped(Lines, Needle, FCursorRow,
-      FCursorCol, Opts, False)
-  else
-  begin
-    Row := FCursorRow;
-    Col := FCursorCol;
-    if HasSelection then
-      GetSelRange(Row, Col, R2, C2);
-    Hit := TEditorSearchEngine.FindPrevWrapped(Lines, Needle, Row, Col, Opts,
-      False);
-  end;
-
-  if Hit.Found then
-  begin
-    FColumnMode := False;
-    FSelAnchorRow := Hit.LineIndex;
-    FSelAnchorCol := Hit.ColIndex;
-    FCursorRow := Hit.LineIndex;
-    FCursorCol := Hit.ColIndex + Hit.Length;
-    EnsureCursorVisible;
-    FFindStatus := Format('found %d/%d', [Hit.LineIndex + 1, FDoc.LineCount]);
-    Result := True;
-    NotifyHost;
-    Exit;
-  end;
-
-  FFindStatus := 'not found';
-  NotFoundMessage(Needle);
-  NotifyHost;
+  Row := FCursorRow;
+  Col := FCursorCol;
+  // A found match is selected with the cursor at its end, so the next search
+  // starts after it; backwards it goes on from the start of the selection.
+  if not Forward and HasSelection then
+    GetSelRange(Row, Col, R2, C2);
+  Walk := TSearchWalk.Create(Needle, Opts, Row, Col, Forward, False);
+  Job := Default(TEditorScanJob);
+  Job.Step :=
+    function: Boolean
+    begin
+      Result := Walk.Step(FDoc.LineCount, CursorLineText);
+    end;
+  Job.Percent :=
+    function: Integer
+    begin
+      Result := Walk.Percent(FDoc.LineCount);
+    end;
+  Job.Finish :=
+    procedure
+    begin
+      if Walk.Hit.Found then
+      begin
+        SelectHit(Walk.Hit);
+        EnsureCursorVisible;
+        FFindStatus := Format('found %d/%d', [Walk.Hit.LineIndex + 1, FDoc.LineCount]);
+      end
+      else
+      begin
+        FFindStatus := 'not found';
+        NotFoundMessage(Needle);
+      end;
+      NotifyHost;
+    end;
+  Job.Cancel :=
+    procedure
+    begin
+      FFindStatus := 'cancelled';
+    end;
+  FScan.Start(Job);
 end;
 
 procedure TEditorWindow.NotFoundMessage(const ANeedle: string);
@@ -5877,6 +6060,35 @@ begin
     FThemeColors.BodyBg);
 end;
 
+// Over the text, once the pass has run long enough to be left to the timer.
+procedure TEditorWindow.DrawScanProgress;
+const
+  cBarMaxW = 50;
+  cRow = 2;
+var
+  BarW, Fill, Percent: Integer;
+  Text, Note: string;
+begin
+  BarW := Min(cBarMaxW, Area.Width - 4);
+  if (BarW < 4) or (Area.Height < cRow + 5) then
+    Exit;
+  Percent := EnsureRange(FScan.Percent, 0, 100);
+  Fill := BarW * Percent div 100;
+  Text := T('ui.editor.searching', 'Searching... %d%%', [Percent]);
+  Note := FScan.Note;
+  if Note <> '' then
+    Text := Text + '  ' + Note;
+  Text := Text + '  ' + T('ui.editor.loadingHint', 'Esc cancels');
+  FillGridRect(Buffer, 1, cRow, Area.Width - 3, cRow + 2, ' ', FThemeColors.BodyFg,
+    FThemeColors.BodyBg);
+  PutGridText(Buffer, 1, cRow, StringOfChar(chBlock, Fill), FThemeColors.ScrollThumb,
+    FThemeColors.BodyBg);
+  PutGridText(Buffer, 1 + Fill, cRow, StringOfChar(chShadeLight, BarW - Fill),
+    FThemeColors.ScrollFg, FThemeColors.BodyBg);
+  PutGridText(Buffer, 1, cRow + 1, Copy(Text, 1, Area.Width - 3), FThemeColors.HintFg,
+    FThemeColors.BodyBg);
+end;
+
 procedure TEditorWindow.DrawContent;
 var
   W, H, ViewH, TextW, Y, X, LineIdx, CharOffset, DrawCol, HighlightId: Integer;
@@ -5999,6 +6211,8 @@ begin
     end;
   end;
 
+  if Searching then
+    DrawScanProgress;
   if FHlPending then
     QueueHighlightRepaint;
   if FSurfaceHandle = 0 then
@@ -6099,6 +6313,9 @@ begin
     RequestClose;
     Exit(True);
   end;
+  // A click in the text would move the cursor under a search in progress.
+  if Searching then
+    Exit(True);
   W := Area.Width;
   Bottom := ContentBottomRow;
   if (W < 8) or (Bottom < 1) then
@@ -6317,6 +6534,24 @@ begin
     Exit(FDialogs.HandleAskSaveInput(AKey, AShift, AKeyChar));
   if Assigned(FDialog) and FDialog.Visible then
     Exit(FDialog.HandleInput(AKey, AShift, AKeyChar));
+  // While searching only Esc is taken; typing into the incremental search
+  // starts it over.
+  if Searching then
+    if (AKey = vkEscape) and (AShift = []) then
+    begin
+      FScan.Cancel;
+      AKey := 0;
+      AKeyChar := #0;
+      Exit(True);
+    end
+    else if FIncActive then
+      AbortScan
+    else
+    begin
+      AKey := 0;
+      AKeyChar := #0;
+      Exit(True);
+    end;
   if FSurfaceHandle <> 0 then
     Exit(SurfaceInput(AKey, AShift, AKeyChar));
   if FDoc.Loading and (AKey = vkEscape) and (AShift = []) then

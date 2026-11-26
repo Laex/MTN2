@@ -36,7 +36,8 @@ type
     /// start of the match, or -1.</summary>
     class function FindBytes(AByteCount: Integer; const AGetByte: TGetByteFunc;
       const APattern: TArray<Integer>; AStart: Integer; AForward,
-      AIgnoreCase: Boolean): Integer;
+      AIgnoreCase: Boolean; ASkip: Integer = 0;
+      ACount: Integer = MaxInt): Integer;
   end;
 
 implementation
@@ -174,7 +175,7 @@ end;
 
 class function TEditorHexFormatter.FindBytes(AByteCount: Integer;
   const AGetByte: TGetByteFunc; const APattern: TArray<Integer>; AStart: Integer;
-  AForward, AIgnoreCase: Boolean): Integer;
+  AForward, AIgnoreCase: Boolean; ASkip, ACount: Integer): Integer;
 var
   Len, Last, Step, N, P, K: Integer;
 
@@ -224,7 +225,11 @@ begin
     P := AStart - 1;
   end;
   // Every start position is visited once, beginning at P and wrapping around.
-  for K := 0 to Last do
+  // ASkip and ACount take a portion of that walk.
+  if (ASkip < 0) or (ASkip > Last) or (ACount <= 0) then
+    Exit(-1);
+  P := P + Step * ASkip;
+  for K := ASkip to ASkip + Min(ACount, Last - ASkip + 1) - 1 do
   begin
     N := ((P mod (Last + 1)) + Last + 1) mod (Last + 1);
     if MatchesAt(N) then

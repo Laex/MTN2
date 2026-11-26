@@ -1029,6 +1029,8 @@
     "editor.follow": "Слежение",
     "editor.indexingNotice": "Индексация файла: %s",
     "editor.loadingHint": "Esc – отмена",
+    "editor.searching": "Поиск... %d%%",
+    "editor.searchMatches": "совпадений: %d",
     "editor.loadingProgress": "%d%%  %s из %s",
     "editor.loadingSpeed": "%s/с",
     "editor.loadingEta": "осталось %s",

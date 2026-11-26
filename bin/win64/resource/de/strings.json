@@ -1031,6 +1031,8 @@
     "editor.follow": "Folgen",
     "editor.indexingNotice": "Datei wird indiziert: %s",
     "editor.loadingHint": "Esc bricht ab",
+    "editor.searching": "Suche... %d%%",
+    "editor.searchMatches": "Treffer: %d",
     "editor.loadingProgress": "%d%%  %s von %s",
     "editor.loadingSpeed": "%s/s",
     "editor.loadingEta": "noch %s",

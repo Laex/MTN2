@@ -1030,6 +1030,8 @@
     "editor.follow": "跟随",
     "editor.indexingNotice": "正在为文件建立索引：%s",
     "editor.loadingHint": "Esc 取消",
+    "editor.searching": "正在搜索... %d%%",
+    "editor.searchMatches": "匹配：%d",
     "editor.loadingProgress": "%d%%  %s / %s",
     "editor.loadingSpeed": "%s/秒",
     "editor.loadingEta": "剩余 %s",

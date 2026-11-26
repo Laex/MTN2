@@ -65,6 +65,7 @@ uses
   uEditorUndo in 'Core\uEditorUndo.pas',
   uEditorLineOps in 'Core\uEditorLineOps.pas',
   uEditorLayout in 'Core\uEditorLayout.pas',
+  uEditorScan in 'Core\uEditorScan.pas',
   uEditorDialogs in 'Core\uEditorDialogs.pas',
   uEditorInput in 'Core\uEditorInput.pas',
   uKeyChord in 'Core\uKeyChord.pas',

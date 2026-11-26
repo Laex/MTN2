@@ -248,6 +248,7 @@
         <DCCReference Include="Core\uEditorUndo.pas"/>
         <DCCReference Include="Core\uEditorLineOps.pas"/>
         <DCCReference Include="Core\uEditorLayout.pas"/>
+        <DCCReference Include="Core\uEditorScan.pas"/>
         <DCCReference Include="Core\uEditorDialogs.pas"/>
         <DCCReference Include="Core\uEditorInput.pas"/>
         <DCCReference Include="Core\uKeyChord.pas"/>

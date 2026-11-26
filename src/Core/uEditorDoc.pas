@@ -22,7 +22,7 @@ unit uEditorDoc;
 interface
 
 uses
-  System.SysUtils, System.Classes, System.Generics.Collections,
+  System.SysUtils, System.Classes, System.Math, System.Generics.Collections,
   uVfsTypes, uTextEncoding, uDirWatch;
 
 const
@@ -31,6 +31,7 @@ const
   cStreamSampleBytes = 65536;        // sample read for encoding/binary sniff before indexing
   cStreamScanChunk = 1024 * 1024;    // read buffer while scanning for line offsets
   cStreamCacheCap = 4000;            // decoded-line cache size (FIFO eviction)
+  cStreamBlockBytes = 128 * 1024;    // one read serves the lines around it
 
 type
   TFileStatCallback = reference to procedure(AExists: Boolean; ASize: Int64; AWriteTime: TDateTime);
@@ -102,6 +103,11 @@ type
     FIndexPercent: Integer;
     FLineCache: TDictionary<Integer, string>;
     FLineCacheOrder: TQueue<Integer>;
+    // The part of FStreamPath read last, starting at FBlockStart.
+    FBlock: TBytes;
+    FBlockStart: Int64;
+    FUpdateCount: Integer;
+    FUpdatePending: Boolean;
     FWantEdit: Boolean;
     // Follow mode: the view keeps up with a file that grows (see SetFollow).
     FFollow: Boolean;
@@ -149,6 +155,9 @@ type
     function StreamingGetLine(AIndex: Integer): string;
     procedure TouchHighlight(ALine: Integer);
     procedure CacheLine(AIndex: Integer; const AValue: string);
+    /// <summary>Forgets the decoded lines and the block read from the file.</summary>
+    procedure ResetLineCache;
+    function ReadStreamSpan(AStart, AEnd: Int64): TBytes;
     // Stats APath (Exists/GetSize/GetLastWriteTime) on a background thread
     // and delivers the result back via AOnDone on the main thread - never
     // call TFile.Exists/GetSize/GetLastWriteTime directly here (see
@@ -198,6 +207,10 @@ type
     procedure InsertLine(AIndex: Integer; const AValue: string);
     procedure DeleteLine(AIndex: Integer);
     procedure MarkDirty;
+    /// <summary>Between BeginUpdate and EndUpdate changes are reported once, at
+    /// the end.</summary>
+    procedure BeginUpdate;
+    procedure EndUpdate;
     procedure ClearDirty;
     function SnapshotLines: TArray<string>;
     function HasBookmark(ALine: Integer): Boolean;
@@ -353,7 +366,9 @@ end;
 
 procedure TEditorDoc.NotifyChanged;
 begin
-  if Assigned(FOnChanged) then
+  if FUpdateCount > 0 then
+    FUpdatePending := True
+  else if Assigned(FOnChanged) then
     FOnChanged(Self);
 end;
 
@@ -398,8 +413,7 @@ begin
   SetLength(FLineOffsets, 0);
   FIndexCount := 0;
   FIndexing := False;
-  FLineCache.Clear;
-  FLineCacheOrder.Clear;
+  ResetLineCache;
   FWatcher.SetPath('');
   FKnownSize := 0;
   FKnownWriteTime := 0;
@@ -434,12 +448,49 @@ begin
   FLineCacheOrder.Enqueue(AIndex);
 end;
 
+procedure TEditorDoc.ResetLineCache;
+begin
+  FLineCache.Clear;
+  FLineCacheOrder.Clear;
+  FBlock := nil;
+  FBlockStart := 0;
+end;
+
+// The bytes AStart..AEnd of the streamed file, from the block read last or
+// from a new one: read after AStart when going down the file, before AEnd
+// when going up, so a walk over the lines reads the file once.
+function TEditorDoc.ReadStreamSpan(AStart, AEnd: Int64): TBytes;
+var
+  FS: TFileStream;
+  From: Int64;
+  Len, Got: Integer;
+begin
+  Len := AEnd - AStart;
+  if Len <= 0 then
+    Exit(nil);
+  if (AStart < FBlockStart) or (AEnd > FBlockStart + Length(FBlock)) then
+  begin
+    From := AStart;
+    if (Length(FBlock) > 0) and (AStart < FBlockStart) then
+      From := Max(Int64(0), Min(AStart, AEnd - cStreamBlockBytes));
+    // Local read, synchronous: the paint path calls GetLine per visible row.
+    FS := TFileStream.Create(WinApiPath(FStreamPath), fmOpenRead or fmShareDenyNone);
+    try
+      FS.Position := From;
+      SetLength(FBlock, Max(Int64(cStreamBlockBytes), AEnd - From));
+      Got := FS.Read(FBlock[0], Length(FBlock));
+      SetLength(FBlock, Max(Got, 0));
+      FBlockStart := From;
+    finally
+      FS.Free;
+    end;
+  end;
+  Result := Copy(FBlock, Integer(AStart - FBlockStart), Len);
+end;
+
 function TEditorDoc.StreamingGetLine(AIndex: Integer): string;
 var
-  StartOff, EndOff: Int64;
-  Len: Integer;
   Buf: TBytes;
-  FS: TFileStream;
   S: string;
 begin
   if (AIndex < 0) or (AIndex >= FIndexCount - 1) then
@@ -447,29 +498,10 @@ begin
   if FLineCache.TryGetValue(AIndex, Result) then
     Exit;
 
-  StartOff := FLineOffsets[AIndex];
-  EndOff := FLineOffsets[AIndex + 1];
-  Len := EndOff - StartOff;
-  if Len < 0 then
-    Len := 0;
-  SetLength(Buf, Len);
-  if Len > 0 then
+  Buf := ReadStreamSpan(FLineOffsets[AIndex], FLineOffsets[AIndex + 1]);
+  if Length(Buf) > 0 then
   begin
-    // Local single-line seek+read, synchronous by design: bounded (a few KB
-    // at most), fmShareDenyNone, and normally page-cache-backed after the
-    // background index scan already touched the whole file once. Kept
-    // deliberately synchronous (not routed through async VFS/Jobs) so
-    // uEditorWindow.pas's paint path - which calls GetLine per visible row -
-    // needs no changes; a fully async per-line fetch would require a
-    // placeholder/redraw protocol there instead.
-    FS := TFileStream.Create(WinApiPath(FStreamPath), fmOpenRead or fmShareDenyNone);
-    try
-      FS.Position := StartOff;
-      FS.Read(Buf[0], Len);
-    finally
-      FS.Free;
-    end;
-    // Offsets mark spans including the trailing line terminator; strip it.
+  // Offsets mark spans including the trailing line terminator; strip it.
     // UTF-16 lines carry a 2-byte code unit per terminator (see
     // Utf16PairIsLF) - a single trailing byte check would only ever see the
     // unit's zero half and strip nothing, leaving a stray CR/LF in the text.
@@ -545,6 +577,21 @@ begin
   if FLines.Count = 0 then
     FLines.Add('');
   MarkDirty;
+end;
+
+procedure TEditorDoc.BeginUpdate;
+begin
+  Inc(FUpdateCount);
+end;
+
+procedure TEditorDoc.EndUpdate;
+begin
+  Dec(FUpdateCount);
+  if (FUpdateCount = 0) and FUpdatePending then
+  begin
+    FUpdatePending := False;
+    NotifyChanged;
+  end;
 end;
 
 procedure TEditorDoc.ClearDirty;
@@ -1186,8 +1233,7 @@ begin
   end;
   SetLength(FLineOffsets, FIndexCount);
   FStreamFileSize := ANewSize;
-  FLineCache.Clear;
-  FLineCacheOrder.Clear;
+  ResetLineCache;
   TouchHighlight(FirstChanged);
   FStatus := Format('Streaming  %d lines', [FIndexCount - 1]);
   NotifyChanged;
@@ -1248,8 +1294,7 @@ begin
     if ARedecode then
     begin
       FStreamEncoding := AEncoding;
-      FLineCache.Clear;
-      FLineCacheOrder.Clear;
+      ResetLineCache;
     end;
     NotifyChanged;
     Result := True;
@@ -1913,8 +1958,7 @@ begin
             SetLength(FLineOffsets, 0);
             FIndexCount := 0;
             FIndexing := True;
-            FLineCache.Clear;
-            FLineCacheOrder.Clear;
+            ResetLineCache;
             FBinary := False;
             FReadOnly := True; // streaming docs start view-only until promote
             ClearDirty;
@@ -2014,8 +2058,7 @@ begin
   FStreaming := False;
   SetLength(FLineOffsets, 0);
   FIndexCount := 0;
-  FLineCache.Clear;
-  FLineCacheOrder.Clear;
+  ResetLineCache;
   FRawBytes := Bytes;
   if not DetectAndDecodeText(Bytes, Text, Enc, IsBin) then
   begin

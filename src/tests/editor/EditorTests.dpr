@@ -26,6 +26,7 @@ uses
   TestHexChangedBytes in 'TestHexChangedBytes.pas',
   TestEditorSearchEngine in 'TestEditorSearchEngine.pas',
   TestEditorFind in 'TestEditorFind.pas',
+  TestEditorScan in 'TestEditorScan.pas',
   TestMarkdownCursor in 'TestMarkdownCursor.pas',
   TestMarkdownParser in 'TestMarkdownParser.pas',
   TestMarkdownColors in 'TestMarkdownColors.pas',

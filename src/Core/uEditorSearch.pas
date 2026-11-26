@@ -9,7 +9,7 @@ unit uEditorSearch;
 interface
 
 uses
-  System.SysUtils, System.Classes, System.RegularExpressions;
+  System.SysUtils, System.Math, System.Classes, System.RegularExpressions;
 
 type
   TSearchOptions = record
@@ -26,6 +26,28 @@ type
     /// <summary>Length of the match (differs from the pattern length for a
     /// regular expression and for a case-insensitive plain match).</summary>
     Length: Integer;
+  end;
+
+  /// <summary>A search that looks at one line per Step, so a long one can be
+  /// done in portions. Without AWrap it ends at the end (or the beginning) of
+  /// the text; with it, it goes on from the other end up to where it began.
+  /// Backwards AStartCol is where a match has to end by.</summary>
+  TSearchWalk = record
+  private
+    FQuery: string;
+    FOptions: TSearchOptions;
+    FStartLine, FStartCol, FLine, FScanned: Integer;
+    FForward, FWrap, FWrapped, FStarted: Boolean;
+    function InRange(ALineCount: Integer): Boolean;
+  public
+    /// <summary>The match, once Step has returned True.</summary>
+    Hit: TSearchResult;
+    class function Create(const AQuery: string; const AOptions: TSearchOptions;
+      AStartLine, AStartCol: Integer; AForward, AWrap: Boolean): TSearchWalk; static;
+    /// <summary>Looks at the next line; True when the search is over.</summary>
+    function Step(ALineCount: Integer; const AGetLine: TFunc<Integer, string>): Boolean;
+    /// <summary>Share of the lines to look at that are done, 0..100.</summary>
+    function Percent(ALineCount: Integer): Integer;
   end;
 
 var
@@ -103,10 +125,17 @@ begin
     ((ACol + ALen >= Length(ALine)) or not IsWordCh(ALine[ACol + ALen + 1]));
 end;
 
+var
+  // The last expression compiled: a search runs it on every line of a text.
+  // Searches of the editor run on the main thread only.
+  GRegexKey: string;
+  GRegex: TRegEx;
+
 function MakeRegex(const AQuery: string; const AOptions: TSearchOptions): TRegEx;
 var
   Pattern: string;
   RxOpts: TRegExOptions;
+  Key: string;
 begin
   Pattern := AQuery;
   if AOptions.WholeWord then
@@ -114,7 +143,15 @@ begin
   RxOpts := [];
   if not AOptions.MatchCase then
     Include(RxOpts, roIgnoreCase);
-  Result := TRegEx.Create(Pattern, RxOpts);
+  Key := BoolToStr(AOptions.MatchCase) + '|' + Pattern;
+  if Key <> GRegexKey then
+  begin
+    GRegex := TRegEx.Create(Pattern, RxOpts);
+    // A pattern is compiled on first use; a bad one raises here, not cached.
+    GRegex.IsMatch('');
+    GRegexKey := Key;
+  end;
+  Result := GRegex;
 end;
 
 // First regular-expression match that starts at or after ACol (0-based) and
@@ -144,8 +181,7 @@ begin
   if not AOptions.UseRegex or (AQuery = '') then
     Exit;
   try
-    // A pattern is compiled on first use, so use it once to learn its error.
-    MakeRegex(AQuery, AOptions).IsMatch('');
+    MakeRegex(AQuery, AOptions);
   except
     on E: Exception do
       Result := E.Message;
@@ -194,10 +230,10 @@ begin
   From := AStartCol;
   while True do
   begin
-    P := Pos(Needle, Copy(Hay, From + 1, MaxInt));
+    P := Pos(Needle, Hay, From + 1);
     if P = 0 then
       Exit;
-    ACol := From + P - 1;
+    ACol := P - 1;
     ALen := Length(AQuery);
     if not AOptions.WholeWord or WordBounded(ALine, ACol, ALen) then
       Exit(True);
@@ -267,70 +303,142 @@ begin
   end;
 end;
 
+function RunWalk(AWalk: TSearchWalk; const ALines: TArray<string>): TSearchResult;
+var
+  Lines: TArray<string>;
+begin
+  Lines := ALines;
+  while not AWalk.Step(Length(Lines),
+    function(AIndex: Integer): string
+    begin
+      Result := Lines[AIndex];
+    end) do;
+  Result := AWalk.Hit;
+end;
+
 class function TEditorSearchEngine.FindNextWrapped(const ALines: TArray<string>;
   const AQuery: string; AStartLine, AStartCol: Integer;
   const AOptions: TSearchOptions; AWrap: Boolean): TSearchResult;
 begin
-  Result := FindInText(ALines, AQuery, AStartLine, AStartCol, AOptions);
-  if Result.Found or not AWrap then
-    Exit;
-  if (AStartLine <= 0) and (AStartCol <= 0) then
-    Exit;
-  Result := FindInText(ALines, AQuery, 0, 0, AOptions);
-  if Result.Found and
-     ((Result.LineIndex > AStartLine) or
-      ((Result.LineIndex = AStartLine) and (Result.ColIndex >= AStartCol))) then
-  begin
-    Result.Found := False;
-    Result.LineIndex := -1;
-    Result.ColIndex := -1;
-  end;
+  Result := RunWalk(TSearchWalk.Create(AQuery, AOptions, AStartLine, AStartCol,
+    True, AWrap), ALines);
 end;
 
 class function TEditorSearchEngine.FindPrevWrapped(const ALines: TArray<string>;
   const AQuery: string; AStartLine, AStartColExclusive: Integer;
   const AOptions: TSearchOptions; AWrap: Boolean): TSearchResult;
-var
-  I, Limit, C, L: Integer;
 begin
-  Result.Found := False;
-  Result.LineIndex := -1;
-  Result.ColIndex := -1;
-  Result.Length := Length(AQuery);
-  if (Length(ALines) = 0) or (AQuery = '') then
-    Exit;
+  Result := RunWalk(TSearchWalk.Create(AQuery, AOptions, AStartLine,
+    AStartColExclusive, False, AWrap), ALines);
+end;
 
-  I := AStartLine;
-  if I > High(ALines) then
-    I := High(ALines);
-  while I >= 0 do
+class function TSearchWalk.Create(const AQuery: string; const AOptions: TSearchOptions;
+  AStartLine, AStartCol: Integer; AForward, AWrap: Boolean): TSearchWalk;
+begin
+  Result := Default(TSearchWalk);
+  Result.FQuery := AQuery;
+  Result.FOptions := AOptions;
+  Result.FStartLine := AStartLine;
+  Result.FStartCol := AStartCol;
+  Result.FForward := AForward;
+  Result.FWrap := AWrap;
+  Result.Hit.LineIndex := -1;
+  Result.Hit.ColIndex := -1;
+  Result.Hit.Length := Length(AQuery);
+end;
+
+// Moves FLine to the other end when the first pass is over; False when there
+// is no line left to look at.
+function TSearchWalk.InRange(ALineCount: Integer): Boolean;
+begin
+  if FForward then
   begin
-    if I = AStartLine then
-      Limit := AStartColExclusive
-    else
-      Limit := Length(ALines[I]);
-    if FindLastInLine(ALines[I], AQuery, Limit, AOptions, C, L) then
-    begin
-      Result.Found := True;
-      Result.LineIndex := I;
-      Result.ColIndex := C;
-      Result.Length := L;
-      Exit;
-    end;
-    Dec(I);
+    if FWrapped then
+      Exit(FLine <= Min(FStartLine, ALineCount - 1));
+    if FLine < ALineCount then
+      Exit(True);
+    if not FWrap or ((FStartLine <= 0) and (FStartCol <= 0)) then
+      Exit(False);
+    FLine := 0;
+  end
+  else
+  begin
+    if FWrapped then
+      Exit(FLine >= Max(Min(FStartLine, ALineCount - 1), 0));
+    if FLine >= 0 then
+      Exit(True);
+    if not FWrap then
+      Exit(False);
+    FLine := ALineCount - 1;
   end;
-  if not AWrap then
-    Exit;
+  FWrapped := True;
+  Result := True;
+end;
 
-  for I := High(ALines) downto 0 do
-    if FindLastInLine(ALines[I], AQuery, Length(ALines[I]), AOptions, C, L) then
-    begin
-      Result.Found := True;
-      Result.LineIndex := I;
-      Result.ColIndex := C;
-      Result.Length := L;
-      Exit;
-    end;
+function TSearchWalk.Step(ALineCount: Integer;
+  const AGetLine: TFunc<Integer, string>): Boolean;
+var
+  Line: string;
+  C, L, Limit: Integer;
+  Found: Boolean;
+begin
+  if (ALineCount <= 0) or (FQuery = '') then
+    Exit(True);
+  if not FStarted then
+  begin
+    FStarted := True;
+    if FForward then
+      FLine := Max(FStartLine, 0)
+    else
+      FLine := Min(FStartLine, ALineCount - 1);
+  end;
+  if not InRange(ALineCount) then
+    Exit(True);
+  Line := AGetLine(FLine);
+  if FForward then
+  begin
+    Limit := 0;
+    if not FWrapped and (FLine = FStartLine) then
+      Limit := FStartCol;
+    Found := TEditorSearchEngine.FindInLine(Line, FQuery, Limit, FOptions, C, L);
+    // Past the start the wrapped pass meets what the first one looked at.
+    if Found and FWrapped and (FLine = FStartLine) and (C >= FStartCol) then
+      Exit(True);
+  end
+  else
+  begin
+    Limit := Length(Line);
+    if not FWrapped and (FLine = FStartLine) then
+      Limit := FStartCol;
+    Found := TEditorSearchEngine.FindLastInLine(Line, FQuery, Limit, FOptions, C, L);
+  end;
+  if Found then
+  begin
+    Hit.Found := True;
+    Hit.LineIndex := FLine;
+    Hit.ColIndex := C;
+    Hit.Length := L;
+    Exit(True);
+  end;
+  Inc(FScanned);
+  if FForward then
+    Inc(FLine)
+  else
+    Dec(FLine);
+  Result := False;
+end;
+
+function TSearchWalk.Percent(ALineCount: Integer): Integer;
+var
+  Total: Integer;
+begin
+  if FWrap then
+    Total := ALineCount
+  else if FForward then
+    Total := ALineCount - Max(FStartLine, 0)
+  else
+    Total := Min(FStartLine, ALineCount - 1) + 1;
+  Result := Min(Int64(FScanned) * 100 div Max(Total, 1), 100);
 end;
 
 class function TEditorSearchEngine.ReplaceInLine(const ALine, AQuery, AReplacement: string;
