@@ -141,6 +141,8 @@ type
     VimKeys: Boolean;
     /// <summary>Typing on a file panel keeps the focus there (see TDisplaySettings).</summary>
     KeepPanelFocus: Boolean;
+    /// <summary>Ctrl+Enter keeps the focus on the panel (see TDisplaySettings).</summary>
+    CtrlEnterKeepFocus: Boolean;
     /// <summary>Alt quick search stays open after Alt is released (see TDisplaySettings).</summary>
     StickyQuickSearch: Boolean;
     /// <summary>An emptied quick search stays open (see TDisplaySettings).</summary>
@@ -694,6 +696,7 @@ begin
       Root.AddPair('spaceSelects', TJSONBool.Create(ASession.SpaceSelects));
       Root.AddPair('vimKeys', TJSONBool.Create(ASession.VimKeys));
       Root.AddPair('keepPanelFocus', TJSONBool.Create(ASession.KeepPanelFocus));
+      Root.AddPair('ctrlEnterKeepFocus', TJSONBool.Create(ASession.CtrlEnterKeepFocus));
       Root.AddPair('stickyQuickSearch', TJSONBool.Create(ASession.StickyQuickSearch));
       Root.AddPair('quickSearchKeepEmpty', TJSONBool.Create(ASession.QuickSearchKeepEmpty));
       Root.AddPair('quickSearchFilter', TJSONBool.Create(ASession.QuickSearchFilter));
@@ -805,6 +808,7 @@ begin
   ASession.SpaceSelects := False;
   ASession.VimKeys := False;
   ASession.KeepPanelFocus := False;
+  ASession.CtrlEnterKeepFocus := False;
   ASession.StickyQuickSearch := False;
   ASession.QuickSearchKeepEmpty := False;
   ASession.QuickSearchFilter := False;
@@ -940,6 +944,7 @@ begin
       ASession.SpaceSelects := JsonBool(Root, 'spaceSelects', False);
       ASession.VimKeys := JsonBool(Root, 'vimKeys', False);
       ASession.KeepPanelFocus := JsonBool(Root, 'keepPanelFocus', False);
+      ASession.CtrlEnterKeepFocus := JsonBool(Root, 'ctrlEnterKeepFocus', False);
       ASession.StickyQuickSearch := JsonBool(Root, 'stickyQuickSearch', False);
       ASession.QuickSearchKeepEmpty := JsonBool(Root, 'quickSearchKeepEmpty', False);
       ASession.QuickSearchFilter := JsonBool(Root, 'quickSearchFilter', False);

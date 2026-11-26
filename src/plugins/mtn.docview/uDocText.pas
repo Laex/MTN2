@@ -13,8 +13,13 @@ uses
 const
   cMaxViewRows = 200;
 
-{ Text of a docx, xlsx or pptx archive; '' for anything else. }
+{ Text of a docx, xlsx or pptx archive; '' for anything else. The subdocuments
+  of a Word master document are read in place of their links. }
 function OfficeText(const APath: string): string;
+
+{ The latest write time of a document and of the subdocuments it links to, for
+  telling whether a text made from them is out of date. }
+function DocumentStamp(const APath: string): TDateTime;
 
 { Summary and indented source of an SVG file. }
 function SvgText(const AText: string): string;
@@ -35,7 +40,7 @@ implementation
 
 uses
   System.Zip, System.ZLib, System.Math, System.StrUtils, System.Character, System.Generics.Defaults,
-  System.Generics.Collections;
+  System.Generics.Collections, System.IOUtils, System.NetEncoding;
 
 const
   cEol = #13#10;
@@ -403,8 +408,166 @@ begin
   end;
 end;
 
+{ A link target with its %XX escapes resolved; as stored when they are broken.
+  A plus is literal here, while the decoder would take it for a space. }
+function DecodeTarget(const ATarget: string): string;
+begin
+  try
+    Result := TNetEncoding.URL.Decode(ATarget.Replace('+', '%2B'));
+  except
+    Result := ATarget;
+  end;
+end;
+
+{ The file a subdocument link points to. Only a .docx named relative to ADir,
+  without '..', is accepted, so a document cannot pull in files from elsewhere
+  on the disk; '' for any other target. }
+function SubdocumentPath(const ADir, ATarget: string): string;
+var
+  Name, Part: string;
+begin
+  Name := DecodeTarget(ATarget).Replace('\', '/');
+  if (Name = '') or Name.StartsWith('/') or (Pos(':', Name) > 0) or
+     not SameText(ExtractFileExt(Name), '.docx') then
+    Exit('');
+  for Part in Name.Split(['/']) do
+    if Part = '..' then
+      Exit('');
+  Result := TPath.Combine(ADir, Name.Replace('/', PathDelim));
+end;
+
+{ Relationship id -> target of the main document part. }
+function DocumentTargets(AZip: TZipFile): TDictionary<string, string>;
+var
+  Rels, Tag, Inner: string;
+  P: Integer;
+begin
+  Result := TDictionary<string, string>.Create;
+  if not HasEntry(AZip, 'word/_rels/document.xml.rels') then
+    Exit;
+  Rels := ReadEntry(AZip, 'word/_rels/document.xml.rels');
+  P := 1;
+  while NextElement(Rels, 'Relationship', P, Tag, Inner) do
+    Result.AddOrSetValue(AttrValue(Tag, 'Id'), AttrValue(Tag, 'Target'));
+end;
+
+{ Body text of the Word document open in AZip. ADir is the folder subdocument
+  links are relative to; ASeen holds the files already read, which keeps links
+  that point back from recursing forever. }
+function WordText(AZip: TZipFile; const ADir: string; ASeen: TStringList): string;
+var
+  Xml, Target, Path: string;
+  Targets: TDictionary<string, string>;
+  SB: TStringBuilder;
+  From, P, Q: Integer;
+
+  procedure AppendSubdocument;
+  var
+    Sub: TZipFile;
+  begin
+    Path := SubdocumentPath(ADir, Target);
+    if (Path <> '') and (ASeen.IndexOf(Path) >= 0) then
+      Exit;
+    if (Path <> '') and TFile.Exists(Path) then
+    begin
+      ASeen.Add(Path);
+      Sub := TZipFile.Create;
+      try
+        try
+          Sub.Open(Path, zmRead);
+          if HasEntry(Sub, 'word/document.xml') then
+          begin
+            SB.Append(WordText(Sub, ExtractFileDir(Path), ASeen));
+            Exit;
+          end;
+        except
+          // Damaged or locked: named below like a missing file.
+        end;
+      finally
+        Sub.Free;
+      end;
+    end;
+    SB.Append('[subdocument not read: ').Append(DecodeTarget(Target)).Append(']').Append(cEol);
+  end;
+
+begin
+  Xml := ReadEntry(AZip, 'word/document.xml');
+  P := Pos('<w:subDoc ', Xml);
+  if P = 0 then
+    Exit(XmlRunsText(Xml, 'w:t', 'w:p'));
+  Targets := DocumentTargets(AZip);
+  SB := TStringBuilder.Create;
+  try
+    From := 1;
+    while P > 0 do
+    begin
+      Q := Pos('>', Xml, P);
+      if Q = 0 then
+        Break;
+      SB.Append(XmlRunsText(Copy(Xml, From, P - From), 'w:t', 'w:p'));
+      if Targets.TryGetValue(AttrValue(Copy(Xml, P, Q - P + 1), 'r:id'), Target) then
+        AppendSubdocument;
+      From := Q + 1;
+      P := Pos('<w:subDoc ', Xml, From);
+    end;
+    SB.Append(XmlRunsText(Copy(Xml, From, MaxInt), 'w:t', 'w:p'));
+    Result := SB.ToString;
+  finally
+    SB.Free;
+    Targets.Free;
+  end;
+end;
+
+function DocumentStamp(const APath: string): TDateTime;
+var
+  Files: TStringList;
+  Zip: TZipFile;
+  Rels, Tag, Inner, Sub: string;
+  I, P: Integer;
+begin
+  Result := TFile.GetLastWriteTime(APath);
+  if not SameText(ExtractFileExt(APath), '.docx') then
+    Exit;
+  Files := TStringList.Create;
+  try
+    Files.CaseSensitive := True;
+    Files.Add(APath);
+    // The list grows while it is walked; only the relationship parts are read.
+    I := 0;
+    while I < Files.Count do
+    begin
+      Zip := TZipFile.Create;
+      try
+        try
+          Result := Max(Result, TFile.GetLastWriteTime(Files[I]));
+          Zip.Open(Files[I], zmRead);
+          Rels := '';
+          if HasEntry(Zip, 'word/_rels/document.xml.rels') then
+            Rels := ReadEntry(Zip, 'word/_rels/document.xml.rels');
+          P := 1;
+          while NextElement(Rels, 'Relationship', P, Tag, Inner) do
+            if AttrValue(Tag, 'Type').EndsWith('/subDocument') then
+            begin
+              Sub := SubdocumentPath(ExtractFileDir(Files[I]), AttrValue(Tag, 'Target'));
+              if (Sub <> '') and (Files.IndexOf(Sub) < 0) and TFile.Exists(Sub) then
+                Files.Add(Sub);
+            end;
+        except
+          // An unreadable file has no links to follow.
+        end;
+      finally
+        Zip.Free;
+      end;
+      Inc(I);
+    end;
+  finally
+    Files.Free;
+  end;
+end;
+
 function OfficeText(const APath: string): string;
 var
+  Seen: TStringList;
   Zip: TZipFile;
   Ext, Part, Sheet: string;
   Sheets, Slides: TArray<string>;
@@ -425,7 +588,16 @@ begin
     if Ext = '.docx' then
     begin
       if HasEntry(Zip, 'word/document.xml') then
-        Result := XmlRunsText(ReadEntry(Zip, 'word/document.xml'), 'w:t', 'w:p');
+      begin
+        Seen := TStringList.Create;
+        try
+          Seen.CaseSensitive := True;
+          Seen.Add(APath);
+          Result := WordText(Zip, ExtractFileDir(APath), Seen);
+        finally
+          Seen.Free;
+        end;
+      end;
     end
     else if Ext = '.pptx' then
     begin

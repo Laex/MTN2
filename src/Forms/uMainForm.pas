@@ -1721,6 +1721,7 @@ begin
   Result.SpaceSelects := FDualPanel.SpaceSelects;
   Result.VimKeys := FDualPanel.VimKeys;
   Result.KeepPanelFocus := FDualPanel.KeepPanelFocus;
+  Result.CtrlEnterKeepFocus := FDualPanel.CtrlEnterKeepFocus;
   Result.StickyQuickSearch := FDualPanel.StickyQuickSearch;
   Result.QuickSearchKeepEmpty := FDualPanel.QuickSearchKeepEmpty;
   Result.QuickSearchFilter := FDualPanel.QuickSearchFilter;
@@ -1809,6 +1810,7 @@ begin
   FSession.SpaceSelects := ASettings.SpaceSelects;
   FSession.VimKeys := ASettings.VimKeys;
   FSession.KeepPanelFocus := ASettings.KeepPanelFocus;
+  FSession.CtrlEnterKeepFocus := ASettings.CtrlEnterKeepFocus;
   FSession.StickyQuickSearch := ASettings.StickyQuickSearch;
   FSession.QuickSearchKeepEmpty := ASettings.QuickSearchKeepEmpty;
   FSession.QuickSearchFilter := ASettings.QuickSearchFilter;
@@ -1820,6 +1822,7 @@ begin
   FDualPanel.SpaceSelects := ASettings.SpaceSelects;
   FDualPanel.VimKeys := ASettings.VimKeys;
   FDualPanel.KeepPanelFocus := ASettings.KeepPanelFocus;
+  FDualPanel.CtrlEnterKeepFocus := ASettings.CtrlEnterKeepFocus;
   FDualPanel.StickyQuickSearch := ASettings.StickyQuickSearch;
   FDualPanel.QuickSearchKeepEmpty := ASettings.QuickSearchKeepEmpty;
   FDualPanel.QuickSearchFilter := ASettings.QuickSearchFilter;
@@ -1911,6 +1914,7 @@ begin
   FDualPanel.SpaceSelects := Sess.SpaceSelects;
   FDualPanel.VimKeys := Sess.VimKeys;
   FDualPanel.KeepPanelFocus := Sess.KeepPanelFocus;
+  FDualPanel.CtrlEnterKeepFocus := Sess.CtrlEnterKeepFocus;
   FDualPanel.StickyQuickSearch := Sess.StickyQuickSearch;
   FDualPanel.QuickSearchKeepEmpty := Sess.QuickSearchKeepEmpty;
   FDualPanel.QuickSearchFilter := Sess.QuickSearchFilter;
@@ -2114,6 +2118,7 @@ begin
   Sess.SpaceSelects := FDualPanel.SpaceSelects;
   Sess.VimKeys := FDualPanel.VimKeys;
   Sess.KeepPanelFocus := FDualPanel.KeepPanelFocus;
+  Sess.CtrlEnterKeepFocus := FDualPanel.CtrlEnterKeepFocus;
   Sess.StickyQuickSearch := FDualPanel.StickyQuickSearch;
   Sess.QuickSearchKeepEmpty := FDualPanel.QuickSearchKeepEmpty;
   Sess.QuickSearchFilter := FDualPanel.QuickSearchFilter;

@@ -11,6 +11,8 @@ F3 on one of these files shows its text in the built-in viewer.
 | `.svg` | Size, element counts, title and text, then the source (indented when it is on a few long lines) |
 | `.sqlite`, `.sqlite3`, `.db`, `.db3` | The schema, then the first 200 rows of every table |
 
+A Word master document keeps its text in separate subdocument files. Their text is shown in place of the links, provided each is a `.docx` in the folder of the document or below it. Any other subdocument appears as a `[subdocument not read: name]` line.
+
 The viewer reads the file; it never changes it. F4 opens the original in the editor as usual.
 
 Quick View (Ctrl+Q) shows the same text for files up to 16 MB.

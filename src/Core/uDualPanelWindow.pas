@@ -207,6 +207,7 @@ type
     FSpaceSelects: Boolean;
     FVimKeys: Boolean;
     FKeepPanelFocus: Boolean;
+    FCtrlEnterKeepFocus: Boolean;
     /// <summary>Blinking cursor phase: True = cursor shown, False = cursor hidden.</summary>
     FCursorVisible: Boolean;
     FDialog: TDialogHost;
@@ -984,7 +985,7 @@ type
     function FolderSizeStubTitle: string;
     procedure InsertPanelItemToCmdLine(AFullPath: Boolean);
     procedure InsertPanelPathToCmdLine(AOtherPanel: Boolean);
-    procedure InsertTextToCmdLine(const AText: string);
+    procedure InsertTextToCmdLine(const AText: string; AKeepFocus: Boolean = False);
     /// <summary>A local file by the Windows shell, or as a console program
     /// (OnLaunchConsoleFile) when it is one.</summary>
     procedure ShellOpenPath(const APath: string);
@@ -1554,6 +1555,8 @@ type
     /// <summary>Typing on a file panel goes into the command line but leaves
     /// the focus on the panel; the line takes it only on Ctrl+Down or a click.</summary>
     property KeepPanelFocus: Boolean read FKeepPanelFocus write FKeepPanelFocus;
+    /// <summary>See TDisplaySettings.CtrlEnterKeepFocus.</summary>
+    property CtrlEnterKeepFocus: Boolean read FCtrlEnterKeepFocus write FCtrlEnterKeepFocus;
     property StickyQuickSearch: Boolean read GetStickyQuickSearch write SetStickyQuickSearch;
     property QuickSearchKeepEmpty: Boolean read GetQuickSearchKeepEmpty write SetQuickSearchKeepEmpty;
     /// <summary>Quick search hides the files that do not match, besides moving
@@ -9111,7 +9114,7 @@ begin
       Exit;
     Piece := Name;
   end;
-  InsertTextToCmdLine(Piece);
+  InsertTextToCmdLine(Piece, FCtrlEnterKeepFocus);
 end;
 
 procedure TDualPanelWindow.InsertPanelPathToCmdLine(AOtherPanel: Boolean);
@@ -9137,7 +9140,7 @@ begin
     InsertTextToCmdLine(Piece);
 end;
 
-procedure TDualPanelWindow.InsertTextToCmdLine(const AText: string);
+procedure TDualPanelWindow.InsertTextToCmdLine(const AText: string; AKeepFocus: Boolean);
 var
   Piece: string;
 begin
@@ -9147,7 +9150,7 @@ begin
     if (FCmdLineMgr.Text <> '') and (FCmdLineMgr.Cmd.Cursor > 0) and
        (FCmdLineMgr.Text[FCmdLineMgr.Cmd.Cursor] <> ' ') then
       Piece := ' ' + Piece;
-    FCmdLineMgr.InsertText(Piece);
+    FCmdLineMgr.InsertText(Piece, AKeepFocus);
   end;
 end;
 

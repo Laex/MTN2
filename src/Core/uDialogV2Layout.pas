@@ -2,7 +2,11 @@ unit uDialogV2Layout;
 
 { Protocol 2 dialog layout. The caller supplies the frame, the controls, the
   focus and the scroll it already has. Nothing here writes host fields: a
-  wheel drag survives as long as the focus stays the same. }
+  wheel drag survives as long as the focus stays the same.
+
+  A dialog taller than its frame scrolls as a whole. One with a vertical tab
+  strip and a vertical rule beside it scrolls its pages only: the strip and the
+  rows under the rule stay in place. }
 
 interface
 
@@ -13,6 +17,8 @@ type
   TDialogV2Layout = record
     Bounds: TArray<TRectI>;
     ContentH: Integer;
+    /// <summary>Rows that scroll, from the top of the client area.</summary>
+    ViewH: Integer;
     ScrollY: Integer;
     ScrollFollow: Integer;
   end;
@@ -31,8 +37,8 @@ function ControlMinWidth(const C: TDialogControl): Integer;
 
 /// <summary>Places every control inside AFrame. A control that is not wholly
 /// in a scrolling view is given an empty rectangle, except a list or a radio
-/// group, which is cut to the view. ScrollY moves only when AFocus differs
-/// from AScrollFollow.</summary>
+/// group (and, with pinned rows, a group frame or the strip), which is cut to
+/// the view. ScrollY moves only when AFocus differs from AScrollFollow.</summary>
 function LayoutDialogV2(const AControls: TArray<TDialogControl>;
   const AFrame: TRectI; AFocus, AScrollY, AScrollFollow: Integer): TDialogV2Layout;
 
@@ -343,118 +349,246 @@ begin
   end;
 end;
 
+type
+  // How the rows of the client area are shared. Split is the first row under the
+  // pages of a dialog with pinned rows; 0 when the dialog scrolls as a whole.
+  TRowPlan = record
+    Split: Integer;
+    // Only the first rule and the buttons are left under the pages.
+    Compact: Boolean;
+    ViewH: Integer;
+    ContentH: Integer;
+  end;
+
+  // Screen rows of one control.
+  TRowSpan = record
+    Top, Bottom: Integer;
+    Hidden: Boolean;
+  end;
+
+// First row under the pages of a dialog with pinned rows, 0 for other dialogs.
+function PinnedSplitRow(const AControls: TArray<TDialogControl>): Integer;
+var
+  I, Strip: Integer;
+begin
+  Result := 0;
+  Strip := DialogTabStripIndex(AControls);
+  if (Strip < 0) or not AControls[Strip].Vertical then
+    Exit;
+  for I := 0 to High(AControls) do
+    if (AControls[I].Kind = dckLabel) and AControls[I].VRule and (AControls[I].TabPage = 0) then
+      Exit(Max(AControls[I].Row, 0) + Max(AControls[I].BoxH, 1));
+end;
+
+procedure MeasureRows(const AControls: TArray<TDialogControl>;
+  out ARowY, ARowH: TArray<Integer>);
+var
+  I: Integer;
+begin
+  SetLength(ARowY, Length(AControls));
+  SetLength(ARowH, Length(AControls));
+  for I := 0 to High(AControls) do
+  begin
+    ARowY[I] := Max(AControls[I].Row, 0);
+    if AControls[I].BoxH > 0 then
+      ARowH[I] := AControls[I].BoxH
+    else
+      ARowH[I] := DefaultControlHeight(AControls[I]);
+  end;
+end;
+
+// Rows down to the last shown control. A page that is not shown takes no room,
+// so the dialog scrolls for the shown page only.
+function ShownRowCount(const AControls: TArray<TDialogControl>;
+  const ARowY, ARowH: TArray<Integer>; APagesOnly: Boolean): Integer;
+var
+  I: Integer;
+begin
+  Result := 0;
+  for I := 0 to High(AControls) do
+    if (not APagesOnly or (AControls[I].TabPage > 0)) and
+       not DialogControlHiddenByTab(AControls, I) then
+      Result := Max(Result, ARowY[I] + ARowH[I]);
+end;
+
+function PlanRows(const AControls: TArray<TDialogControl>;
+  const ARowY, ARowH: TArray<Integer>; AClientH: Integer): TRowPlan;
+const
+  // Page rows below which the rows under the pages shrink to rule and buttons.
+  cMinPageRows = 6;
+var
+  Split, FooterH: Integer;
+begin
+  Result.Split := 0;
+  Result.Compact := False;
+  Result.ViewH := AClientH;
+  Result.ContentH := ShownRowCount(AControls, ARowY, ARowH, False);
+  Split := PinnedSplitRow(AControls);
+  if (Split <= 0) or (Result.ContentH <= AClientH) then
+    Exit;
+  Result.Split := Split;
+  // The rows under the pages, plus one for the shadow of the buttons.
+  FooterH := Result.ContentH - Split + 1;
+  Result.Compact := AClientH - FooterH < cMinPageRows;
+  if Result.Compact then
+    FooterH := 3;
+  Result.ViewH := Max(AClientH - FooterH, 1);
+  Result.ContentH := ShownRowCount(AControls, ARowY, ARowH, True);
+end;
+
+// AScrollY moved as little as brings the focused control into view.
+function ScrollToFocus(const AControls: TArray<TDialogControl>;
+  const ARowY, ARowH: TArray<Integer>; const APlan: TRowPlan;
+  AFocus, AScrollY: Integer): Integer;
+var
+  Above: Integer;
+begin
+  Result := AScrollY;
+  if (AFocus < 0) or (AFocus > High(AControls)) or
+     ((APlan.Split > 0) and (AControls[AFocus].TabPage <= 0)) then
+    Exit;
+  // With pinned rows one row stays above the field: the title of its frame.
+  Above := Ord(APlan.Split > 0);
+  Result := Min(Result, ARowY[AFocus] - Above);
+  Result := Max(Result, ARowY[AFocus] + ARowH[AFocus] - APlan.ViewH);
+end;
+
+// A control of a dialog that scrolls as a whole. One that is not wholly in view
+// is dropped, except a list or a group of options: it is cut to the view, so its
+// scrollbar stays usable.
+function ScrollingRows(const C: TDialogControl; ARow, AHeight, AScrollY: Integer;
+  const APlan: TRowPlan; AClientTop, AClientBottom: Integer): TRowSpan;
+begin
+  if C.Kind = dckTab then
+    AScrollY := 0;
+  Result.Top := AClientTop + ARow - AScrollY;
+  Result.Bottom := Result.Top + AHeight - 1;
+  Result.Hidden := (C.Kind <> dckTab) and
+    (APlan.ContentH > AClientBottom - AClientTop + 1) and
+    ((Result.Top < AClientTop) or (Result.Bottom > AClientBottom));
+  if Result.Hidden and (C.Kind in [dckList, dckRadioGroup]) then
+    Result.Hidden := (Result.Bottom < AClientTop) or (Result.Top > AClientBottom);
+end;
+
+// A control of a page between pinned rows. A group frame is cut like a list.
+function PageRows(const C: TDialogControl; ARow, AHeight, AScrollY: Integer;
+  const APlan: TRowPlan; AClientTop: Integer): TRowSpan;
+var
+  ViewEnd: Integer;
+begin
+  ViewEnd := AClientTop + APlan.ViewH - 1;
+  if C.Kind = dckTab then
+    AScrollY := 0;
+  Result.Top := AClientTop + ARow - AScrollY;
+  Result.Bottom := Result.Top + AHeight - 1;
+  if (C.Kind in [dckList, dckRadioGroup]) or ((C.Kind = dckLabel) and C.GroupFrame) then
+    Result.Hidden := (Result.Bottom < AClientTop) or (Result.Top > ViewEnd)
+  else
+    Result.Hidden := (Result.Top < AClientTop) or (Result.Bottom > ViewEnd);
+  Result.Bottom := Min(Result.Bottom, ViewEnd);
+end;
+
+// A control outside the pages of a dialog with pinned rows: beside the pages it
+// stays in place, cut to the view; under them it follows the end of the view.
+function PinnedRows(const C: TDialogControl; ARow, AHeight: Integer;
+  const APlan: TRowPlan; AClientTop: Integer): TRowSpan;
+var
+  ViewEnd: Integer;
+begin
+  ViewEnd := AClientTop + APlan.ViewH - 1;
+  if ARow < APlan.Split then
+  begin
+    Result.Top := AClientTop + ARow;
+    Result.Bottom := Min(Result.Top + AHeight - 1, ViewEnd);
+    Result.Hidden := Result.Top > ViewEnd;
+    Exit;
+  end;
+  Result.Top := ViewEnd + 1 + ARow - APlan.Split;
+  Result.Hidden := APlan.Compact and (C.Kind <> dckButton) and (ARow > APlan.Split);
+  if APlan.Compact and (C.Kind = dckButton) then
+    Result.Top := ViewEnd + 2;
+  Result.Bottom := Result.Top + AHeight - 1;
+end;
+
+function ControlRows(const C: TDialogControl; ARow, AHeight, AScrollY: Integer;
+  const APlan: TRowPlan; AClientTop, AClientBottom: Integer): TRowSpan;
+begin
+  if APlan.Split = 0 then
+    Result := ScrollingRows(C, ARow, AHeight, AScrollY, APlan, AClientTop, AClientBottom)
+  else if C.TabPage > 0 then
+    Result := PageRows(C, ARow, AHeight, AScrollY, APlan, AClientTop)
+  else
+    Result := PinnedRows(C, ARow, AHeight, APlan, AClientTop);
+end;
+
+// Keeps a box inside the client area.
+function FitToClient(const C: TDialogControl; const ABox, AClient: TRectI): TRectI;
+var
+  L, T, Rgt, Bot: Integer;
+begin
+  L := Max(ABox.Left, AClient.Left);
+  T := Max(ABox.Top, AClient.Top);
+  Rgt := Min(ABox.Right, AClient.Right);
+  // Text that is wider than its box (a longer translation) stops one cell
+  // short of the frame border instead of touching it. A separator line
+  // reaches the border on purpose, where it joins the frame.
+  if (C.Kind in [dckLabel, dckCheckbox, dckRadio, dckDropDown]) and
+     not ((C.Kind = dckLabel) and IsHRuleText(C.Text)) and
+     (Rgt >= AClient.Right) and (L < AClient.Right) then
+    Rgt := AClient.Right - 1;
+  Bot := Min(ABox.Bottom, AClient.Bottom);
+  Result := TRectI.Make(L, T, Max(Rgt, L), Max(Bot, T));
+end;
+
 function LayoutDialogV2(const AControls: TArray<TDialogControl>;
   const AFrame: TRectI; AFocus, AScrollY, AScrollFollow: Integer): TDialogV2Layout;
 var
-  I: Integer;
-  Lefts, Widths: TArray<Integer>;
-  ClientLeft, ClientTop, ClientRight, ClientBottom, ClientW, ClientH: Integer;
-  RowY, RowH: TArray<Integer>;
+  I, L, W: Integer;
+  Lefts, Widths, RowY, RowH: TArray<Integer>;
+  Client: TRectI;
+  Plan: TRowPlan;
+  Rows: TRowSpan;
   C: TDialogControl;
-  CX, CY, CW, CH, L, T, Rgt, Bot: Integer;
 begin
   // (col,row)=(0,0) is the first cell inside the frame border.
-  ClientLeft := AFrame.Left + 1;
-  ClientTop := AFrame.Top + 1;
-  ClientRight := AFrame.Right - 1;
-  ClientBottom := AFrame.Bottom - 1;
-  if ClientRight < ClientLeft then
-    ClientRight := ClientLeft;
-  if ClientBottom < ClientTop then
-    ClientBottom := ClientTop;
-  ClientW := ClientRight - ClientLeft + 1;
-  ClientH := ClientBottom - ClientTop + 1;
+  Client := TRectI.Make(AFrame.Left + 1, AFrame.Top + 1,
+    Max(AFrame.Right - 1, AFrame.Left + 1), Max(AFrame.Bottom - 1, AFrame.Top + 1));
 
-  SqueezeColumns(AControls, ClientW, Lefts, Widths);
-  SetLength(RowY, Length(AControls));
-  SetLength(RowH, Length(AControls));
-  Result.ContentH := 0;
-  for I := 0 to High(AControls) do
-  begin
-    C := AControls[I];
-    RowY[I] := Max(C.Row, 0);
-    if C.BoxH > 0 then
-      RowH[I] := C.BoxH
-    else
-      RowH[I] := DefaultControlHeight(C);
-    // A page that is not shown takes no room, so the dialog scrolls for the
-    // shown page only.
-    if not DialogControlHiddenByTab(AControls, I) then
-      Result.ContentH := Max(Result.ContentH, RowY[I] + RowH[I]);
-  end;
+  SqueezeColumns(AControls, Client.Right - Client.Left + 1, Lefts, Widths);
+  MeasureRows(AControls, RowY, RowH);
+  Plan := PlanRows(AControls, RowY, RowH, Client.Bottom - Client.Top + 1);
+  Result.ContentH := Plan.ContentH;
+  Result.ViewH := Plan.ViewH;
 
-  Result.ScrollY := AScrollY;
+  Result.ScrollY := 0;
   Result.ScrollFollow := AScrollFollow;
-  if Result.ContentH > ClientH then
+  if Plan.ContentH > Plan.ViewH then
   begin
-    if AFocus <> Result.ScrollFollow then
+    Result.ScrollY := AScrollY;
+    if AFocus <> AScrollFollow then
     begin
       Result.ScrollFollow := AFocus;
-      if (AFocus >= 0) and (AFocus <= High(AControls)) then
-      begin
-        if RowY[AFocus] < Result.ScrollY then
-          Result.ScrollY := RowY[AFocus];
-        if RowY[AFocus] + RowH[AFocus] > Result.ScrollY + ClientH then
-          Result.ScrollY := RowY[AFocus] + RowH[AFocus] - ClientH;
-      end;
+      Result.ScrollY := ScrollToFocus(AControls, RowY, RowH, Plan, AFocus, AScrollY);
     end;
-    Result.ScrollY := EnsureRange(Result.ScrollY, 0, Result.ContentH - ClientH);
-  end
-  else
-    Result.ScrollY := 0;
+    Result.ScrollY := EnsureRange(Result.ScrollY, 0, Plan.ContentH - Plan.ViewH);
+  end;
 
   SetLength(Result.Bounds, Length(AControls));
   for I := 0 to High(AControls) do
   begin
     C := AControls[I];
+    Result.Bounds[I] := TRectI.Make(-1, -1, -2, -2);
     if DialogControlHiddenByTab(AControls, I) then
-    begin
-      Result.Bounds[I] := TRectI.Make(-1, -1, -2, -2);
       Continue;
-    end;
-    CX := Lefts[I];
-    CY := RowY[I];
+    Rows := ControlRows(C, RowY[I], RowH[I], Result.ScrollY, Plan, Client.Top, Client.Bottom);
+    if Rows.Hidden then
+      Continue;
     if C.BoxW > 0 then
-      CW := Widths[I]
+      W := Widths[I]
     else
-      CW := DefaultControlWidth(C, Max(ClientW - CX, 1));
-    CH := RowH[I];
-    L := ClientLeft + CX;
-    if C.Kind = dckTab then
-      T := ClientTop + CY
-    else
-      T := ClientTop + CY - Result.ScrollY;
-    Rgt := L + CW - 1;
-    Bot := T + CH - 1;
-    // Not wholly in view: drop it. A list or a group of options is cut
-    // to the view instead, so its scrollbar stays usable.
-    if (C.Kind <> dckTab) and (Result.ContentH > ClientH) and ((T < ClientTop) or (Bot > ClientBottom)) and
-       not ((C.Kind in [dckList, dckRadioGroup]) and (Bot >= ClientTop) and
-            (T <= ClientBottom)) then
-    begin
-      Result.Bounds[I] := TRectI.Make(-1, -1, -2, -2);
-      Continue;
-    end;
-    if L < ClientLeft then
-      L := ClientLeft;
-    if T < ClientTop then
-      T := ClientTop;
-    if Rgt > ClientRight then
-      Rgt := ClientRight;
-    // Text that is wider than its box (a longer translation) stops one cell
-    // short of the frame border instead of touching it. A separator line
-    // reaches the border on purpose, where it joins the frame.
-    if (C.Kind in [dckLabel, dckCheckbox, dckRadio, dckDropDown]) and
-       not ((C.Kind = dckLabel) and IsHRuleText(C.Text)) and
-       (Rgt >= ClientRight) and (L < ClientRight) then
-      Rgt := ClientRight - 1;
-    if Bot > ClientBottom then
-      Bot := ClientBottom;
-    if Rgt < L then
-      Rgt := L;
-    if Bot < T then
-      Bot := T;
-    Result.Bounds[I] := TRectI.Make(L, T, Rgt, Bot);
+      W := DefaultControlWidth(C, Max(Client.Right - Client.Left + 1 - Lefts[I], 1));
+    L := Client.Left + Lefts[I];
+    Result.Bounds[I] := FitToClient(C, TRectI.Make(L, Rows.Top, L + W - 1, Rows.Bottom), Client);
   end;
 end;
 

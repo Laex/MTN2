@@ -41,6 +41,10 @@ function DialogTabAtOffset(const AStrip: TDialogControl; AOffset: Integer): Inte
 /// <summary>Page of a vertical strip on row ARow (from its top edge), -1 below the last.</summary>
 function DialogTabAtRow(const AStrip: TDialogControl; ARow: Integer): Integer;
 
+/// <summary>First caption of a vertical strip of ARows rows: ATop, moved as
+/// little as keeps ASelected in view.</summary>
+function DialogTabScrollTop(ATop, ASelected, ARows, ACount: Integer): Integer;
+
 /// <summary>Widest caption of a strip plus the cells its marker takes.</summary>
 function DialogTabColumnWidth(const AStrip: TDialogControl): Integer;
 
@@ -134,10 +138,17 @@ end;
 
 function DialogTabAtRow(const AStrip: TDialogControl; ARow: Integer): Integer;
 begin
-  if (ARow >= 0) and (ARow <= High(AStrip.Items)) then
-    Result := ARow
+  if (ARow >= 0) and (AStrip.TabTop + ARow <= High(AStrip.Items)) then
+    Result := AStrip.TabTop + ARow
   else
     Result := -1;
+end;
+
+function DialogTabScrollTop(ATop, ASelected, ARows, ACount: Integer): Integer;
+begin
+  Result := Min(ATop, ASelected);
+  Result := Max(Result, ASelected - ARows + 1);
+  Result := Max(Min(Result, ACount - ARows), 0);
 end;
 
 function DialogTabColumnWidth(const AStrip: TDialogControl): Integer;

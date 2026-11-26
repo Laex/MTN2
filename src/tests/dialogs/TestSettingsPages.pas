@@ -30,6 +30,11 @@ type
     [Test] procedure TestQueryMatchesFieldCaptionIgnoringMnemonicAndCase;
     [Test] procedure TestQueryMatchesFieldDescription;
     [Test] procedure TestQueryWithoutMatchGivesNoSections;
+    [Test] procedure TestShortScreenKeepsSectionsHintAndButtons;
+    [Test] procedure TestShortScreenCutsGroupFrameAtView;
+    [Test] procedure TestCutGroupFrameLeavesTheCutSideOpen;
+    [Test] procedure TestVeryShortScreenDropsHintArea;
+    [Test] procedure TestShortScreenSectionListFollowsSelection;
   end;
 
 implementation
@@ -432,6 +437,167 @@ begin
   Assert.AreEqual<Integer>(0, Length(Found.Captions), 'empty');
 end;
 
+// Draws the merged dialog on a screen of AHeight rows.
+function OpenOnScreen(AHeight: Integer; out ADecl: TDialogDeclaration;
+  out AGrid: TTerminalGrid): TDialogHost;
+var
+  Pages: TSettingsPages;
+begin
+  ADecl := Merge(Pages);
+  AllocTerminalGrid(AGrid, 80, AHeight);
+  ClearTerminalGrid(AGrid, TAlphaColorRec.White, TAlphaColorRec.Navy, ' ');
+  Result := TDialogHost.Create(CreateThemeByName('NDN'));
+  Result.Open(ADecl, NoopCommand);
+  Result.Draw(AGrid, 80, AHeight);
+end;
+
+function ScreenText(const AGrid: TTerminalGrid): string;
+var
+  X, Y: Integer;
+begin
+  Result := '';
+  for Y := 0 to High(AGrid) do
+  begin
+    for X := 0 to High(AGrid[Y]) do
+      Result := Result + AGrid[Y][X].CharValue;
+    Result := Result + #10;
+  end;
+end;
+
+function BoundsOf(AHost: TDialogHost; const ADecl: TDialogDeclaration;
+  const AId: string): TRectI;
+begin
+  Result := AHost.ControlBoundsAt(IndexOfId(ADecl, AId));
+end;
+
+function IsShown(const R: TRectI): Boolean;
+begin
+  Result := (R.Right >= R.Left) and (R.Bottom >= R.Top) and (R.Left >= 0);
+end;
+
+procedure TTestSettingsPages.TestShortScreenKeepsSectionsHintAndButtons;
+var
+  Decl: TDialogDeclaration;
+  Grid: TTerminalGrid;
+  Host: TDialogHost;
+  Ok, Strip, Hint: TRectI;
+begin
+  Host := OpenOnScreen(18, Decl, Grid);
+  try
+    Host.FocusControlById('show_title_bar');
+    Host.Draw(Grid, 80, 18);
+    Ok := BoundsOf(Host, Decl, cDlgCmdOk);
+    Strip := BoundsOf(Host, Decl, cSettingsStripId);
+    Hint := BoundsOf(Host, Decl, 'hint_area');
+    Assert.IsTrue(IsShown(Ok), 'OK with a field of the first rows focused');
+    Assert.IsTrue(IsShown(Strip), 'section list');
+    Assert.IsTrue(IsShown(Hint), 'hint area');
+    // The last field of the Window section lies below the view.
+    Host.FocusControlById('confirm_exit');
+    Host.Draw(Grid, 80, 18);
+    Assert.IsTrue(IsShown(BoundsOf(Host, Decl, 'confirm_exit')), 'focused field in view');
+    Assert.AreEqual<Integer>(Ok.Top, BoundsOf(Host, Decl, cDlgCmdOk).Top, 'OK stays');
+    Assert.AreEqual<Integer>(Strip.Top, BoundsOf(Host, Decl, cSettingsStripId).Top, 'list stays');
+    Assert.AreEqual<Integer>(Hint.Top, BoundsOf(Host, Decl, 'hint_area').Top, 'hint stays');
+    Assert.IsTrue(BoundsOf(Host, Decl, 'confirm_exit').Bottom < Hint.Top,
+      'fields end above the hint area');
+  finally
+    Host.Free;
+  end;
+end;
+
+procedure TTestSettingsPages.TestShortScreenCutsGroupFrameAtView;
+var
+  Decl: TDialogDeclaration;
+  Grid: TTerminalGrid;
+  Host: TDialogHost;
+  Frame: TRectI;
+begin
+  // Window: the Language frame starts on the last row of a 14-row screen's view.
+  Host := OpenOnScreen(14, Decl, Grid);
+  try
+    Host.FocusControlById('show_title_bar');
+    Host.Draw(Grid, 80, 14);
+    Frame := BoundsOf(Host, Decl, 'grp_language');
+    Assert.IsTrue(IsShown(Frame), 'frame cut, not dropped');
+    Assert.IsTrue(Frame.Bottom < BoundsOf(Host, Decl, cDlgCmdOk).Top, 'frame ends above the buttons');
+  finally
+    Host.Free;
+  end;
+end;
+
+procedure TTestSettingsPages.TestCutGroupFrameLeavesTheCutSideOpen;
+var
+  Decl: TDialogDeclaration;
+  Grid: TTerminalGrid;
+  Host: TDialogHost;
+  Field, Frame: TRectI;
+
+  function RowOf(AY: Integer): string;
+  begin
+    Result := ScreenText(Grid).Split([#10])[AY];
+  end;
+
+begin
+  Host := OpenOnScreen(12, Decl, Grid);
+  try
+    Host.FocusControlById('confirm_exit');
+    ClearTerminalGrid(Grid, TAlphaColorRec.White, TAlphaColorRec.Navy, ' ');
+    Host.Draw(Grid, 80, 12);
+    // The Exit frame goes on below the view, the Language frame above it.
+    Field := BoundsOf(Host, Decl, 'confirm_exit');
+    Assert.IsTrue(Pos(chBoxBL, RowOf(Field.Top)) = 0, 'no bottom edge through the last row');
+    Frame := BoundsOf(Host, Decl, 'grp_language');
+    Assert.IsTrue(Pos(chBoxTL, RowOf(Frame.Top)) = 0, 'no top edge through the first row');
+  finally
+    Host.Free;
+  end;
+end;
+
+procedure TTestSettingsPages.TestVeryShortScreenDropsHintArea;
+var
+  Decl: TDialogDeclaration;
+  Grid: TTerminalGrid;
+  Host: TDialogHost;
+  Strip: TRectI;
+begin
+  Host := OpenOnScreen(12, Decl, Grid);
+  try
+    Assert.IsFalse(IsShown(BoundsOf(Host, Decl, 'hint_area')), 'hint area dropped');
+    Assert.IsTrue(IsShown(BoundsOf(Host, Decl, cDlgCmdOk)), 'OK');
+    Assert.IsTrue(IsShown(BoundsOf(Host, Decl, cDlgCmdCancel)), 'Cancel');
+    Strip := BoundsOf(Host, Decl, cSettingsStripId);
+    Assert.IsTrue(IsShown(Strip) and (Strip.Height >= 2), 'at least two sections listed');
+  finally
+    Host.Free;
+  end;
+end;
+
+procedure TTestSettingsPages.TestShortScreenSectionListFollowsSelection;
+var
+  Decl: TDialogDeclaration;
+  Grid: TTerminalGrid;
+  Host: TDialogHost;
+  Strip: TRectI;
+begin
+  Host := OpenOnScreen(14, Decl, Grid);
+  try
+    Assert.IsTrue(Pos(' Notices', ScreenText(Grid)) = 0, 'last section starts out of view');
+    // A field of the last section brings its section into the list.
+    Host.FocusControlById('hints_focus');
+    Host.Draw(Grid, 80, 14);
+    Assert.IsTrue(Pos(' Notices', ScreenText(Grid)) > 0, 'selected section listed');
+    // A click picks the section drawn on the clicked row: the one above the last.
+    Strip := BoundsOf(Host, Decl, cSettingsStripId);
+    Assert.IsTrue(Host.HandleClick(Strip.Left + 1, Strip.Bottom - 1, []), 'click taken');
+    Host.Draw(Grid, 80, 14);
+    Assert.IsTrue(IsShown(BoundsOf(Host, Decl, 'scrollback')), 'Console section shown');
+  finally
+    Host.Free;
+  end;
+end;
+
 initialization
   TDUnitX.RegisterTestFixture(TTestSettingsPages);
+
 end.

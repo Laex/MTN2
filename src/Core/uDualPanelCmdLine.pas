@@ -69,7 +69,9 @@ type
     /// command goes there.</summary>
     procedure RememberCommand(const ACommand: string);
     procedure Reset;
-    procedure InsertText(const AText: string);
+    /// <summary>Appends AText at the end of the line. AKeepFocus leaves the
+    /// focus where it is instead of taking it.</summary>
+    procedure InsertText(const AText: string; AKeepFocus: Boolean = False);
     procedure CopyToClipboard;
     procedure CutToClipboard;
     procedure PasteFromClipboard;
@@ -236,9 +238,15 @@ begin
   Invalidate;
 end;
 
-procedure TDualPanelCmdLineManager.InsertText(const AText: string);
+procedure TDualPanelCmdLineManager.InsertText(const AText: string; AKeepFocus: Boolean);
 begin
-  Focus;
+  if AKeepFocus then
+  begin
+    FCmd.Cursor := Length(FCmd.Text);
+    InputLineClearSelection(FCmd);
+  end
+  else
+    Focus;
   FHistIndex := -1;
   ResetCompletion;
   InputLineInsert(FCmd, AText);

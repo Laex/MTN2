@@ -57,6 +57,7 @@ type
     /// focus the view last followed (so a wheel or a bar drag is not undone).</summary>
     FScrollY: Integer;
     FContentH: Integer;
+    FViewH: Integer; // rows that scroll
     FScrollFollow: Integer;
     FClicks: TMouseClickCounter; // input fields: double = word, triple = all
     /// <summary>Host-side mirror of list selection (avoids dynarray-of-record writeback issues).</summary>
@@ -175,6 +176,7 @@ type
     /// <summary>Protocol 2 places each control at its own column and row,
     /// inside the frame.</summary>
     procedure LayoutV2Controls;
+    procedure FollowVerticalTabStrip;
     /// <summary>Protocol 1 lays controls out in order via LayoutDialogFlow.</summary>
     procedure LayoutFlowControls;
     procedure RebuildControlLayout;
@@ -234,6 +236,7 @@ type
     /// blue or bright cyan. Accent clips by cell count, marked by character
     /// width, so a wide glyph does not spill into the next control.</summary>
     procedure DrawGroupFrame(const AGrid: TTerminalGrid; const R: TRectI;
+      AFullTop, AFullBottom: Integer;
       const ATitle: string; AFg, ABg: TAlphaColor);
     procedure DrawLabelControl(const AGrid: TTerminalGrid; const R: TRectI;
       const C: TDialogControl; ALabelFg, ALabelBg: TAlphaColor);
@@ -2195,8 +2198,23 @@ begin
   L := LayoutDialogV2(FDecl.Controls, FBounds, FFocusIndex, FScrollY, FScrollFollow);
   FControlBounds := L.Bounds;
   FContentH := L.ContentH;
+  FViewH := L.ViewH;
   FScrollY := L.ScrollY;
   FScrollFollow := L.ScrollFollow;
+  FollowVerticalTabStrip;
+end;
+
+procedure TDialogHost.FollowVerticalTabStrip;
+var
+  S: Integer;
+begin
+  S := DialogTabStripIndex(FDecl.Controls);
+  if (S < 0) or not FDecl.Controls[S].Vertical or (S > High(FControlBounds)) or
+     (FControlBounds[S].Top < 0) then
+    Exit;
+  FDecl.Controls[S].TabTop := DialogTabScrollTop(FDecl.Controls[S].TabTop,
+    FDecl.Controls[S].SelectedIndex, FControlBounds[S].Height,
+    Length(FDecl.Controls[S].Items));
 end;
 
 procedure TDialogHost.LayoutFlowControls;
@@ -2205,6 +2223,9 @@ var
 begin
   L := LayoutDialogFlow(FDecl.Controls, FBounds);
   FControlBounds := L.Bounds;
+  // Protocol 1 does not scroll: no scrollbar left over from another dialog.
+  FContentH := 0;
+  FViewH := 0;
 end;
 
 procedure TDialogHost.RebuildControlLayout;
@@ -2630,15 +2651,18 @@ begin
   end;
 end;
 
+// R is the part of the box in view; AFullTop and AFullBottom are the rows of the
+// whole box. A cut side stays open: an edge drawn there would run through the
+// field on that row.
 procedure TDialogHost.DrawGroupFrame(const AGrid: TTerminalGrid; const R: TRectI;
-  const ATitle: string; AFg, ABg: TAlphaColor);
+  AFullTop, AFullBottom: Integer; const ATitle: string; AFg, ABg: TAlphaColor);
 var
   Edge, H, V, TL, TR, BL, BR: Char;
   Head: string;
   Y: Integer;
   Ascii: Boolean;
 begin
-  if (R.Width < 4) or (R.Height < 2) or (R.Top < 0) or (R.Bottom > High(AGrid)) or
+  if (R.Width < 4) or (R.Height < 1) or (AFullBottom <= AFullTop) or (R.Top < 0) or (R.Bottom > High(AGrid)) or
      (FBounds.Left < 0) or (FBounds.Left > High(AGrid[R.Top])) then
     Exit;
   Edge := AGrid[R.Top][FBounds.Left].CharValue;
@@ -2655,13 +2679,16 @@ begin
   if ATitle <> '' then
     Head := Head + ' ' + Copy(ATitle, 1, Max(R.Width - 6, 0)) + ' ';
   Head := Head + StringOfChar(H, Max(R.Width - Length(Head) - 1, 0)) + TR;
-  PutGridText(AGrid, R.Left, R.Top, Head, AFg, ABg);
-  for Y := R.Top + 1 to R.Bottom - 1 do
-  begin
-    PutGridText(AGrid, R.Left, Y, V, AFg, ABg);
-    PutGridText(AGrid, R.Right, Y, V, AFg, ABg);
-  end;
-  PutGridText(AGrid, R.Left, R.Bottom, BL + StringOfChar(H, R.Width - 2) + BR, AFg, ABg);
+  for Y := R.Top to R.Bottom do
+    if Y = AFullTop then
+      PutGridText(AGrid, R.Left, Y, Head, AFg, ABg)
+    else if Y = AFullBottom then
+      PutGridText(AGrid, R.Left, Y, BL + StringOfChar(H, R.Width - 2) + BR, AFg, ABg)
+    else
+    begin
+      PutGridText(AGrid, R.Left, Y, V, AFg, ABg);
+      PutGridText(AGrid, R.Right, Y, V, AFg, ABg);
+    end;
 end;
 
 procedure TDialogHost.DrawLabelControl(const AGrid: TTerminalGrid; const R: TRectI;
@@ -2670,10 +2697,19 @@ var
   Colors: TInputLineColors;
   Shown: string;
   Lines: TArray<string>;
-  I, HintAt: Integer;
+  I, HintAt, FrameTop, FrameBottom: Integer;
 begin
   if (C.Kind = dckLabel) and C.GroupFrame then
-    DrawGroupFrame(AGrid, R, C.Text, ALabelFg, ALabelBg)
+  begin
+    FrameTop := R.Top;
+    FrameBottom := R.Bottom;
+    if (FViewH > 0) and (C.BoxH > 0) then
+    begin
+      FrameTop := FBounds.Top + 1 + Max(C.Row, 0) - FScrollY;
+      FrameBottom := FrameTop + C.BoxH - 1;
+    end;
+    DrawGroupFrame(AGrid, R, FrameTop, FrameBottom, C.Text, ALabelFg, ALabelBg);
+  end
   else if (C.Kind = dckLabel) and C.HintArea then
   begin
     HintAt := -1;
@@ -2792,9 +2828,9 @@ begin
       ' ', TAlphaColor($FF000000), TAlphaColor($FFFFFFFF));
   DrawHelpMark(AGrid);
   DrawDialogShadow(AGrid, FBounds);
-  if FContentH > FBounds.Height - 2 then
-    DrawDialogScrollBar(AGrid, FBounds.Right, FBounds.Top + 1, FBounds.Bottom - 1,
-      FScrollY, FContentH, FBounds.Height - 2);
+  if FContentH > FViewH then
+    DrawDialogScrollBar(AGrid, FBounds.Right, FBounds.Top + 1, FBounds.Top + FViewH,
+      FScrollY, FContentH, FViewH);
 end;
 
 procedure TDialogHost.ResolveDialogContentColors(out AFg, ABg: TAlphaColor);
@@ -2912,7 +2948,7 @@ var
   Fg, Bg: TAlphaColor;
   Colors: TInputLineColors;
 begin
-  for I := 0 to Min(High(C.Items), R.Height - 1) do
+  for I := C.TabTop to Min(High(C.Items), C.TabTop + R.Height - 1) do
   begin
     Cap := ' ' + C.Items[I];
     if I = C.SelectedIndex then
@@ -2925,11 +2961,17 @@ begin
         Fg := Colors.Fg;
         Bg := Colors.Bg;
       end;
-      PutGridText(AGrid, R.Left, R.Top + I, PadGridLine(Cap, R.Width), Fg, Bg);
+      PutGridText(AGrid, R.Left, R.Top + I - C.TabTop, PadGridLine(Cap, R.Width), Fg, Bg);
     end
     else
-      PutGridText(AGrid, R.Left, R.Top + I, PadGridLine(Cap, R.Width), ALabelFg, ALabelBg);
+      PutGridText(AGrid, R.Left, R.Top + I - C.TabTop, PadGridLine(Cap, R.Width),
+        ALabelFg, ALabelBg);
   end;
+  // Marks that the list goes on above or below.
+  if C.TabTop > 0 then
+    PutGridText(AGrid, R.Right, R.Top, #$25B2, ALabelFg, ALabelBg);
+  if C.TabTop + R.Height <= High(C.Items) then
+    PutGridText(AGrid, R.Right, R.Bottom, #$25BC, ALabelFg, ALabelBg);
 end;
 
 procedure TDialogHost.Draw(const AGrid: TTerminalGrid; AAreaW, AAreaH: Integer);

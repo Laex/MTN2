@@ -184,6 +184,9 @@ type
     /// <summary>Typing on a file panel leaves the focus there; the command line
     /// takes it only on Ctrl+Down or a click.</summary>
     KeepPanelFocus: Boolean;
+    /// <summary>Ctrl+Enter (and the full path variant) puts the item into the
+    /// command line while the focus stays on the file panel.</summary>
+    CtrlEnterKeepFocus: Boolean;
     /// <summary>Alt quick search on a file panel stays open after Alt is released;
     /// Esc, Enter or any non-text key ends it.</summary>
     StickyQuickSearch: Boolean;
@@ -474,6 +477,7 @@ begin
   Result.SpaceSelects := False;
   Result.VimKeys := False;
   Result.KeepPanelFocus := False;
+  Result.CtrlEnterKeepFocus := False;
   Result.StickyQuickSearch := False;
   Result.QuickSearchKeepEmpty := False;
   Result.QuickSearchFilter := False;

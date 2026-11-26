@@ -14,6 +14,8 @@ type
   private
     FDir: string;
     function Zipped(const AName: string; const AParts: array of string): string;
+    function MasterDocx(const AName: string; const ATargets: array of string): string;
+    function PlainDocx(const AName, AText: string): string;
     function SqliteFixture: string;
   public
     [Setup] procedure Setup;
@@ -22,6 +24,10 @@ type
     [Test] procedure TestRunsTextBreaksParagraphsAndKeepsTabs;
     [Test] procedure TestColumnIndexOfCellReference;
     [Test] procedure TestDocxBodyText;
+    [Test] procedure TestDocxSubdocumentsAreReadInPlace;
+    [Test] procedure TestDocxSubdocumentCycleIsReadOnce;
+    [Test] procedure TestDocxUnreadableSubdocumentsAreNamed;
+    [Test] procedure TestStampFollowsTheNewestSubdocument;
     [Test] procedure TestXlsxCellsKeepColumnPositions;
     [Test] procedure TestPptxTextPerSlide;
     [Test] procedure TestBrokenArchiveGivesNothing;
@@ -141,6 +147,90 @@ begin
   Path := Zipped('a.docx', ['word/document.xml',
     '<w:document><w:body><w:p><w:r><w:t>Hello</w:t></w:r></w:p><w:p><w:r><w:t>World</w:t></w:r></w:p></w:body></w:document>']);
   Assert.AreEqual('Hello' + #13#10 + 'World' + #13#10, OfficeText(Path));
+end;
+
+{ A document of one paragraph per subdocument link, framed by its own text. }
+function TTestDocText.MasterDocx(const AName: string; const ATargets: array of string): string;
+var
+  Body, Rels: string;
+  I: Integer;
+begin
+  Body := '';
+  Rels := '';
+  for I := 0 to High(ATargets) do
+  begin
+    Body := Body + Format('<w:p><w:subDoc r:id="rId%d"/></w:p>', [I + 1]);
+    Rels := Rels + Format('<Relationship Id="rId%d" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/subDocument" Target="%s" TargetMode="External"/>',
+      [I + 1, ATargets[I]]);
+  end;
+  Result := Zipped(AName, ['word/document.xml',
+    '<w:document><w:body><w:p><w:r><w:t>Start</w:t></w:r></w:p>' + Body +
+    '<w:p><w:r><w:t>End</w:t></w:r></w:p></w:body></w:document>',
+    'word/_rels/document.xml.rels', '<Relationships>' + Rels + '</Relationships>']);
+end;
+
+function TTestDocText.PlainDocx(const AName, AText: string): string;
+begin
+  Result := Zipped(AName, ['word/document.xml',
+    '<w:document><w:body><w:p><w:r><w:t>' + AText + '</w:t></w:r></w:p></w:body></w:document>']);
+end;
+
+procedure TTestDocText.TestDocxSubdocumentsAreReadInPlace;
+var
+  Text, Folder: string;
+  P1, P2: Integer;
+begin
+  // Word stores spaces as %20 and keeps letters outside ASCII as they are.
+  Folder := Char($0427) + ' 2';
+  TDirectory.CreateDirectory(TPath.Combine(FDir, Folder));
+  PlainDocx('one.docx', 'First part');
+  PlainDocx(TPath.Combine(Folder, 'two+more.docx'), 'Second part');
+  Text := OfficeText(MasterDocx('master.docx', ['one.docx', Char($0427) + '%202\two+more.docx']));
+  P1 := Pos('First part', Text);
+  P2 := Pos('Second part', Text);
+  Assert.IsTrue((Pos('Start', Text) = 1) and (P1 > 1) and (P2 > P1) and (Pos('End', Text) > P2), Text);
+end;
+
+procedure TTestDocText.TestDocxSubdocumentCycleIsReadOnce;
+var
+  Text: string;
+begin
+  MasterDocx('child.docx', ['master.docx', 'child.docx']);
+  Text := OfficeText(MasterDocx('master.docx', ['child.docx', 'child.docx']));
+  // The master and the child, each with one 'Start' paragraph.
+  Assert.AreEqual(3, Integer(Length(Text.Split(['Start']))), Text);
+end;
+
+procedure TTestDocText.TestDocxUnreadableSubdocumentsAreNamed;
+var
+  Text, Sub: string;
+begin
+  Sub := TPath.Combine(FDir, 'sub');
+  TDirectory.CreateDirectory(Sub);
+  PlainDocx('outside.docx', 'Outside text');
+  Text := OfficeText(MasterDocx(TPath.Combine('sub', 'master.docx'),
+    ['absent.docx', '../outside.docx', 'file:///C:/Docs/other.docx']));
+  Assert.IsTrue(Pos('[subdocument not read: absent.docx]', Text) > 0, Text);
+  Assert.IsTrue(Pos('[subdocument not read: ../outside.docx]', Text) > 0, Text);
+  Assert.IsTrue(Pos('[subdocument not read: file:///C:/Docs/other.docx]', Text) > 0, Text);
+  Assert.AreEqual(0, Pos('Outside text', Text), Text);
+end;
+
+procedure TTestDocText.TestStampFollowsTheNewestSubdocument;
+var
+  Master, Child, Leaf: string;
+  Later: TDateTime;
+begin
+  Leaf := PlainDocx('leaf.docx', 'Leaf');
+  Child := MasterDocx('child.docx', ['leaf.docx']);
+  Master := MasterDocx('master.docx', ['child.docx', 'absent.docx']);
+  Later := EncodeDate(2040, 1, 2);
+  TFile.SetLastWriteTime(Leaf, Later);
+  Assert.AreEqual(Double(Later), Double(DocumentStamp(Master)), 1 / SecsPerDay);
+  Assert.AreEqual(Double(Later), Double(DocumentStamp(Child)), 1 / SecsPerDay, 'one level down');
+  TFile.Delete(Child);
+  Assert.AreEqual(Double(TFile.GetLastWriteTime(Master)), Double(DocumentStamp(Master)), 1 / SecsPerDay,
+    'without the subdocument only the master counts');
 end;
 
 procedure TTestDocText.TestXlsxCellsKeepColumnPositions;

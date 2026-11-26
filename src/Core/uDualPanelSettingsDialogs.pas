@@ -444,6 +444,7 @@ begin
   DialogSetCheckbox(Result, 'space_selects', ACur.SpaceSelects);
   DialogSetCheckbox(Result, 'vim_keys', ACur.VimKeys);
   DialogSetCheckbox(Result, 'keep_panel_focus', ACur.KeepPanelFocus);
+  DialogSetCheckbox(Result, 'ctrl_enter_keep_focus', ACur.CtrlEnterKeepFocus);
   DialogSetCheckbox(Result, 'sticky_quick_search', ACur.StickyQuickSearch);
   DialogSetCheckbox(Result, 'quick_search_keep_empty', ACur.QuickSearchKeepEmpty);
   DialogSetCheckbox(Result, 'quick_search_filter', ACur.QuickSearchFilter);
@@ -1095,6 +1096,7 @@ begin
   Disp.SpaceSelects := FDialog.GetCheckbox('space_selects');
   Disp.VimKeys := FDialog.GetCheckbox('vim_keys');
   Disp.KeepPanelFocus := FDialog.GetCheckbox('keep_panel_focus');
+  Disp.CtrlEnterKeepFocus := FDialog.GetCheckbox('ctrl_enter_keep_focus');
   Disp.StickyQuickSearch := FDialog.GetCheckbox('sticky_quick_search');
   Disp.QuickSearchKeepEmpty := FDialog.GetCheckbox('quick_search_keep_empty');
   Disp.QuickSearchFilter := FDialog.GetCheckbox('quick_search_filter');

@@ -18,6 +18,7 @@ type
     [Test] procedure TestHistoryKeepsCurrentLine;
     [Test] procedure TestCtrlUpReturnsToPanel;
     [Test] procedure TestEnterReturnsFocusToPanel;
+    [Test] procedure TestInsertCanKeepPanelFocus;
     [Test] procedure TestEscClearsThenReturnsToPanel;
     [Test] procedure TestCommandLineDraw;
     [Test] procedure TestInputLineInsertCaret;
@@ -376,6 +377,30 @@ begin
   end;
 end;
 
+// Inserting a name from the panel can leave the panel focused: the text still
+// goes to the end of the line.
+procedure TestInsertCanKeepPanelFocus;
+var
+  Mgr: TDualPanelCmdLineManager;
+  Line: TInputLine;
+begin
+  Mgr := TDualPanelCmdLineManager.Create(nil, nil);
+  try
+    Mgr.InsertText('first', True);
+    Assert.IsFalse(Mgr.Focused, 'the panel keeps the focus');
+    Line := Mgr.Cmd;
+    Line.Cursor := 0;
+    Mgr.Cmd := Line;
+    Mgr.InsertText(' second', True);
+    Assert.AreEqual('first second', Mgr.Text, 'appended at the end');
+    Assert.IsFalse(Mgr.Focused, 'still on the panel');
+    Mgr.InsertText(' third');
+    Assert.IsTrue(Mgr.Focused, 'by default the line takes the focus');
+  finally
+    Mgr.Free;
+  end;
+end;
+
 // Esc in the focused command line: clears the text first, then (empty line)
 // gives the focus back to the panel.
 procedure TestEscClearsThenReturnsToPanel;
@@ -619,6 +644,11 @@ end;
 procedure TTestDualPanelCmdLine.TestEnterReturnsFocusToPanel;
 begin
   TestDualPanelCmdLine.TestEnterReturnsFocusToPanel;
+end;
+
+procedure TTestDualPanelCmdLine.TestInsertCanKeepPanelFocus;
+begin
+  TestDualPanelCmdLine.TestInsertCanKeepPanelFocus;
 end;
 
 procedure TTestDualPanelCmdLine.TestEscClearsThenReturnsToPanel;

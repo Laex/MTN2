@@ -61,7 +61,7 @@ begin
   TDirectory.CreateDirectory(Dir);
   Result := TPath.Combine(Dir, Format('%s-%s.txt', [TPath.GetFileNameWithoutExtension(APath),
     Copy(THashMD5.GetHashString(AUri), 1, 8)]));
-  if TFile.Exists(Result) and (TFile.GetLastWriteTime(Result) >= TFile.GetLastWriteTime(APath)) then
+  if TFile.Exists(Result) and (TFile.GetLastWriteTime(Result) >= DocumentStamp(APath)) then
     Exit;
   Text := ExtractDocumentText(APath);
   if Trim(Text) = '' then

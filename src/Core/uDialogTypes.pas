@@ -166,6 +166,9 @@ type
     /// Empty = caption N shows page N + 1. A search narrows Items while the
     /// controls keep their pages.</summary>
     TabPages: TArray<Integer>;
+    /// <summary>dckTab, vertical: first caption in view when the strip is
+    /// shorter than its list. The host keeps the selected one in view.</summary>
+    TabTop: Integer;
   end;
 
   TDialogControls = TArray<TDialogControl>;

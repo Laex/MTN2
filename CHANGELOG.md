@@ -6,11 +6,22 @@ This file describes what changes for the user from version to version: new featu
 
 ## Unreleased
 
+## Dev v0.5.13.3 – 2026-11-26
+
+### New
+
+- The Interface settings, Keyboard page, have the option "Ctrl+Enter keeps the cursor on the panel": Ctrl+Enter and Ctrl+Shift+Enter put the name or path into the command line while the cursor stays on the file panel, so the next one can be inserted at once. Off by default.
+
 ### Changed
 
+- On a screen less than 24 rows high the Settings window keeps the section list, the setting description and the buttons in place and scrolls only the fields. The section list follows the selected section and shows arrows when more sections are out of view; on a very low screen the description is left out.
 - Search in the viewer and editor and replace in the editor are faster on large documents, above all in large files opened as a stream and with regular expressions.
 - A search or replace that takes more than a quarter of a second opens a progress window with the percentage (for replace also the number of matches); Esc or its Cancel button stops it, and the text cannot be edited until it ends. A stopped Replace All changes nothing; after "All" in step-by-step replace the replacements already made stay and one Ctrl+Z takes them back.
 - Search and moving through large tables in the Markdown view are no longer slow: a search over a table of a few hundred rows took tens of seconds.
+
+### Fixed
+
+- A Word master document no longer opens as raw archive bytes: F3, Quick View and content search show the text of its subdocuments in place of the links. Subdocuments are read from the folder of the document and below; a missing or outside one is named in the text.
 
 ## v0.5.13 – 2026-11-26
 

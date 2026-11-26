@@ -379,7 +379,7 @@
       "col": 1,
       "row": 3,
       "width": 58,
-      "height": 4,
+      "height": 5,
       "tab": 3
     },
     {
@@ -395,11 +395,22 @@
     },
     {
       "type": "checkbox",
+      "id": "ctrl_enter_keep_focus",
+      "hint": "Ctrl+Enter and Ctrl+Shift+Enter put the name or path into the command line; the cursor stays on the panel.",
+      "text": "Ctrl+Enter keeps the cursor on the panel",
+      "col": 3,
+      "row": 5,
+      "width": 53,
+      "height": 1,
+      "tab": 3
+    },
+    {
+      "type": "checkbox",
       "id": "vim_keys",
       "hint": "Vim-style keys on the panel: h j k l, g, G, / and :.",
       "text": "V&im keys on the panel (hjkl, g, G, /, :)",
       "col": 3,
-      "row": 5,
+      "row": 6,
       "width": 53,
       "height": 1,
       "tab": 3
@@ -410,7 +421,7 @@
       "id": "grp_quick",
       "group": true,
       "col": 1,
-      "row": 7,
+      "row": 8,
       "width": 58,
       "height": 7,
       "tab": 3
@@ -421,7 +432,7 @@
       "hint": "Quick search stays open after Alt is released.",
       "text": "Keep &quick search open after Alt is released",
       "col": 3,
-      "row": 8,
+      "row": 9,
       "width": 53,
       "height": 1,
       "tab": 3
@@ -432,7 +443,7 @@
       "hint": "Quick search stays open when its text is erased.",
       "text": "Keep an empt&y quick search open",
       "col": 3,
-      "row": 9,
+      "row": 10,
       "width": 53,
       "height": 1,
       "tab": 3
@@ -443,7 +454,7 @@
       "hint": "Quick search also hides the files that do not match.",
       "text": "Quick search also filters the panel (&G)",
       "col": 3,
-      "row": 10,
+      "row": 11,
       "width": 53,
       "height": 1,
       "tab": 3
@@ -454,7 +465,7 @@
       "hint": "The quick search filter stays when you enter another folder.",
       "text": "Keep the quick search filter in other folders (&J)",
       "col": 3,
-      "row": 11,
+      "row": 12,
       "width": 53,
       "height": 1,
       "tab": 3
@@ -465,7 +476,7 @@
       "hint": "Matches names that contain the typed letters in order, not necessarily side by side.",
       "text": "Fuzzy quick search filter: letters in order (&Z)",
       "col": 3,
-      "row": 12,
+      "row": 13,
       "width": 53,
       "height": 1,
       "tab": 3
