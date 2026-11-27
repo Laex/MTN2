@@ -230,7 +230,7 @@ From top to bottom:
 - **Two file panels** – the active one is highlighted by its frame; **Tab** switches sides. Drive letters are shown on the bottom edge of a panel.
 - **Command line** – a prompt with the current folder.
 - **F-key bar** – hints for the actions of the current mode; you can click them. While Shift / Ctrl / Alt is held, the bar shows the matching actions. In a window 100 columns wide or more, the bar on the panels also names the key of the command palette on its left.
-- **Status line** – facts about the panel; clicking a section opens its dialog: the side and the free space open the drive list, the path opens the folder history, the column mode opens the mode menu, the item or the selection opens its properties. In the viewer and editor: the position opens Go to line, the encoding opens the encoding list, the search result opens Find.
+- **Status line** – facts about the panel; clicking a section opens its dialog: the side and the free space open the drive list, the path opens the folder history, the column mode opens the mode menu, the item or the selection opens its properties. In the viewer and editor: the position opens Go to line, the encoding opens the encoding list, the search result opens Find. While a menu is open, the line explains the command under the cursor.
 
 The **console** lives under the panels: **Ctrl+O** (or **Esc** with the focus on the panel) hides the panels and shows the command output.
 
@@ -247,7 +247,7 @@ The window title shows **[Administrator]** when MTN2 itself was started as admin
 - The letter also works from the other keyboard layout: "Skip" with a highlighted S responds both to S and to the Cyrillic letter on the same key.
 - The default button (in angle brackets) and the cancel button need no letter – Enter and Esc do that.
 
-**F1** – help on what is on screen (panels, viewer, the open dialog or menu); **F1** inside the help – the contents. **F10** – quit.
+**F1** – help on what is on screen (panels, viewer, the open dialog or menu); **F1** inside the help – the contents. A dialog with a help page also shows a **[?]** mark in its top frame, left of the close mark; a click on it opens the same page. **F10** – quit.
 
 ---
 
@@ -410,6 +410,8 @@ The same dialog has the other file flags: **Compressed**, **Encrypted**, **Not i
 - Holding the mouse button opens the menu of the file under the mouse.
 
 Only for files and folders on disk: archives, SFTP, the Recycle Bin and search results have no Windows menu.
+
+<!--multi-rename-->**Multi-rename (Ctrl+Alt+N).** Files > Multi-rename... renames the selected items of one folder in one go. The name and extension masks understand `[N]` (old name), `[E]` (old extension), `[C]` (counter with start, step and digits), `[Date]`, `[Time]`, `[Year]`, `[Month]`, `[Day]`, `[Parent]`, `[Size]` and the metadata values `[Dim]`, `[Camera]`, `[Artist]`, `[Title]`; other text stays as typed. Search and Replace (optionally a regular expression with `$1`, `$2`) and the letter case apply to the new name. The list under the fields shows the “old -> new” pairs as you type; a name that is empty, invalid, used twice or already taken is marked with `!`, and **Rename** does nothing while any is left. The renaming runs as a background job.
 
 <!--copy-->The copy/move dialog lets you keep all timestamps, copy only newer files, copy the contents of symbolic links and set an exclusion mask. On a name conflict the program asks what to do (overwrite, skip, rename, for all…).
 
@@ -728,6 +730,8 @@ Large files are streamed, not loaded as a whole. If the file changes on disk, th
 - **All** in the Replace dialog replaces every match of the whole text in one go.
 - Both ways show how many replacements were made at the end of **All**, are undone with a single **Ctrl+Z**, and put the cursor back where it was before the replace.
 
+**Long searches.** A search or replace that takes more than a moment opens a progress window with the percentage (and, while replacing, the number of matches); **Esc** or its **Cancel** button stops it, and the text cannot be edited until it ends. A stopped **All** of the Replace dialog changes nothing; after **All** in the question about a match, the replacements already made stay and one **Ctrl+Z** takes them back.
+
 **What is remembered.** Case, whole words and regular expressions are remembered between runs; **Reverse search** only until MTN2 closes.
 
 ---
@@ -791,6 +795,7 @@ A value is added when the dialog is accepted.
 - Typing narrows the list: the words of the caption, of the category and common synonyms are matched ("shell" finds "Background console..."; "bc" finds it by the first letters of its words).
 - The query shows in the field above the list; a word of the query may contain `?` (one character) and `*` (any run of characters).
 - The search also covers the shortcut column: "F9" finds the commands whose shortcut uses F9, "shift" every shortcut with Shift, "ctrl+f" the shortcuts that contain Ctrl+F.
+- The numbered items of the Change Drive list (Android, Docker, Recycle bin and so on) are listed too, found by name or by address scheme ("adb"); Enter opens the item in the active panel.
 - Your own search words go into `aliases.json` in the settings folder: `{ "tmaCmdConsoleProfile": "bash, zsh" }` – the item name and the words, comma separated or as a list. The file is read again each time the palette opens.
 
 **Keys**
@@ -992,6 +997,8 @@ If the theme of the saved session is not found, the program says so and uses the
 - **Marked files:** “Text color” – only the letters change colour, as in Far; “Row background” – a background band across the whole row as well.
 <!--interface-->- **User interface...** – the interface language, notifications, the visibility of the window rows, dragging, the menu on Alt, auto-indent and a few more boxes; everything applies without a restart.
 
+Both items open one **Settings** window. The sections (Font, Text, Display, Window, Panels, Behavior, Keyboard, Editor, Console, Notices) are listed on the left; Up and Down switch them. Typing while the list has focus narrows it to the sections whose name, field captions or field descriptions contain the text, Backspace removes the last letter. Under the fields a short description of the field in focus or under the mouse pointer is shown; both sources can be switched off in the Notices section.
+
 **What it sets**
 - The **interface language** (English / Русский / Deutsch / 简体中文) and pop-up notifications.
 - The **window title bar, menu bar, F-key bar and status line.** A hidden row goes to the panels.
@@ -1013,7 +1020,7 @@ If the theme of the saved session is not found, the program says so and uses the
 - **g / G** – jump to the first / last row;
 - **/** – start the quick search; **:** – move to the command line.
 <!--columns-->- **Columns...** – the width of the columns in the Brief view and the columns of the Wide views.
-<!--console-->- **Console...** – the scrollback size of the console and terminals, confirmation of a multi-line paste, removal of trailing spaces on copy and paste, return to the panels when a command from the command line ends (more in the command line help).
+<!--console-->- **Console...** – opens the Settings window on its Console section: the scrollback size of the console and terminals, confirmation of a multi-line paste, removal of trailing spaces on copy and paste, return to the panels when a command from the command line ends (more in the command line help).
 <!--save-settings-->- **Save settings** – writes the settings, the panels and the tabs to the settings file now, not only when the program closes; a toast confirms it or names the problem. Options changed in dialogs are applied at once; this item makes sure they are on disk, for example before a copy of the settings folder is taken.
 <!--settings-file-->- **Export settings... / Import settings...** – the settings as one zip file.
 
@@ -1130,7 +1137,7 @@ Commands that change nothing on screen confirm themselves with a short notice in
 - **Ctrl+Alt+D** – the folder added to the hotlist;
 - selection by mask (**Gray +/−**, **Ctrl+Gray +/−**, **Alt+Gray +/−**) that changed nothing – shown in red.
 
-Notices are turned off in **Options → User interface...** (“Show pop-up notifications”). The update-check notice is the exception: it has its own checkbox (see [Updates](#updates)).
+Notices are turned off in **Options → User interface...** (“Show pop-up notifications”), where the **Show for** time is also set. A notice stays while the mouse is over it; a click closes it. The update-check notice is the exception: it has its own checkbox (see [Updates](#updates)).
 
 ### Updates
 

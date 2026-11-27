@@ -33,6 +33,8 @@ type
     /// <summary>Id of the field of the settings window a settings entry opens; empty
     /// for a command.</summary>
     SettingId: string;
+    /// <summary>The address a Change Drive entry opens; empty for the others.</summary>
+    DriveUri: string;
   end;
 
   /// <summary>The caption of a keymap action in the current language.</summary>
@@ -51,6 +53,10 @@ procedure AppendKeymapOnlyEntries(AMenu: TTopMenuController;
 /// the palette finds a setting by its caption, its section or its description.</summary>
 procedure AppendSettingEntries(const AFields: TArray<TSettingField>;
   var AEntries: TArray<TPaletteEntry>);
+
+/// <summary>Adds the numbered items of the Change Drive list (built-in ones and
+/// those of plugins), found by caption or by the scheme of their address.</summary>
+procedure AppendDriveEntries(var AEntries: TArray<TPaletteEntry>);
 
 /// <summary>The commands of AMenu that can run now, in menu order. Their search
 /// words come from menu.json, from the locale file and from the user's
@@ -91,7 +97,7 @@ implementation
 
 uses
   System.Classes, System.IOUtils, System.JSON, System.Generics.Defaults,
-  System.TypInfo, uStrings, uCharWidth, uConfigLocation, uCommandRegistry;
+  System.TypInfo, uStrings, uCharWidth, uConfigLocation, uCommandRegistry, uDriveInfo;
 
 var
   GRecent: TArray<string>; // newest first
@@ -338,8 +344,38 @@ begin
       E.Title := F.Caption;
       E.Category := F.Section;
       E.Key := 'setting:' + F.Id;
-      E.Aliases := T('palette.settingsAlias', 'settings,options');
+      E.Aliases := T('ui.palette.settingsAlias', 'settings,options');
       E.Description := F.Hint;
+      List.Add(E);
+    end;
+    AEntries := List.ToArray;
+  finally
+    List.Free;
+  end;
+end;
+
+procedure AppendDriveEntries(var AEntries: TArray<TPaletteEntry>);
+var
+  List: TList<TPaletteEntry>;
+  E: TPaletteEntry;
+  I, Colon: Integer;
+begin
+  List := TList<TPaletteEntry>.Create;
+  try
+    List.AddRange(AEntries);
+    for I := 0 to ChangeDriveItemCount - 1 do
+    begin
+      E := Default(TPaletteEntry);
+      E.Action := kaNone;
+      E.DriveUri := ChangeDriveItemUri(I);
+      E.Title := ChangeDriveSpecialTitle(I);
+      E.Category := T('ui.palette.drivesCategory', 'Change Drive');
+      E.Key := 'drive:' + E.DriveUri;
+      E.Aliases := T('ui.palette.driveAlias', 'drive,disk');
+      Colon := Pos(':', E.DriveUri);
+      if Colon > 1 then
+        E.Aliases := E.Aliases + ',' + Copy(E.DriveUri, 1, Colon - 1);
+      E.Description := E.DriveUri;
       List.Add(E);
     end;
     AEntries := List.ToArray;

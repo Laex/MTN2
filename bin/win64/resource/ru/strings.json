@@ -1293,6 +1293,8 @@
     "tip.workspace": "Совет: {NewWorkspace} открывает отдельное рабочее пространство со своими панелями и терминалами",
     "palette.keysCategory": "Клавиши",
     "palette.settingsAlias": "настройки,параметры,опции",
+    "palette.drivesCategory": "Смена диска",
+    "palette.driveAlias": "диск,диски",
     "toast.refreshed": "Панель обновлена",
     "toast.restored": "Восстановлено из корзины: «%s»",
     "toast.selectionUnchanged": "Выделение не изменилось (маска «%s»)",

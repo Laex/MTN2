@@ -41,6 +41,9 @@ type
     [Test] procedure TestShortcutColumnIsSearched;
     [Test] procedure TestSettingsAreListedAndFoundByCaptionSectionAndWord;
     [Test] procedure TestPluginCommandWithoutMenuItemIsListedAndRuns;
+    [Test] procedure TestDriveListItemsAreFoundByCaptionAndScheme;
+    [Test] procedure TestDriveEntryOpensItsAddress;
+    [Test] procedure TestSettingsAreFoundByTheLocalizedWord;
     [Test] procedure TestEveryMenuCommandAndBoundPanelOrGlobalKeyIsListed;
   end;
 
@@ -50,7 +53,7 @@ uses
   System.SysUtils, System.Classes, System.IOUtils, System.UITypes, System.TypInfo,
   uStrings, uKeymap, uCharWidth, uTopMenuBar, uCommandPalette,
   uDialogHost, uDialogTypes, uDialogBuilders, uDialogRenderer, uDualPanelUiTypes, uDualPanelPaletteDialog,
-  uDualPanelKeymapDialog, uCommandRegistry, uSettingsPages;
+  uDualPanelKeymapDialog, uCommandRegistry, uSettingsPages, uDriveInfo, uDriveItems;
 
 const
   cMenuJson =
@@ -935,6 +938,90 @@ begin
   Rank := PaletteRank(Entries, 'settings vim');
   Assert.AreEqual<Integer>(1, Length(Rank), 'found by the word settings');
   Assert.AreEqual<Integer>(1, Rank[0], 'the right entry for the word');
+end;
+
+procedure TTestCommandPalette.TestDriveListItemsAreFoundByCaptionAndScheme;
+var
+  E: TArray<TPaletteEntry>;
+  I: Integer;
+begin
+  Assert.IsTrue(DriveItems.RegisterItem('mtn.test', 'phone', 'Phone files', 'phonetest:///', 125));
+  try
+    AppendDriveEntries(E);
+    Assert.AreEqual<Integer>(ChangeDriveItemCount, Length(E), 'one entry per numbered item');
+    I := IndexOfKey(E, 'drive:phonetest:///');
+    Assert.IsTrue(I >= 0, 'the plugin item is listed');
+    Assert.AreEqual('Phone files', E[I].Title);
+    Assert.AreEqual('phonetest:///', E[I].DriveUri);
+    Assert.AreEqual('Change Drive', E[I].Category);
+    Assert.IsTrue(IndexOfKey(E, 'drive:recycle:///') >= 0, 'a built-in item is listed');
+    Assert.IsTrue(Contains(RankedKeys(E, 'phone files'), 'drive:phonetest:///'), 'found by caption');
+    Assert.IsTrue(Contains(RankedKeys(E, 'phonetest'), 'drive:phonetest:///'), 'found by scheme');
+    Assert.IsTrue(Contains(RankedKeys(E, 'drive phone'), 'drive:phonetest:///'),
+      'found by the word drive');
+  finally
+    DriveItems.UnregisterPlugin('mtn.test');
+  end;
+end;
+
+procedure TTestCommandPalette.TestDriveEntryOpensItsAddress;
+var
+  M: TTopMenuController;
+  D: TDialogHost;
+  C: TCommandPaletteDialogController;
+  Opened: string;
+  Key: Word;
+  Ch: Char;
+  S: string;
+  I: Integer;
+begin
+  Opened := '';
+  Assert.IsTrue(DriveItems.RegisterItem('mtn.test', 'phone', 'Phone files', 'phonetest:///', 125));
+  M := MakeMenu(cMenuJson);
+  D := TDialogHost.Create(nil);
+  try
+    C := MakePalette(D, M);
+    try
+      C.OnOpenDrive :=
+        procedure(const AUri: string)
+        begin
+          Opened := AUri;
+        end;
+      C.OpenList;
+      S := 'phone files';
+      for I := 1 to Length(S) do
+      begin
+        Key := 0;
+        Ch := S[I];
+        C.HandleFilterInput(Key, [], Ch);
+      end;
+      Assert.AreEqual<Integer>(1, C.RowCount, 'the query leaves the drive entry');
+      C.DispatchCommand('commands');
+      Assert.AreEqual('phonetest:///', Opened, 'Enter opens the address');
+      Assert.AreEqual<Integer>(0, GExecutedCount, 'no menu command ran');
+    finally
+      C.Free;
+    end;
+  finally
+    D.Free;
+    M.Free;
+    DriveItems.UnregisterPlugin('mtn.test');
+  end;
+end;
+
+procedure TTestCommandPalette.TestSettingsAreFoundByTheLocalizedWord;
+var
+  Fields: TArray<TSettingField>;
+  Entries: TArray<TPaletteEntry>;
+begin
+  SetLocale('ru');
+  SetLength(Fields, 1);
+  Fields[0].Id := 'vim_keys';
+  Fields[0].Caption := 'Vim keys';
+  Fields[0].Section := 'Keyboard';
+  AppendSettingEntries(Fields, Entries);
+  Assert.IsTrue(Contains(RankedKeys(Entries, #$043D#$0430#$0441#$0442#$0440#$043E#$0439#$043A#$0438),
+    'setting:vim_keys'));
 end;
 
 procedure TTestCommandPalette.TestShortcutColumnIsSearched;

@@ -13,6 +13,9 @@ unit uAdbFormat;
 
 interface
 
+uses
+  System.SysUtils;
+
 type
   TAdbNode = (anInvalid, anRoot, anFs);
 
@@ -64,6 +67,11 @@ function ShellQuote(const AText: string): string;
 /// <summary>The arguments that run AScript in the shell of the device.</summary>
 function ShellArgs(const ASerial, AScript: string): TArray<string>;
 
+/// <summary>Where the Android SDK keeps adb when its folder is not in PATH:
+/// under ANDROID_HOME, ANDROID_SDK_ROOT and the default SDK folder. A variable
+/// that AEnv reports empty adds nothing.</summary>
+function AdbSdkPrograms(const AEnv: TFunc<string, string>): TArray<string>;
+
 function DevicesArgs: TArray<string>;
 function StateArgs(const ASerial: string): TArray<string>;
 function PullArgs(const ASerial, ARemote, ALocal: string; AKeepTimes: Boolean): TArray<string>;
@@ -98,7 +106,37 @@ function JoinDevicePath(const ADir, AName: string): string;
 implementation
 
 uses
-  System.SysUtils;
+  System.IOUtils;
+
+function AdbSdkPrograms(const AEnv: TFunc<string, string>): TArray<string>;
+const
+  {$IFDEF MSWINDOWS}
+  cHomeVar = 'LOCALAPPDATA';
+  cFileName = 'adb.exe';
+  {$ELSE}
+  cHomeVar = 'HOME';
+  cFileName = 'adb';
+  {$ENDIF}
+var
+  Found: TArray<string>;
+
+  procedure Add(const ARoot: string);
+  begin
+    Found := Found + [TPath.Combine(TPath.Combine(ARoot, 'platform-tools'), cFileName)];
+  end;
+
+var
+  Name, Home: string;
+begin
+  Found := nil;
+  for Name in TArray<string>.Create('ANDROID_HOME', 'ANDROID_SDK_ROOT') do
+    if AEnv(Name) <> '' then
+      Add(AEnv(Name));
+  Home := AEnv(cHomeVar);
+  if Home <> '' then
+    Add(TPath.Combine(TPath.Combine(Home, 'Android'), 'Sdk'));
+  Result := Found;
+end;
 
 function EncodeSegment(const AText: string): string;
 begin

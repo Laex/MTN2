@@ -4,7 +4,7 @@
       "adb": "Android"
     },
     "error": {
-      "noAdb": "adb не найден: установите Android platform-tools и добавьте их папку в PATH.",
+      "noAdb": "adb не найден: установите Android platform-tools или добавьте их папку в PATH.",
       "timeout": "adb не ответил вовремя.",
       "unauthorized": "Устройство не авторизовано: разрешите отладку по USB на его экране.",
       "offline": "Устройство не отвечает (offline): переподключите его.",

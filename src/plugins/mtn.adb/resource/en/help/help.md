@@ -1,6 +1,6 @@
 # Android devices (adb)
 
-The plugin adds **Android** (`adb:///`) to the Change Drive list (Alt+F1 / Alt+F2). It runs the `adb` program of the Android platform-tools, which must be in PATH.
+The plugin adds **Android** (`adb:///`) to the Change Drive list (Alt+F1 / Alt+F2). It runs the `adb` program of the Android platform-tools. It is taken from PATH, otherwise from the `platform-tools` folder of the Android SDK: `ANDROID_HOME`, `ANDROID_SDK_ROOT` or the default SDK folder (`%LOCALAPPDATA%\Android\Sdk` on Windows, `~/Android/Sdk` on Linux).
 
 ## Getting a device ready
 

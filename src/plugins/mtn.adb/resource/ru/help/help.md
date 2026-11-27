@@ -1,6 +1,6 @@
 # Устройства Android (adb)
 
-Плагин добавляет **Android** (`adb:///`) в список дисков (Alt+F1 / Alt+F2). Он запускает программу `adb` из Android platform-tools, поэтому она должна быть в PATH.
+Плагин добавляет **Android** (`adb:///`) в список дисков (Alt+F1 / Alt+F2). Он запускает программу `adb` из Android platform-tools. Она берётся из PATH, а если там её нет – из папки `platform-tools` Android SDK: `ANDROID_HOME`, `ANDROID_SDK_ROOT` или папка SDK по умолчанию (`%LOCALAPPDATA%\Android\Sdk` в Windows, `~/Android/Sdk` в Linux).
 
 ## Подготовка устройства
 

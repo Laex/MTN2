@@ -3909,6 +3909,11 @@ begin
       KeyChar := #0;
       HandleKeymapActionPrimary(AAction, Key, KeyChar);
     end;
+  FPalette.OnOpenDrive :=
+    procedure(const AUri: string)
+    begin
+      NavigateSideTo(ActiveWorkspace.State.ActiveSide, AUri);
+    end;
   FPalette.OnSettingFields :=
     function: TArray<TSettingField>
     begin

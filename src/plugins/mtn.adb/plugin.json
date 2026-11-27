@@ -10,8 +10,8 @@
   "resources": 1,
   "schemes": ["adb"],
   "description": {
-    "en": "Android devices as folders of the panels (adb:///): the list of connected devices, then the files of a device - copy to and from it with F5, view with F3, edit with F4, rename and move with F6, make folders with F7, delete with F8. Adds Android to the Change Drive list (Alt+F1 / Alt+F2). Needs adb (Android platform-tools) in PATH and USB debugging allowed on the device.",
-    "ru": "Устройства Android как папки панелей (adb:///): список подключённых устройств, затем файлы устройства - копирование с него и на него F5, просмотр F3, правка F4, переименование и перенос F6, создание папок F7, удаление F8. Добавляет Android в список дисков (Alt+F1 / Alt+F2). Нужны adb (Android platform-tools) в PATH и разрешённая на устройстве отладка по USB."
+    "en": "Android devices as folders of the panels (adb:///): the list of connected devices, then the files of a device - copy to and from it with F5, view with F3, edit with F4, rename and move with F6, make folders with F7, delete with F8. Adds Android to the Change Drive list (Alt+F1 / Alt+F2). Needs adb (Android platform-tools, from PATH or the Android SDK folder) and USB debugging allowed on the device.",
+    "ru": "Устройства Android как папки панелей (adb:///): список подключённых устройств, затем файлы устройства - копирование с него и на него F5, просмотр F3, правка F4, переименование и перенос F6, создание папок F7, удаление F8. Добавляет Android в список дисков (Alt+F1 / Alt+F2). Нужны adb (Android platform-tools, из PATH или из папки Android SDK) и разрешённая на устройстве отладка по USB."
   },
   "author": "MTN2",
   "help": "help.md"

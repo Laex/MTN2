@@ -12,6 +12,7 @@
 - Beim Tippen wird die Liste enger: gesucht wird in den Wörtern der Bezeichnung, der Kategorie und gängigen Synonymen („shell“ findet „Hintergrundkonsole...“; mehrere Wörter müssen alle passen).
 - Die Suche steht im Feld über der Liste; ein Wort darf `?` (ein Zeichen) und `*` (beliebig viele Zeichen) enthalten.
 - Die Suche erfasst auch die Spalte der Tastenkombinationen: „F9“ findet die Befehle, deren Kombination F9 enthält, „shift“ alle Kombinationen mit Shift, „ctrl+f“ die Kombinationen mit Ctrl+F.
+- Auch die nummerierten Einträge der Laufwerksliste (Android, Docker, Papierkorb usw.) stehen in der Palette: gefunden nach Name oder Adressschema („adb“); Enter öffnet den Eintrag im aktiven Panel.
 - Eigene Suchwörter stehen in `aliases.json` im Einstellungsordner: `{ "tmaCmdConsoleProfile": "bash, zsh" }` – Name des Eintrags und die Wörter, durch Komma getrennt oder als Liste. Die Datei wird bei jedem Öffnen der Palette neu gelesen.
 
 **Tasten**

@@ -246,7 +246,7 @@ Der Fenstertitel zeigt **[Administrator]**, wenn MTN2 selbst als Administrator g
 - Der Buchstabe funktioniert auch bei einer anderen Tastaturbelegung: „Überspringen“ mit hervorgehobenem S reagiert sowohl auf S als auch auf den kyrillischen Buchstaben auf derselben Taste.
 - Die Standardschaltfläche (in spitzen Klammern) und die Abbrechen-Schaltfläche brauchen keinen Buchstaben – Enter und Esc erledigen das.
 
-**F1** – Hilfe zu dem, was auf dem Bildschirm steht (Panels, Viewer, der offene Dialog oder das Menü); **F1** in der Hilfe – der Inhalt. **F10** – beenden.
+**F1** – Hilfe zu dem, was auf dem Bildschirm steht (Panels, Viewer, der offene Dialog oder das Menü); **F1** in der Hilfe – der Inhalt. Ein Dialog mit Hilfeseite zeigt außerdem in der oberen Rahmenzeile links vom Schließen-Zeichen die Marke **[?]**; ein Klick darauf öffnet dieselbe Seite. **F10** – beenden.
 
 ---
 
@@ -271,6 +271,8 @@ Der Fenstertitel zeigt **[Administrator]**, wenn MTN2 selbst als Administrator g
 | Ctrl+U | die Panels tauschen |
 | Ctrl+] | passives Panel := Ordner des aktiven |
 | Ctrl+[ | aktives Panel := Ordner des passiven |
+| Ctrl+Alt+P | Paarweise Ordner an / aus: Wechsel in einen Unterordner (Enter, Ctrl+PgDn) oder nach oben (`..`, Ctrl+PgUp) in einem Panel wird im anderen wiederholt, wenn dort ein Ordner gleichen Namens (oder ein übergeordneter) existiert; beide Panels müssen gewöhnliche lokale Ordner zeigen; die Einstellung gehört zum Tab und wird beim Neustart des Programms zurückgesetzt; solange der Modus an ist, zeigt die Statuszeile „Paarweise“ (ein Klick darauf schaltet den Modus aus) |
+| Ctrl+Alt+G | Zeilen gruppieren: nach Typ, nach Datum, aus (jeder Druck schaltet weiter) |
 | Ctrl+F1 / Ctrl+F2 | das linke / rechte Panel aus- / einblenden |
 | Ctrl+P | das inaktive Panel aus- / einblenden |
 | Ctrl+L | Infopanel (Laufwerk, Speicher) auf der anderen Seite |
@@ -279,6 +281,10 @@ Der Fenstertitel zeigt **[Administrator]**, wenn MTN2 selbst als Administrator g
 | Ctrl+Q | Schnellansicht der Datei im anderen Panel: Bild, Text, Markdown oder Hex |
 | Alt+F10 | Ordnerbaum des Laufwerks über dem aktiven Panel (siehe unten) |
 | Alt+Buchstabe | Schnellsuche nach Name im Panel |
+
+**Paarweise Ordner (Ctrl+Alt+P)** – Beispiel: links `D:\Work1`, rechts `D:\Work2`, beide enthalten `src\Core`. Bei eingeschaltetem Modus öffnet Enter auf `src` im linken Panel sofort `D:\Work1\src` und `D:\Work2\src`, Enter auf `Core` geht in beiden eine Ebene tiefer; `..` in einem Panel geht in beiden nach oben. Hat das andere Panel keinen Ordner dieses Namens (etwa `docs` in `v2`), bleibt es stehen. Praktisch, um zwei Kopien eines Baums Ordner für Ordner zu vergleichen.
+
+**Gruppierung (Ctrl+Alt+G)** – die Zeilen werden zuerst nach Gruppen geordnet, die aktuelle Sortierung gilt innerhalb jeder Gruppe; die erste Zeile einer Gruppe zeigt rechts vom Namen ihre Überschrift, jede zweite Gruppe hat einen leicht getönten Hintergrund. Nach Typ: Ordner, Bilder, Audio, Video, Dokumente, Archive, Programme, Code und Daten, Sonstiges. Nach Datum: heute, gestern, letzte 7 Tage, letzte 30 Tage, letztes Jahr, älter, ohne Datum. Beispiel: im Download-Ordner zweimal Ctrl+Alt+G drücken und nach Größe sortieren – die Dateien jedes Tages stehen zusammen, die größten zuerst. Der Modus gilt je Panel und wird mit der Sitzung gespeichert.
 
 **Ordnerbaum (Alt+F10)** öffnet sich über dem aktiven Panel. Er ist immer nur über einem Panel geöffnet.
 
@@ -350,6 +356,10 @@ Im Dialog „Nach Maske auswählen“ wendet das Kontrollfeld „Ordner auswähl
 
 <!--mask-groups-->Mehrere Masken in einem Feld werden durch `;` getrennt (ein Komma geht ebenfalls; die zusätzlichen Muster im Dialog zur Ordnersynchronisierung kennen nur `;`). In jeder Maske (Auswahl, Panelfilter, Suche, Farbgruppen) steht `@Name` für eine benannte Gruppe von Masken, zum Beispiel `@Images` oder `*.log;@Documents`. Eingebaut sind Images, Audio, Video, Documents, Archives und Sources. Eigene Gruppen verwaltet der Menüpunkt "Maskengruppen..." im Menü Optionen (Datei `maskgroups.json` im Einstellungsordner); der Dialog zur Auswahl nach Maske kann seine Maske ebenfalls als Gruppe speichern. In einem Maskenfeld eines Dialogs speichert Strg+G die eingegebenen Masken als Gruppe (benannt nach der ersten Maske) und setzt `@Name` ins Feld.
 
+### Spaltensätze
+
+Das Menü der Spaltenmodi führt nach den voreingestellten Modi die benannten Spaltensätze auf. Die Wahl eines Satzes gibt dem Panel, in dem er gewählt wurde, diese Spalten; das andere Panel behält seine eigenen, jedes Panel merkt sich seine Spalten. Die Sätze liegen in `columnsets.json` im Einstellungsordner; fehlt die Datei, wird sie mit den Sätzen Minimal, Dates und Technical angelegt, danach sind es gewöhnliche Sätze, die geändert, umbenannt oder gelöscht werden können. Um die aktuelle Auswahl zu speichern, einen Namen in das Feld „Als Spaltensatz speichern“ des Dialogs Eigene Spalten tippen (Optionen, Spalten), der die Spalten des aktiven Panels bearbeitet. Derselbe Dialog listet die Sätze: Bearbeiten lädt den gewählten Satz in die Kontrollkästchen und das Namensfeld (OK speichert die Änderungen unter diesem Namen), Umbenennen gibt dem gewählten Satz den im Feld getippten Namen, Löschen entfernt ihn.
+
 ---
 
 [Inhalt](#inhalt)
@@ -399,6 +409,8 @@ Derselbe Dialog enthält die übrigen Dateiattribute: **Komprimiert**, **Verschl
 - Beim Halten der Maustaste öffnet sich das Menü der Datei unter der Maus.
 
 Nur für Dateien und Ordner auf der Festplatte: Archive, SFTP, Papierkorb und Suchergebnisse haben kein Windows-Menü.
+
+<!--multi-rename-->**Mehrfach-Umbenennen (Ctrl+Alt+N).** Dateien > Mehrfach-Umbenennen... benennt die ausgewählten Elemente eines Ordners in einem Zug um. Die Masken für Name und Erweiterung verstehen `[N]` (alter Name), `[E]` (alte Erweiterung), `[C]` (Zähler mit Start, Schritt und Stellenzahl), `[Date]`, `[Time]`, `[Year]`, `[Month]`, `[Day]`, `[Parent]`, `[Size]` sowie die Metadatenwerte `[Dim]`, `[Camera]`, `[Artist]`, `[Title]`; anderer Text bleibt wie getippt. Suchen und Ersetzen (wahlweise als regulärer Ausdruck mit `$1`, `$2`) und die Groß-/Kleinschreibung gelten für den neuen Namen. Die Liste unter den Feldern zeigt beim Tippen die Paare „alt -> neu“; ein leerer, ungültiger, doppelter oder bereits belegter Name wird mit `!` markiert, und **Umbenennen** tut nichts, solange einer übrig ist. Das Umbenennen läuft als Hintergrundauftrag.
 
 <!--copy-->Im Dialog Kopieren/Verschieben lassen sich alle Zeitstempel beibehalten, nur neuere Dateien kopieren, der Inhalt symbolischer Links kopieren und eine Ausschlussmaske festlegen. Bei einem Namenskonflikt fragt das Programm, was zu tun ist (überschreiben, überspringen, umbenennen, für alle…).
 
@@ -487,6 +499,22 @@ Die erneute Wahl derselben Sortierung kehrt die Richtung um. Der Buchstabe in de
 | Ctrl+I | Panel-Filter: ein Dialog mit einer Liste fertiger Filter und einer Zeile für die eigene Maske; Enter oder ein Doppelklick auf die Liste wendet den Filter an, Löschen entfernt ihn |
 | Ctrl+B | flache Ansicht: alle Dateien des Teilbaums in einer Liste |
 | Alt+Buchstabe | Schnellsuche nach Name |
+
+### Suche über Plugins
+
+Das Everything-Plugin beantwortet Namenssuchen in lokalen Ordnern aus seinem Index, das ripgrep-Plugin (`rg` im PATH oder neben dem Plugin) durchsucht den Dateitext, und das Plugin Dokumentenansicht lässt eine Textsuche auch in `.docx`, `.xlsx`, `.pptx`, `.pdf`, `.svg` und SQLite-Dateien schauen. Suchen in Archiven, nach Hex-Bytes oder nach Attributen nutzen die eingebaute Suche. Eine Textsuche mit selektiver Maske läuft als Pipeline: die erste Stufe listet die Dateien nach Namen auf (Everything oder der eingebaute Durchlauf), die zweite sucht darin den Text (ripgrep oder die eingebaute Prüfung). Die Schaltfläche **Pipeline** im Suchdialog öffnet einen Dialog mit einer Liste je Stufe: **Auto** wählt das beste Plugin, **Eingebaut** nutzt den eingebauten Code, oder ein Plugin wird nach Namen gewählt; kann dieses Plugin die Stufe nicht bedienen, läuft der eingebaute Code.
+
+### Schnellsuche
+
+Alt+Buchstabe öffnet ein Suchfeld im aktiven Panel; weitere Buchstaben werden angehängt, und der Cursor springt zur ersten Datei, deren Name mit dem getippten Text beginnt. Rücktaste löscht das letzte Zeichen, Esc schließt das Feld, Enter öffnet die Datei unter dem Cursor. Pfeil auf und ab wechseln zu den Nachbardateien; jede andere Taste oder ein Ctrl-Kürzel schließt die Suche und wirkt wie gewohnt.
+
+Optionen (Einstellungen – Oberfläche):
+
+- **Schnellsuche nach dem Loslassen von Alt offen halten** – das Feld bleibt bis Esc oder Enter offen;
+- **Leere Schnellsuche offen halten** – ein leeres Feld wird durch die Rücktaste nicht geschlossen;
+- **Schnellsuche filtert auch das Panel** – neben dem Cursor bleiben nur die passenden Dateien im Panel; das Feld bleibt nach dem Loslassen von Alt offen, Esc oder Enter bringt alle Dateien zurück, und der Cursor bleibt auf derselben Datei;
+- **Schnellsuchfilter in anderen Ordnern beibehalten** – Enter auf einem Ordner oder ein Klick trägt den Filter in den neuen Ordner, danach entfernt ihn nur Esc;
+- **Unscharfer Schnellsuchfilter** – auch Namen, die die getippten Buchstaben in dieser Reihenfolge, aber nicht unbedingt nebeneinander enthalten, passen (`mnr` findet `main_readme.txt`); der Cursor geht zu einer Datei mit passendem Anfang, sonst zur ersten der Liste.
 
 Suchergebnisse öffnen sich als Panel – die üblichen Operationen funktionieren damit.
 
@@ -701,6 +729,8 @@ Große Dateien werden gestreamt und nicht als Ganzes geladen. Ändert sich die D
 - **Alle** im Dialog „Ersetzen“ ersetzt alle Treffer des ganzen Textes auf einmal.
 - Beide Wege zeigen am Ende von **Alle** an, wie viele Ersetzungen vorgenommen wurden, werden mit einem einzigen **Ctrl+Z** rückgängig gemacht und setzen den Cursor dorthin zurück, wo er vor dem Ersetzen stand.
 
+**Lange Suchläufe.** Dauert das Suchen oder Ersetzen länger als einen Augenblick, öffnet sich ein Fortschrittsfenster mit Prozentangabe (beim Ersetzen auch mit der Zahl der Treffer); **Esc** oder die Schaltfläche **Abbrechen** bricht ab, und bis zum Ende lässt sich der Text nicht bearbeiten. Ein abgebrochenes **Alle** des Dialogs „Ersetzen“ ändert nichts; nach **Alle** in der Frage zu einem Treffer bleiben die bereits vorgenommenen Ersetzungen erhalten, und ein **Ctrl+Z** macht sie rückgängig.
+
 **Was gemerkt wird.** Groß-/Kleinschreibung, ganze Wörter und reguläre Ausdrücke werden zwischen den Starts gemerkt; **Rückwärts suchen** nur, bis MTN2 geschlossen wird.
 
 ---
@@ -764,6 +794,7 @@ Ein Wert wird hinzugefügt, wenn der Dialog bestätigt wird.
 - Beim Tippen wird die Liste enger: gesucht wird in den Wörtern der Bezeichnung, der Kategorie und gängigen Synonymen („shell“ findet „Hintergrundkonsole...“; mehrere Wörter müssen alle passen).
 - Die Suche steht im Feld über der Liste; ein Wort darf `?` (ein Zeichen) und `*` (beliebig viele Zeichen) enthalten.
 - Die Suche erfasst auch die Spalte der Tastenkombinationen: „F9“ findet die Befehle, deren Kombination F9 enthält, „shift“ alle Kombinationen mit Shift, „ctrl+f“ die Kombinationen mit Ctrl+F.
+- Auch die nummerierten Einträge der Laufwerksliste (Android, Docker, Papierkorb usw.) stehen in der Palette: gefunden nach Name oder Adressschema („adb“); Enter öffnet den Eintrag im aktiven Panel.
 - Eigene Suchwörter stehen in `aliases.json` im Einstellungsordner: `{ "tmaCmdConsoleProfile": "bash, zsh" }` – Name des Eintrags und die Wörter, durch Komma getrennt oder als Liste. Die Datei wird bei jedem Öffnen der Palette neu gelesen.
 
 **Tasten**

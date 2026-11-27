@@ -86,8 +86,20 @@ end;
 
 function DefaultRunAdb(const AArgs: TArray<string>; ATimeoutMs: Cardinal;
   ACancel: IJobCancelToken; out AOutput: string; out ACode: Cardinal): TSpawnResult;
+var
+  Path: string;
 begin
   Result := PlatformRunCaptured(cAdb, AArgs, '', ATimeoutMs, ACancel, AOutput, ACode);
+  if Result <> srSpawnFailed then
+    Exit;
+  // Installing the SDK does not add platform-tools to PATH.
+  for Path in AdbSdkPrograms(
+    function(AName: string): string
+    begin
+      Result := GetEnvironmentVariable(AName);
+    end) do
+    if FileExists(Path) then
+      Exit(PlatformRunCaptured(Path, AArgs, '', ATimeoutMs, ACancel, AOutput, ACode));
 end;
 
 function Fail(ACtx: PVfsOpContext; ACode: TVfsCdeclResult; const AText: string): Int64;
@@ -665,7 +677,7 @@ end;
 
 initialization
   GRunAdb := DefaultRunAdb;
-  GAdbText.NoProgram := 'adb was not found: install Android platform-tools and add its folder to PATH.';
+  GAdbText.NoProgram := 'adb was not found: install Android platform-tools, or add its folder to PATH.';
   GAdbText.Timeout := 'adb did not answer in time.';
   GAdbText.Unauthorized := 'The device is not authorized: allow USB debugging on its screen.';
   GAdbText.Offline := 'The device is offline: reconnect it.';

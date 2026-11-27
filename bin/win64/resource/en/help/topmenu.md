@@ -12,6 +12,7 @@
 - Typing narrows the list: the words of the caption, of the category and common synonyms are matched ("shell" finds "Background console..."; "bc" finds it by the first letters of its words).
 - The query shows in the field above the list; a word of the query may contain `?` (one character) and `*` (any run of characters).
 - The search also covers the shortcut column: "F9" finds the commands whose shortcut uses F9, "shift" every shortcut with Shift, "ctrl+f" the shortcuts that contain Ctrl+F.
+- The numbered items of the Change Drive list (Android, Docker, Recycle bin and so on) are listed too, found by name or by address scheme ("adb"); Enter opens the item in the active panel.
 - Your own search words go into `aliases.json` in the settings folder: `{ "tmaCmdConsoleProfile": "bash, zsh" }` – the item name and the words, comma separated or as a list. The file is read again each time the palette opens.
 
 **Keys**

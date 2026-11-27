@@ -1295,6 +1295,8 @@
     "tip.workspace": "Tipp: {NewWorkspace} öffnet einen eigenen Arbeitsbereich mit eigenen Panels und Terminals",
     "palette.keysCategory": "Tasten",
     "palette.settingsAlias": "einstellungen,optionen",
+    "palette.drivesCategory": "Laufwerk wechseln",
+    "palette.driveAlias": "laufwerk,datenträger",
     "toast.refreshed": "Panel aktualisiert",
     "toast.restored": "\"%s\" aus dem Papierkorb wiederhergestellt",
     "toast.selectionUnchanged": "Auswahl unverändert (Maske \"%s\")",

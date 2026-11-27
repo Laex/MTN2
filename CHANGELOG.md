@@ -6,6 +6,17 @@ This file describes what changes for the user from version to version: new featu
 
 ## Unreleased
 
+## Dev v0.5.13.5 – 2026-11-28
+
+### New
+
+- The command palette (Shift+F9) lists the numbered items of the Change Drive list (Android, Docker, Recycle bin and others); Enter opens the item in the active panel.
+
+### Fixed
+
+- The Android panel finds `adb` in the Android SDK folder (`ANDROID_HOME`, `ANDROID_SDK_ROOT` or the default one) when it is not in PATH.
+- In a translated interface the command palette finds settings by the word "settings" in that language.
+
 ## Dev v0.5.13.4 – 2026-11-27
 
 ### New

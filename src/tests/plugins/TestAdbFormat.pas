@@ -23,16 +23,57 @@ type
     [Test] procedure TestStatListingKeepsOddNamesAndSkipsNoise;
     [Test] procedure TestProblemIsReadFromAdbErrorLinesOnly;
     [Test] procedure TestDaemonNoiseIsStripped;
+    [Test] procedure TestSdkProgramsFollowTheVariablesThenTheDefaultFolder;
+    [Test] procedure TestSdkProgramsSkipUnsetVariables;
   end;
 
 implementation
 
 uses
-  System.SysUtils, uAdbFormat;
+  System.SysUtils, System.IOUtils, uAdbFormat;
 
 const
   // A space, Cyrillic, an apostrophe and the characters a shell would act on.
   cOddName = 'my '#$0444#$0430#$0439#$043B' it''s $(reboot);`x`&|"*';
+
+function SdkAdb(const ARoot: string): string;
+begin
+  Result := TPath.Combine(TPath.Combine(ARoot, 'platform-tools'),
+    {$IFDEF MSWINDOWS}'adb.exe'{$ELSE}'adb'{$ENDIF});
+end;
+
+// The folder the Android tools install the SDK into, under the home variable.
+function DefaultSdk(const AHome: string): string;
+begin
+  Result := TPath.Combine(TPath.Combine(AHome, 'Android'), 'Sdk');
+end;
+
+procedure TTestAdbFormat.TestSdkProgramsFollowTheVariablesThenTheDefaultFolder;
+var
+  Found: TArray<string>;
+begin
+  Found := AdbSdkPrograms(
+    function(AName: string): string
+    begin
+      Result := 'v_' + AName;
+    end);
+  Assert.AreEqual(3, Integer(Length(Found)));
+  Assert.AreEqual(SdkAdb('v_ANDROID_HOME'), Found[0]);
+  Assert.AreEqual(SdkAdb('v_ANDROID_SDK_ROOT'), Found[1]);
+  Assert.AreEqual(SdkAdb(DefaultSdk({$IFDEF MSWINDOWS}'v_LOCALAPPDATA'{$ELSE}'v_HOME'{$ENDIF})), Found[2]);
+end;
+
+procedure TTestAdbFormat.TestSdkProgramsSkipUnsetVariables;
+var
+  Found: TArray<string>;
+begin
+  Found := AdbSdkPrograms(
+    function(AName: string): string
+    begin
+      Result := '';
+    end);
+  Assert.AreEqual(0, Integer(Length(Found)));
+end;
 
 function Addr(const AUri: string): TAdbAddr;
 begin

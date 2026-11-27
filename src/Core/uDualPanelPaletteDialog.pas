@@ -24,6 +24,8 @@ type
   TPaletteSettingFields = reference to function: TArray<TSettingField>;
   /// <summary>Opens the settings window on the field AFieldId.</summary>
   TPaletteOpenSetting = reference to procedure(const AFieldId: string);
+  /// <summary>Opens the address of a Change Drive entry in the active panel.</summary>
+  TPaletteOpenDrive = reference to procedure(const AUri: string);
 
   TCommandPaletteDialogController = class
   private
@@ -38,6 +40,7 @@ type
     FOnRunAction: TPaletteRunAction;
     FOnSettingFields: TPaletteSettingFields;
     FOnOpenSetting: TPaletteOpenSetting;
+    FOnOpenDrive: TPaletteOpenDrive;
     FAll: TArray<TPaletteEntry>;
     /// <summary>The search text and the command the palette had when it was
     /// left for the key list; Resume restores them.</summary>
@@ -76,6 +79,8 @@ type
     property OnSettingFields: TPaletteSettingFields read FOnSettingFields
       write FOnSettingFields;
     property OnOpenSetting: TPaletteOpenSetting read FOnOpenSetting write FOnOpenSetting;
+    /// <summary>With it set, the numbered items of the Change Drive list are listed.</summary>
+    property OnOpenDrive: TPaletteOpenDrive read FOnOpenDrive write FOnOpenDrive;
   end;
 
 implementation
@@ -127,6 +132,8 @@ begin
   FAll := BuildPaletteEntries(Menu);
   if Assigned(FOnRunAction) then
     AppendKeymapOnlyEntries(Menu, KeymapActionCaption, FAll);
+  if Assigned(FOnOpenDrive) then
+    AppendDriveEntries(FAll);
   if Assigned(FOnSettingFields) and Assigned(FOnOpenSetting) then
     AppendSettingEntries(FOnSettingFields(), FAll);
   FQuery := AQuery;
@@ -289,6 +296,15 @@ begin
     begin
       PaletteNoteRun(Entry.Key);
       FOnOpenSetting(Entry.SettingId);
+    end;
+    Exit;
+  end;
+  if Entry.DriveUri <> '' then
+  begin
+    if Assigned(FOnOpenDrive) then
+    begin
+      PaletteNoteRun(Entry.Key);
+      FOnOpenDrive(Entry.DriveUri);
     end;
     Exit;
   end;
