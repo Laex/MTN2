@@ -857,7 +857,7 @@ type
     procedure ResolveRelativeCommandAsync(const AText, ABaseDir, ACommand: string);
     /// <summary>A path typed into the command line: an existing file runs
     /// (ShellOpenPath), anything else is navigated to.</summary>
-    procedure OpenOrNavigateAsync(const AURI: string);
+    procedure OpenOrNavigateAsync(const AURI, ACommand: string);
     procedure ExecuteTopMenuAction(AAction: TTopMenuAction);
     procedure OpenAboutDialog;
     /// <summary>Help > Updates: forwarded to OnOpenUpdates (the updater lives
@@ -6201,10 +6201,7 @@ begin
   // spaces) is a path like an unquoted one.
   Token := UnquoteSingleToken(Text);
   if TryResolveCommandPath(Token, URI) then
-  begin
-    FCmdLineMgr.Clear;
-    OpenOrNavigateAsync(URI);
-  end
+    OpenOrNavigateAsync(URI, Text)
   else if ((Pos(' ', Token) = 0) and (Pos(#9, Token) = 0)) or (Token <> Text) then
   begin
     // Bare token - async Exists, then open / navigate or shell (no UI-thread
@@ -6217,13 +6214,14 @@ begin
     RunConsoleCommand(Text);
 end;
 
-procedure TDualPanelWindow.OpenOrNavigateAsync(const AURI: string);
+procedure TDualPanelWindow.OpenOrNavigateAsync(const AURI, ACommand: string);
 var
   Life: ILifeFlag;
 begin
   Life := FLife;
   if not AURI.StartsWith('file:', True) then
   begin
+    FCmdLineMgr.Clear;
     NavigateActiveTo(AURI);
     Exit;
   end;
@@ -6233,10 +6231,20 @@ begin
     begin
       if not Life.Alive then
         Exit;
-      if AExists and (AError.Code = vecOk) and not AIsDirectory then
-        ShellOpenPath(FileUriToPath(AURI))
+      // A line naming nothing on disk goes to the shell, which reports the
+      // error itself or runs a compound "cd x && ...". Navigating there would
+      // leave the panel, and a console started from it, in a missing folder.
+      if not AExists or (AError.Code <> vecOk) then
+      begin
+        RunConsoleCommand(ACommand);
+        Exit;
+      end;
+      if Assigned(FCmdLineMgr) then
+        FCmdLineMgr.Clear;
+      if AIsDirectory then
+        NavigateActiveTo(AURI)
       else
-        NavigateActiveTo(AURI);
+        ShellOpenPath(FileUriToPath(AURI));
     end);
 end;
 
@@ -14170,7 +14178,7 @@ begin
   end;
   Segs := BuildPanelStatusSegments;
   if ActiveWorkspace.Kind = wkPanels then
-    Spans := PluginStatusSpans(Length(Segs))
+    Spans := PluginStatusSpans(Length(Segs), FStatusKinds)
   else
     Spans := nil;
   // The paired folders marker stands out so the mode is not forgotten.

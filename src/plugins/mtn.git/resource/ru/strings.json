@@ -27,12 +27,27 @@
     "diffJob": "Git diff",
     "blameJob": "Git blame",
     "noBlame": "У git нет истории этого файла.",
-    "cancelled": "Отменено."
+    "cancelled": "Отменено.",
+    "stageJob": "Git: добавление в индекс",
+    "unstageJob": "Git: удаление из индекса",
+    "commitJob": "Git commit",
+    "switchJob": "Git: переключение ветки",
+    "staged": "Добавлено в индекс.",
+    "unstaged": "Убрано из индекса.",
+    "committed": "Коммит создан.",
+    "switched": "Текущая ветка:",
+    "nothingStaged": "В индексе ничего нет. Сначала добавьте файлы.",
+    "noBranches": "В репозитории ещё нет веток.",
+    "noMessage": "Сообщение коммита пустое."
   },
   "ui": {
     "menu": {
       "diff": "Git diff файла",
-      "blame": "Git blame файла"
+      "blame": "Git blame файла",
+      "stage": "Git: добавить в индекс",
+      "unstage": "Git: убрать из индекса",
+      "commit": "Git: коммит...",
+      "switch": "Git: переключить ветку..."
     }
   },
   "dlg": {
@@ -44,6 +59,14 @@
     "sampleText": "Образец",
     "hint": "#RRGGBB; кнопка выбирает цвет; пусто – стандартный",
     "ok": "OK",
-    "cancel": "Отмена"
+    "cancel": "Отмена",
+    "commitTitle": "Git commit",
+    "message": "Сообщение:",
+    "staged": "В индексе ветки",
+    "commit": "Коммит",
+    "switchTitle": "Переключить ветку",
+    "current": "Текущая:",
+    "switch": "Перейти",
+    "detached": "(отсоединённый HEAD)"
   }
 }

@@ -63,7 +63,7 @@ var
 begin
   Result := False;
   for I := 0 to FHistory.LineCount - 1 do
-    if Pos(AText, FHistory.GetLine(I)) > 0 then
+    if Pos(AText, FHistory.GetLogicalLine(I)) > 0 then
       Exit(True);
 end;
 
@@ -103,6 +103,14 @@ var
 begin
   for I := 1 to Length(AText) do
     Press(AWin, Ord(UpCase(AText[I])), AText[I]);
+end;
+
+// The prompt shows the current folder. A short one keeps the test independent
+// of where the sources are: when a prompt fills the 80-column row to the last
+// cell, the pseudoconsole draws the second typed character over the first.
+function ShortDir: string;
+begin
+  Result := IncludeTrailingPathDelimiter(ExtractFileDrive(GetCurrentDir));
 end;
 
 function NewConsole: TProbeConsole;
@@ -155,7 +163,7 @@ var
 begin
   Win := NewConsole;
   try
-    Assert.IsTrue(Win.EnsureShell(GetCurrentDir), 'the shell starts');
+    Assert.IsTrue(Win.EnsureShell(ShortDir), 'the shell starts');
     Pump(3000);
     Type_(Win, 'abc');
     for I := 1 to 60 do
@@ -289,7 +297,7 @@ var
 begin
   Win := NewConsole;
   try
-    Assert.IsTrue(Win.EnsureShell(GetCurrentDir), 'the shell starts');
+    Assert.IsTrue(Win.EnsureShell(ShortDir), 'the shell starts');
     Pump(3000);
     Type_(Win, 'abc');
     for I := 1 to 60 do
@@ -328,7 +336,7 @@ var
 begin
   Win := NewConsole;
   try
-    Assert.IsTrue(Win.EnsureShell(GetCurrentDir), 'the shell starts');
+    Assert.IsTrue(Win.EnsureShell(ShortDir), 'the shell starts');
     Pump(3000);
     Assert.IsTrue(Win.FollowsTail, 'the console starts at the live prompt');
     K := vkHome;

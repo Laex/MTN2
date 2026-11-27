@@ -181,7 +181,7 @@ Start: `bin\win64\MTN2.exe [--no-skia] [--fps] [pfad]`. Details unter [docs/BUIL
 | `src/Platform` | Plattformschicht: `Windows` und `Posix` mit gleichnamigen Modulen |
 | `src/Hosts` | Hosts: `Ansi` – Version für das Textterminal |
 | `src/Forms`, `src/dialogs`, `src/Assets/themes` | Hauptformular, JSON-Dialoge, Standardthema |
-| `src/plugins` | Integrierte Plugins (`mtn.7z`, `mtn.archivetools`, `mtn.bridge`, `mtn.checksums`, `mtn.csv`, `mtn.describe`, `mtn.diskmap`, `mtn.docker`, `mtn.docview`, `mtn.everything`, `mtn.exportlist`, `mtn.git`, `mtn.highlight`, `mtn.jtree`, `mtn.logfilter`, `mtn.lua`, `mtn.meta`, `mtn.multirename`, `mtn.net`, `mtn.pdf`, `mtn.rclone`, `mtn.ripgrep`, `mtn.screensaver`, `mtn.splitfile`, `mtn.thumbs`, `mtn.tmp`, `mtn.winsys`, `mtn.ws`, WASM-Demo) |
+| `src/plugins` | Integrierte Plugins (`mtn.7z`, `mtn.adb`, `mtn.archivetools`, `mtn.bridge`, `mtn.checksums`, `mtn.csv`, `mtn.describe`, `mtn.diskmap`, `mtn.docker`, `mtn.docview`, `mtn.everything`, `mtn.exportlist`, `mtn.git`, `mtn.highlight`, `mtn.jtree`, `mtn.logfilter`, `mtn.lua`, `mtn.meta`, `mtn.multirename`, `mtn.net`, `mtn.pdf`, `mtn.rclone`, `mtn.ripgrep`, `mtn.screensaver`, `mtn.splitfile`, `mtn.thumbs`, `mtn.tmp`, `mtn.winsys`, `mtn.ws`, WASM-Demo) |
 | `src/tests` | DUnitX-Regressionstests nach Gruppen und Test-Runner `run-tests.ps1` |
 | `src/tools` | DialogDesigner, ExportDialogJson, Projektgruppe `Group.groupproj`, Hilfsskripte |
 | `bin/win64`, `bin/linux64` | Build-Ausgabe nach Plattformen |

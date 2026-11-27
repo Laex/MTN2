@@ -40,6 +40,8 @@ type
     FWrapPending: Boolean;
     FOnArchiveRow: TArchiveRowEvent;
     procedure ScrollUpOne(AFg, ABg: TAlphaColor);
+    procedure AdvanceRow(AFg, ABg: TAlphaColor);
+    procedure WrapToNextRow(AFg, ABg: TAlphaColor);
     procedure ClampCursor;
   public
     /// <summary>Unlike TAltScreenGrid.Alloc, clears to spaces internally
@@ -172,17 +174,13 @@ begin
   if (FCols <= 0) or (FRows <= 0) then
     Exit;
   if FWrapPending then
-  begin
-    FCursorCol := 0;
-    NewLine(AFg, ABg);
-  end;
+    WrapToNextRow(AFg, ABg);
   W := CharDisplayWidth(ACh);
   // A wide character that does not fit the last column moves to the next line.
   if (W = 2) and (FCursorCol >= FCols - 1) and (FCols > 1) then
   begin
     DrawGridChar(FGrid, FCursorCol, FCursorRow, ' ', AFg, ABg, AAttrs);
-    FCursorCol := 0;
-    NewLine(AFg, ABg);
+    WrapToNextRow(AFg, ABg);
   end;
   DrawGridChar(FGrid, FCursorCol, FCursorRow, ACh, AFg, ABg, AAttrs);
   if FCursorCol + W >= FCols then
@@ -194,7 +192,22 @@ begin
     Inc(FCursorCol, W);
 end;
 
+procedure TPrimaryScreenGrid.WrapToNextRow(AFg, ABg: TAlphaColor);
+begin
+  Include(FGrid[FCursorRow][FCols - 1].Attributes, ccaWrapped);
+  FCursorCol := 0;
+  AdvanceRow(AFg, ABg);
+end;
+
 procedure TPrimaryScreenGrid.NewLine(AFg, ABg: TAlphaColor);
+begin
+  // A line feed ends the line, whatever the row held before.
+  if (FCursorRow >= 0) and (FCursorRow < FRows) and (FCols > 0) then
+    Exclude(FGrid[FCursorRow][FCols - 1].Attributes, ccaWrapped);
+  AdvanceRow(AFg, ABg);
+end;
+
+procedure TPrimaryScreenGrid.AdvanceRow(AFg, ABg: TAlphaColor);
 begin
   FWrapPending := False;
   if FCursorRow < FRows - 1 then

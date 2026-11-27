@@ -132,9 +132,10 @@ begin
   Info.DialogKind := hdkDisplay;
   Assert.IsTrue(TryFormatChromeStatus(fbcDialogList, Info, Segs) and (Segs[0] = 'Display'),
     'display list status');
-  Info.DialogKind := hdkNone;
-  Assert.IsTrue(TryFormatChromeStatus(fbcDialogList, Info, Segs) and (Segs[0] = 'Code page'),
-    'encoding list status');
+  // A plugin's dialog with a list, and any other list the line has no name for.
+  Info.DialogKind := hdkHost;
+  Assert.IsTrue(TryFormatChromeStatus(fbcDialogList, Info, Segs), 'plugin list status');
+  Assert.AreEqual('Dialog|^v select|Enter=OK|Esc=Cancel', string.Join('|', Segs));
   Assert.IsTrue(not TryFormatChromeStatus(fbcPanels, Info, Segs), 'panels uses default');
 
   Segs := FormatDefaultPanelStatus('Left', 'C:\', '1/2', 'Full', 'readme.md',
@@ -383,6 +384,7 @@ var
   Host: TDualPanelStatusHost;
   Snap: TPanelStatusSnapshot;
   Segs, Items, Letters: TArray<string>;
+  Kinds: TArray<TStatusSegKind>;
   Base: Integer;
 begin
   Spy := TChromeSpy.Create;
@@ -401,6 +403,15 @@ begin
     Segs := AssembleStatusSegments(Host, Snap);
     Assert.IsTrue((Length(Segs) = Base + 1) and (Segs[High(Segs)] = 'REC'),
       'the plugin segment follows the host''s own');
+    Segs := AssembleStatusLine(Host, Snap, Kinds);
+    Assert.AreEqual(Integer(Length(Segs)), Integer(Length(PluginStatusSpans(Length(Segs), Kinds))),
+      'the colored parts go with the panel line');
+    // A dialog's line has no plugin segments, so nothing is painted over its hints.
+    Spy.Ctx := fbcDialogList;
+    Segs := AssembleStatusLine(Host, Snap, Kinds);
+    Assert.AreEqual(0, Integer(Length(PluginStatusSpans(Length(Segs), Kinds))),
+      'no colored parts on a dialog line');
+    Spy.Ctx := fbcPanels;
     Snap.Kind := wkTerminal;
     Assert.IsTrue(Length(AssembleStatusSegments(Host, Snap)) = 1,
       'a terminal status line stays the host''s');
@@ -569,7 +580,7 @@ begin
   Assert.IsTrue(Grid[0][7].FgColor = cFg, 'a part without text color keeps the line''s');
   Assert.IsTrue(Grid[0][8].BgColor = cBg, 'plain part keeps the line''s colors');
   Assert.IsTrue(Grid[0][1].BgColor = cBg, 'host section is not painted');
-  Assert.IsTrue(Length(PluginStatusSpans(0)) = 0, 'no segments, no parts');
+  Assert.IsTrue(Length(PluginStatusSpans(0, nil)) = 0, 'no segments, no parts');
 end;
 
 procedure TTestDualPanelStatus.TestCompactRunsUseShortTextsAndFitTheWidth;

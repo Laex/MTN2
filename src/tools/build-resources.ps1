@@ -18,21 +18,49 @@ $Rc = (Resolve-Path $Rc).Path
 $RcDir = Split-Path -Parent $Rc
 $Out = [IO.Path]::GetFullPath($Out)
 
-$Missing = @()
-foreach ($Line in (Get-Content $Rc)) {
+$RcName = Split-Path -Leaf $Rc
+
+$Files = @(foreach ($Line in (Get-Content $Rc)) {
     if ($Line -match '^\s*[A-Za-z0-9_]+\s+(RCDATA|ICON|BITMAP|CURSOR)\s+"([^"]+)"') {
-        $Path = $Matches[2] -replace '\\\\', '\'
-        if (-not (Test-Path (Join-Path $RcDir $Path))) { $Missing += $Path }
+        $Matches[2] -replace '\\\\', '\'
     }
-}
+})
+$Missing = @($Files | Where-Object { -not (Test-Path (Join-Path $RcDir $_)) })
 if ($Missing.Count -gt 0) {
-    throw "$(Split-Path -Leaf $Rc) names files that do not exist: $($Missing -join ', ')"
+    throw "$RcName names files that do not exist: $($Missing -join ', ')"
 }
 
-Push-Location $RcDir
+# brcc32 cuts an input path at a folder whose name starts with a dot, then
+# writes an empty resource file and still exits with 0. Such a source folder is
+# compiled through a temporary junction that has a plain path.
+$WorkDir = $RcDir
+$Link = $null
+if ($RcDir -match '\\\.') {
+    $Link = Join-Path ([IO.Path]::GetTempPath()) "rc-$([Guid]::NewGuid().ToString('N'))"
+    if ($Link -match '\\\.') {
+        throw "brcc32 cannot read from $RcDir, and the temporary folder has a dot folder too: $Link"
+    }
+    New-Item -ItemType Junction -Path $Link -Target $RcDir | Out-Null
+    $WorkDir = $Link
+}
+
+# A result left from an earlier run must not pass for this one.
+if (Test-Path $Out) { Remove-Item $Out -Force }
 try {
-    & $Brcc "-fo$Out" $Rc | Out-Null
-    if ($LASTEXITCODE -ne 0) { throw "brcc32 failed with $LASTEXITCODE ($(Split-Path -Leaf $Rc))" }
+    Push-Location $WorkDir
+    try {
+        & $Brcc "-fo$Out" $RcName | Out-Null
+        if ($LASTEXITCODE -ne 0) { throw "brcc32 failed with $LASTEXITCODE ($RcName)" }
+    } finally {
+        Pop-Location
+    }
 } finally {
-    Pop-Location
+    # Non-recursive: removes the junction and leaves the folder it points to.
+    if ($Link) { [IO.Directory]::Delete($Link) }
+}
+
+# An empty .res is its 32-byte header alone.
+$Size = if (Test-Path $Out) { (Get-Item $Out).Length } else { 0 }
+if ($Files.Count -gt 0 -and $Size -le 32) {
+    throw "brcc32 produced no resources from $Rc ($($Files.Count) listed, $Out is $Size bytes)"
 }

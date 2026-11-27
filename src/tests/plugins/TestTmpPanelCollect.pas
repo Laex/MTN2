@@ -11,6 +11,7 @@ type
   private
     FDir: string;
     procedure Put(const ARelName, AText: string);
+    function PutAged(const ARelName: string; ADaysOld: Integer): string;
   public
     [Setup] procedure Setup;
     [TearDown] procedure TearDown;
@@ -27,6 +28,13 @@ type
     [Test] procedure TestSearchReportsScanAndCompareProgress;
     [Test] procedure TestCapturesCommandOutput;
     [Test] procedure TestCommandStopsWhenAskedTo;
+    [Test] procedure TestKeepNewestMarksTheOtherCopies;
+    [Test] procedure TestKeepOldestMarksTheOtherCopies;
+    [Test] procedure TestKeepShortestPathMarksTheLongerOnes;
+    [Test] procedure TestKeepFolderMarksOnlyCopiesOutsideIt;
+    [Test] procedure TestGroupWithoutACopyInTheKeptFolderIsLeftAlone;
+    [Test] procedure TestUnlistedCopyIsNeitherKeptNorMarked;
+    [Test] procedure TestCopyChangedSinceTheSearchIsNeitherKeptNorMarked;
   end;
 
 implementation
@@ -230,6 +238,109 @@ begin
       Result := True;
     end));
   Assert.IsTrue(TThread.GetTickCount64 - Started < 10000, 'the process is killed, not waited for');
+end;
+
+function TTestTmpPanelCollect.PutAged(const ARelName: string;
+  ADaysOld: Integer): string;
+begin
+  Put(ARelName, 'same content');
+  Result := TPath.Combine(FDir, ARelName);
+  TFile.SetLastWriteTimeUtc(Result, EncodeDate(2024, 6, 20) - ADaysOld);
+end;
+
+// The paths marked in one group of AFiles when every one of AListed is shown.
+function Marked(const AFiles, AListed: TArray<string>; ARule: TDupKeepRule;
+  const AKeepFolder: string = ''): string;
+var
+  Groups: Integer;
+begin
+  Result := string.Join('|', PickDuplicateCopies(
+    StampDuplicateGroups([AFiles]), AListed, ARule, AKeepFolder, Groups));
+end;
+
+procedure TTestTmpPanelCollect.TestKeepNewestMarksTheOtherCopies;
+var
+  A, B, C: string;
+begin
+  A := PutAged('a.txt', 5);
+  B := PutAged('b.txt', 1);
+  C := PutAged('c.txt', 9);
+  Assert.AreEqual(A + '|' + C, Marked([A, B, C], [A, B, C], dkNewest));
+end;
+
+procedure TTestTmpPanelCollect.TestKeepOldestMarksTheOtherCopies;
+var
+  A, B, C: string;
+begin
+  A := PutAged('a.txt', 5);
+  B := PutAged('b.txt', 1);
+  C := PutAged('c.txt', 9);
+  Assert.AreEqual(A + '|' + B, Marked([A, B, C], [A, B, C], dkOldest));
+end;
+
+procedure TTestTmpPanelCollect.TestKeepShortestPathMarksTheLongerOnes;
+var
+  Deep, Short: string;
+begin
+  Deep := PutAged('sub' + PathDelim + 'deeper.txt', 1);
+  Short := PutAged('s.txt', 5);
+  Assert.AreEqual(Deep, Marked([Deep, Short], [Deep, Short], dkShortestPath));
+end;
+
+procedure TTestTmpPanelCollect.TestKeepFolderMarksOnlyCopiesOutsideIt;
+var
+  Kept1, Kept2, Sibling, Other: string;
+begin
+  Kept1 := PutAged('keep' + PathDelim + 'one.txt', 1);
+  Kept2 := PutAged('keep' + PathDelim + 'in' + PathDelim + 'two.txt', 1);
+  Sibling := PutAged('keeper' + PathDelim + 'three.txt', 1);
+  Other := PutAged('four.txt', 1);
+  Assert.AreEqual(Sibling + '|' + Other,
+    Marked([Kept1, Kept2, Sibling, Other], [Kept1, Kept2, Sibling, Other],
+      dkFolder, TPath.Combine(FDir, 'keep') + PathDelim));
+end;
+
+procedure TTestTmpPanelCollect.TestGroupWithoutACopyInTheKeptFolderIsLeftAlone;
+var
+  A, B: string;
+  Groups: Integer;
+begin
+  A := PutAged('a.txt', 1);
+  B := PutAged('b.txt', 2);
+  Assert.AreEqual(0, Integer(Length(PickDuplicateCopies(
+    StampDuplicateGroups([[A, B]]), [A, B], dkFolder,
+    TPath.Combine(FDir, 'elsewhere'), Groups))));
+  Assert.AreEqual(0, Groups);
+end;
+
+procedure TTestTmpPanelCollect.TestUnlistedCopyIsNeitherKeptNorMarked;
+var
+  A, B, C: string;
+begin
+  A := PutAged('a.txt', 5);
+  B := PutAged('b.txt', 1);
+  C := PutAged('c.txt', 9);
+  Assert.AreEqual(C, Marked([A, B, C], [A, C], dkNewest));
+  Assert.AreEqual('', Marked([A, B, C], [A], dkNewest));
+end;
+
+procedure TTestTmpPanelCollect.TestCopyChangedSinceTheSearchIsNeitherKeptNorMarked;
+var
+  A, B, C: string;
+  Stamped: TArray<TArray<TDupFile>>;
+  Groups: Integer;
+begin
+  A := PutAged('a.txt', 5);
+  B := PutAged('b.txt', 1);
+  C := PutAged('c.txt', 9);
+  Stamped := StampDuplicateGroups([[A, B, C]]);
+  TFile.WriteAllText(B, 'edited');
+  Assert.AreEqual(C, string.Join('|', PickDuplicateCopies(Stamped, [A, B, C],
+    dkNewest, '', Groups)));
+  Assert.AreEqual(1, Groups);
+  TFile.Delete(A);
+  Assert.AreEqual(0, Integer(Length(PickDuplicateCopies(Stamped, [A, B, C],
+    dkNewest, '', Groups))), 'one copy left is not a duplicate');
 end;
 
 initialization

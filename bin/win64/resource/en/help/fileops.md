@@ -12,7 +12,7 @@
 | F7 | create a folder |
 | Alt+F6 | create a link (symbolic link, hard link, junction) |
 | F8, Del | delete to the Recycle Bin |
-| Shift+F8, Shift+Del | delete permanently (wipe) |
+| Shift+F8, Shift+Del | delete permanently |
 | Ctrl+A | attributes, owner and dates (created / modified / accessed) |
 | Alt+Enter | the Windows “Properties” window (for the selection or the item under the cursor; files and folders on disk only) |
 | Shift+F10, Menu key | the Windows context menu (for the selection or the item under the cursor) |

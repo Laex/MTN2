@@ -222,7 +222,7 @@ begin
     Decl.AddPair('version', '2.0');
     Decl.AddPair('title', Tr('dlg.title', 'Filter lines'));
     Decl.AddPair('width', TJSONNumber.Create(60));
-    Decl.AddPair('height', TJSONNumber.Create(13));
+    Decl.AddPair('height', TJSONNumber.Create(14));
     Kids := TJSONArray.Create;
     Decl.AddPair('children', Kids);
     AddControl(Kids, 'label', '', Tr('dlg.hint', 'Keep the lines that contain:'), '', 2, 1, 54);

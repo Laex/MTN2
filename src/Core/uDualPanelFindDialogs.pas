@@ -76,6 +76,7 @@ type
     FDstRoot: string;
     FSnapshotPending: Boolean;
     FPendingConflictRels: TArray<string>;
+    FPrunePending: Boolean;
     FByContent: Boolean;
     FComparedByContent: Boolean;
     FCompareGen: Integer;
@@ -799,7 +800,11 @@ var
   Extras: TArray<string>;
   I: Integer;
 begin
-  Extras := CollectDirSyncDeletePaths(FItems, ATwoWay, True);
+  // "Extras" are a one-way notion: files only on the target.
+  if ATwoWay then
+    Extras := nil
+  else
+    Extras := CollectDirSyncDeletePaths(FItems, False, True);
   for I := 0 to High(Extras) do
     Extras[I] := FileUriToPath(Extras[I]);
   if (Length(Extras) = 0) or not Assigned(FOnShowExtras) then
@@ -1160,8 +1165,12 @@ begin
   Idx := FViewIdx[Sel];
   if AAction = saAuto then
     FItems[Idx].Action := saAuto
-  else if not ApplySyncAction(FItems[Idx], AAction) then
-    Exit;
+  else
+  begin
+    ReadViewMode;
+    if not ApplySyncAction(FItems[Idx], AAction, FTwoWay) then
+      Exit;
+  end;
   ReadViewMode;
   // Move on to the next row so a run of decisions needs no navigation; in the
   // filtered view the decided row leaves the list and the next one slides in.
@@ -1312,6 +1321,11 @@ begin
     end
     else if (CopyCount = 0) and (Length(Deletes) > 0) then
     begin
+      try
+        CommitDirSyncSnapshot(FSrcRoot, FDstRoot,
+          CollectDirSyncUnresolvedRels(FItems, AFields.SyncTwoWay, Mirror));
+      except
+      end;
       FPendingDeletes := Deletes;
       FPendingDeleteToBin := ToBin;
       StartPendingDeletes;
@@ -1356,11 +1370,24 @@ begin
   Paths := FPendingDeletes;
   SetLength(FPendingDeletes, 0);
   if (Length(Paths) > 0) and Assigned(FJobs) and FJobs.CanStartAnother then
+  begin
+    FPrunePending := True;
     FJobs.BeginJob(Paths, '', pjkDelete, FPendingDeleteToBin);
+  end;
 end;
 
 procedure TDirSyncDialogController.NotifyJobFinished(ASuccess: Boolean);
 begin
+  // Pruning only forgets files absent on both sides, so it is safe after any
+  // job that ends while a removal is outstanding, failed or not.
+  if FPrunePending then
+  begin
+    FPrunePending := False;
+    try
+      PruneDirSyncSnapshot(FSrcRoot, FDstRoot);
+    except
+    end;
+  end;
   if not FSnapshotPending then
     Exit;
   FSnapshotPending := False;

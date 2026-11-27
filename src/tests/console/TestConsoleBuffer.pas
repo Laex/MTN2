@@ -32,6 +32,10 @@ type
     [Test] procedure TestEraseCharsBlanksPredictionAtCursor;
     [Test] procedure TestMaxLines;
     [Test] procedure TestPromptAfterBarePromptIsNotInput;
+    [Test] procedure TestWrappedInputIsReadWholeGrid;
+    [Test] procedure TestWrappedPromptIsOneLineGrid;
+    [Test] procedure TestLineFeedEndsTheWrapGrid;
+    [Test] procedure TestWrapSurvivesScrollingOutGrid;
   end;
 
 implementation
@@ -562,6 +566,92 @@ begin
   end;
 end;
 
+procedure TestWrappedInputIsReadWholeGrid;
+const
+  cPrompt = 'C:\Work\project>'; // 16 of 20 columns
+var
+  Buf: TConsoleBuffer;
+  C: Char;
+begin
+  Buf := TConsoleBuffer.Create;
+  try
+    Buf.AppendOutputEx(cPrompt, 20, 5);
+    for C in 'echo two' do
+      Buf.AppendOutputEx(C, 20, 5);
+    Assert.AreEqual('echo two', Buf.GetInputAfterPrompt, 'input over two rows');
+
+    Buf.AppendOutputEx(' and some more words to go', 20, 5);
+    Assert.AreEqual('echo two and some more words to go', Buf.GetInputAfterPrompt,
+      'input over three rows');
+
+    Buf.Clear;
+    Buf.AppendOutputEx(cPrompt + 'abc def', 20, 5);
+    Assert.AreEqual('abc def', Buf.GetInputAfterPrompt, 'a space in the last column is kept');
+
+    Buf.Clear;
+    Buf.AppendOutputEx('C:\Work\project\ab>' + #$4E2D, 20, 5);
+    Assert.IsTrue(Buf.GetLogicalLine(0).StartsWith('C:\Work\project\ab>' + #$4E2D),
+      'the blank left before a wide character is not part of the line');
+
+    Buf.Clear;
+    Buf.AppendOutputEx('C:\Work\projects\ab>', 20, 5); // fills the row
+    Buf.AppendOutputEx('dir', 20, 5);
+    Assert.AreEqual('dir', Buf.GetInputAfterPrompt, 'input that starts on the next row');
+  finally
+    Buf.Free;
+  end;
+end;
+
+procedure TestWrappedPromptIsOneLineGrid;
+const
+  cPrompt = 'C:\Work\a-rather-long-folder\child>';
+var
+  Buf: TConsoleBuffer;
+begin
+  Buf := TConsoleBuffer.Create;
+  try
+    Buf.AppendOutputEx(cPrompt, 20, 5);
+    Assert.AreEqual(cPrompt, Buf.GetLogicalLine(0), 'the prompt as one line');
+    Assert.AreEqual('', Buf.GetLogicalLine(1), 'its second row is not a line of its own');
+    Buf.AppendOutputEx('dir', 20, 5);
+    Assert.AreEqual('dir', Buf.GetInputAfterPrompt, 'input after a wrapped prompt');
+  finally
+    Buf.Free;
+  end;
+end;
+
+procedure TestLineFeedEndsTheWrapGrid;
+var
+  Buf: TConsoleBuffer;
+begin
+  Buf := TConsoleBuffer.Create;
+  try
+    Buf.AppendOutputEx('C:\Work\project>abcdefgh', 20, 5);
+    // The line is rubbed out the way conhost does it, then submitted.
+    Buf.AppendOutputEx(#27'[1;17H        '#27'[1;17H'#13#10'output', 20, 5);
+    Assert.AreEqual('C:\Work\project>', Buf.GetLogicalLine(0), 'the prompt row alone');
+    Assert.AreEqual('output', Buf.GetLogicalLine(1), 'the next row is its own line');
+  finally
+    Buf.Free;
+  end;
+end;
+
+procedure TestWrapSurvivesScrollingOutGrid;
+const
+  cPrompt = 'C:\Work\a-rather-long-folder\child>';
+var
+  Buf: TConsoleBuffer;
+begin
+  Buf := TConsoleBuffer.Create;
+  try
+    Buf.AppendOutputEx(cPrompt + #13#10'one'#13#10'two'#13#10'three', 20, 2);
+    Assert.AreEqual(cPrompt, Buf.GetLogicalLine(0), 'a wrapped line in the scrollback');
+    Assert.AreEqual('one', Buf.GetLogicalLine(2), 'the line after it');
+  finally
+    Buf.Free;
+  end;
+end;
+
 procedure TTestConsoleBuffer.TestEchoBackspace;
 begin
   TestConsoleBuffer.TestEchoBackspace;
@@ -675,6 +765,26 @@ end;
 procedure TTestConsoleBuffer.TestPromptAfterBarePromptIsNotInput;
 begin
   TestConsoleBuffer.TestPromptAfterBarePromptIsNotInput;
+end;
+
+procedure TTestConsoleBuffer.TestWrappedInputIsReadWholeGrid;
+begin
+  TestConsoleBuffer.TestWrappedInputIsReadWholeGrid;
+end;
+
+procedure TTestConsoleBuffer.TestWrappedPromptIsOneLineGrid;
+begin
+  TestConsoleBuffer.TestWrappedPromptIsOneLineGrid;
+end;
+
+procedure TTestConsoleBuffer.TestLineFeedEndsTheWrapGrid;
+begin
+  TestConsoleBuffer.TestLineFeedEndsTheWrapGrid;
+end;
+
+procedure TTestConsoleBuffer.TestWrapSurvivesScrollingOutGrid;
+begin
+  TestConsoleBuffer.TestWrapSurvivesScrollingOutGrid;
 end;
 
 initialization

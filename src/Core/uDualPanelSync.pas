@@ -4,7 +4,8 @@
   One-way Active -> Inactive (missing | newer).
   Two-way <-> - copy direction follows whichever side is newer;
   conflicts (both sides changed since the last successful sync) stay
-  unresolved and are listed for a manual choice.
+  unresolved and are listed for a manual choice. A file the last sync saw on
+  both sides and now found on one only counts as deleted on the other.
   Optional content mode (size + byte compare) marks files that
   share a timestamp but differ in bytes. Local file:// only. }
 
@@ -18,10 +19,15 @@ type
   TSyncReason = (srMissing, srNewer, srMissingOnSrc, srNewerOnDst, srConflict,
     srContentDiff);
 
-  // saAuto follows Reason and the sync mode; the other values are a manual
-  // choice that overrides both. saDelete removes a file that exists only on
-  // the target and applies to srMissingOnSrc items only.
+  // saAuto follows Reason, Peer and the sync mode; the other values are a
+  // manual choice that overrides them. saDelete removes a file that exists on
+  // one side only: the target in one-way mode, either side in two-way.
   TSyncAction = (saAuto, saCopyRight, saCopyLeft, saSkip, saDelete);
+
+  // What the previous sync tells about a file present on one side only: it
+  // was on both then, so the missing copy was deleted. peDeletedChanged marks
+  // a surviving copy edited since.
+  TSyncPeer = (peNone, peDeleted, peDeletedChanged);
 
   TSyncItem = record
     RelPath: string;
@@ -29,6 +35,7 @@ type
     DstURI: string;
     Reason: TSyncReason;
     Action: TSyncAction;
+    Peer: TSyncPeer;
   end;
 
   TSyncSnapshotEntry = record
@@ -98,8 +105,9 @@ function FormatDirSyncStatus(const AItems: TArray<TSyncItem>): string;
 procedure CollectDirSyncJobPairs(const AItems: TArray<TSyncItem>;
   out ASources, ADestURIs: TArray<string>; ATwoWay: Boolean = False;
   AMirror: Boolean = False);
-/// <summary>Files that exist only on the target and are to be removed (mirror
-/// mode, or a manual delete choice); empty in two-way mode.</summary>
+/// <summary>Files to be removed: those only on the target (mirror mode or a
+/// manual choice), and in two-way mode also the survivors of a deletion on
+/// the other side.</summary>
 function CollectDirSyncDeletePaths(const AItems: TArray<TSyncItem>;
   ATwoWay, AMirror: Boolean): TArray<string>;
 function DirSyncUrisAreLocalFolders(const ASrcURI, ADstURI: string): Boolean;
@@ -120,10 +128,11 @@ function SyncItemRightURI(const AItem: TSyncItem): string;
 function EffectiveSyncAction(const AItem: TSyncItem;
   ATwoWay: Boolean; AMirror: Boolean = False): TSyncAction;
 function SyncActionAllowed(const AItem: TSyncItem;
-  AAction: TSyncAction): Boolean;
+  AAction: TSyncAction; ATwoWay: Boolean = False): Boolean;
 /// <summary>Sets a manual action; False when the action does not apply to the
 /// item (copying from a side where the file does not exist).</summary>
-function ApplySyncAction(var AItem: TSyncItem; AAction: TSyncAction): Boolean;
+function ApplySyncAction(var AItem: TSyncItem; AAction: TSyncAction;
+  ATwoWay: Boolean = False): Boolean;
 /// <summary>One list row per item: action glyph, reason tag, relative path.
 /// AViewIdx maps rows back to AItems.</summary>
 function FormatSyncPlanLines(const AItems: TArray<TSyncItem>;
@@ -149,6 +158,10 @@ procedure CommitDirSyncSnapshotToFile(const AFile, ALeftRoot, ARightRoot: string
   const AConflictRels: TArray<string>);
 procedure CommitDirSyncSnapshot(const ALeftRoot, ARightRoot: string;
   const AConflictRels: TArray<string>);
+/// <summary>Drops the entries of files that are gone from both sides, so a
+/// file that later appears under the same name counts as new.</summary>
+procedure PruneDirSyncSnapshotFile(const AFile, ALeftRoot, ARightRoot: string);
+procedure PruneDirSyncSnapshot(const ALeftRoot, ARightRoot: string);
 
 implementation
 
@@ -295,6 +308,7 @@ begin
     if EffectiveSyncAction(AItems[I], ATwoWay, AMirror) <> saSkip then
       Continue;
     if (AItems[I].Reason in [srConflict, srContentDiff]) or
+       (ATwoWay and (AItems[I].Peer = peDeletedChanged)) or
        (AItems[I].Action = saSkip) then
     begin
       N := Length(Result);
@@ -320,23 +334,27 @@ begin
     Result := AItem.DstURI;
 end;
 
-function EffectiveSyncAction(const AItem: TSyncItem;
-  ATwoWay: Boolean; AMirror: Boolean): TSyncAction;
+function TwoWayAutoAction(const AItem: TSyncItem): TSyncAction;
 begin
-  if AItem.Action <> saAuto then
-    Exit(AItem.Action);
+  case AItem.Peer of
+    peDeleted: Exit(saDelete);
+    peDeletedChanged: Exit(saSkip);
+  end;
   case AItem.Reason of
-    srMissing, srNewer:
+    srMissing, srNewer: Result := saCopyRight;
+    srMissingOnSrc, srNewerOnDst: Result := saCopyLeft;
+  else
+    Result := saSkip;
+  end;
+end;
+
+function OneWayAutoAction(AReason: TSyncReason; AMirror: Boolean): TSyncAction;
+begin
+  case AReason of
+    srMissing, srNewer, srContentDiff:
       Result := saCopyRight;
-    srContentDiff:
-      if ATwoWay then
-        Result := saSkip
-      else
-        Result := saCopyRight;
-    srMissingOnSrc, srNewerOnDst:
-      if ATwoWay then
-        Result := saCopyLeft
-      else if AMirror and (AItem.Reason = srMissingOnSrc) then
+    srMissingOnSrc:
+      if AMirror then
         Result := saDelete
       else
         Result := saSkip;
@@ -345,21 +363,39 @@ begin
   end;
 end;
 
+function EffectiveSyncAction(const AItem: TSyncItem;
+  ATwoWay: Boolean; AMirror: Boolean): TSyncAction;
+begin
+  if AItem.Action = saAuto then
+  begin
+    if ATwoWay then
+      Exit(TwoWayAutoAction(AItem));
+    Exit(OneWayAutoAction(AItem.Reason, AMirror));
+  end;
+  // A deletion chosen in two-way mode may not apply to one-way.
+  if (AItem.Action = saDelete) and
+     not SyncActionAllowed(AItem, saDelete, ATwoWay) then
+    Exit(saSkip);
+  Result := AItem.Action;
+end;
+
 function SyncActionAllowed(const AItem: TSyncItem;
-  AAction: TSyncAction): Boolean;
+  AAction: TSyncAction; ATwoWay: Boolean): Boolean;
 begin
   case AAction of
     saCopyRight: Result := AItem.Reason <> srMissingOnSrc;
     saCopyLeft: Result := AItem.Reason <> srMissing;
-    saDelete: Result := AItem.Reason = srMissingOnSrc;
+    saDelete: Result := (AItem.Reason = srMissingOnSrc) or
+      (ATwoWay and (AItem.Reason = srMissing));
   else
     Result := True;
   end;
 end;
 
-function ApplySyncAction(var AItem: TSyncItem; AAction: TSyncAction): Boolean;
+function ApplySyncAction(var AItem: TSyncItem; AAction: TSyncAction;
+  ATwoWay: Boolean): Boolean;
 begin
-  Result := SyncActionAllowed(AItem, AAction);
+  Result := SyncActionAllowed(AItem, AAction, ATwoWay);
   if Result then
     AItem.Action := AAction;
 end;
@@ -429,6 +465,7 @@ begin
   Result.DstURI := PathToFileUri(ADstPath);
   Result.Reason := AReason;
   Result.Action := saAuto;
+  Result.Peer := peNone;
 end;
 
 procedure AppendSyncItem(var AItems: TArray<TSyncItem>; const AItem: TSyncItem);
@@ -713,70 +750,115 @@ begin
     end);
 end;
 
-// One key's worth of CompareDirsTwoWay's decision tree (missing on one side /
-// snapshot-driven newer-or-conflict / mtime fallback when there's no snapshot).
-procedure ClassifyTwoWaySyncPair(const ARel, ALeftPath, ARightPath: string;
-  ALeftExists, ARightExists, AHasSnap: Boolean; const ASnap: TSyncSnapshotEntry;
-  AByContent: Boolean; var ACopies, AConflicts: TArray<TSyncItem>;
-  const AProgress: ISyncProgress = nil);
-var
-  LeftChanged, RightChanged: Boolean;
-
-  procedure MaybeContentDiff;
-  begin
-    if AByContent and ALeftExists and ARightExists and
-       not FilesContentEqual(ALeftPath, ARightPath, AProgress) then
-      AppendSyncItem(ACopies, MakeSyncItem(ARel, ALeftPath, ARightPath, srContentDiff));
-  end;
-
+// A file present on one side only. ASyncedTicks is its write time at the last
+// sync that saw it on both sides, or 0 when no deletion may be inferred. It
+// counts as deleted on the other side only if it is not on disk there: a filter
+// or a skipped link can hide a file that still exists.
+function MakeOneSidedSyncItem(const ARel, AHave, AMissing: string;
+  AReason: TSyncReason; ASyncedTicks: Int64): TSyncItem;
 begin
-  if ALeftExists and not ARightExists then
-  begin
-    AppendSyncItem(ACopies, MakeSyncItem(ARel, ALeftPath, ARightPath, srMissing));
+  Result := MakeSyncItem(ARel, AHave, AMissing, AReason);
+  if (ASyncedTicks = 0) or TFile.Exists(WinApiPath(AMissing)) then
     Exit;
-  end;
-  if ARightExists and not ALeftExists then
-  begin
-    AppendSyncItem(ACopies, MakeSyncItem(ARel, ARightPath, ALeftPath, srMissingOnSrc));
-    Exit;
-  end;
-  if not (ALeftExists and ARightExists) then
-    Exit;
+  if FileUtcTicks(AHave) = ASyncedTicks then
+    Result.Peer := peDeleted
+  else
+    Result.Peer := peDeletedChanged;
+end;
 
-  if AHasSnap then
-  begin
-    LeftChanged := FileUtcTicks(ALeftPath) <> ASnap.LeftUtcTicks;
-    RightChanged := FileUtcTicks(ARightPath) <> ASnap.RightUtcTicks;
-    if LeftChanged and RightChanged then
-    begin
-      if FileUtcTicks(ALeftPath) = FileUtcTicks(ARightPath) then
-      begin
-        MaybeContentDiff;
-        Exit;
-      end;
-      AppendSyncItem(AConflicts, MakeSyncItem(ARel, ALeftPath, ARightPath, srConflict));
-      Exit;
-    end;
-    if LeftChanged then
-    begin
-      AppendSyncItem(ACopies, MakeSyncItem(ARel, ALeftPath, ARightPath, srNewer));
-      Exit;
-    end;
-    if RightChanged then
-    begin
-      AppendSyncItem(ACopies, MakeSyncItem(ARel, ARightPath, ALeftPath, srNewerOnDst));
-      Exit;
-    end;
-    MaybeContentDiff;
-    Exit;
-  end;
+type
+  // How two existing copies of one file relate.
+  TPairVerdict = (pvSame, pvLeftNewer, pvRightNewer, pvConflict);
 
+function SnapshotVerdict(const ALeftPath, ARightPath: string;
+  const ASnap: TSyncSnapshotEntry): TPairVerdict;
+var
+  LeftTicks, RightTicks: Int64;
+  LeftChanged, RightChanged: Boolean;
+begin
+  LeftTicks := FileUtcTicks(ALeftPath);
+  RightTicks := FileUtcTicks(ARightPath);
+  LeftChanged := LeftTicks <> ASnap.LeftUtcTicks;
+  RightChanged := RightTicks <> ASnap.RightUtcTicks;
+  if LeftChanged and RightChanged and (LeftTicks <> RightTicks) then
+    Result := pvConflict
+  else if LeftChanged and not RightChanged then
+    Result := pvLeftNewer
+  else if RightChanged and not LeftChanged then
+    Result := pvRightNewer
+  else
+    Result := pvSame;
+end;
+
+function TimeVerdict(const ALeftPath, ARightPath: string): TPairVerdict;
+begin
   case CompareFileTimes(TFile.GetLastWriteTimeUtc(ALeftPath),
     TFile.GetLastWriteTimeUtc(ARightPath)) of
-    1: AppendSyncItem(ACopies, MakeSyncItem(ARel, ALeftPath, ARightPath, srNewer));
-    -1: AppendSyncItem(ACopies, MakeSyncItem(ARel, ARightPath, ALeftPath, srNewerOnDst));
+    1: Result := pvLeftNewer;
+    -1: Result := pvRightNewer;
   else
-    MaybeContentDiff;
+    Result := pvSame;
+  end;
+end;
+
+// The surviving side's write time if its absence on the other side may mean a
+// deletion, else 0. A side where nothing was found, such as an unmounted
+// folder, must not read as a mass deletion.
+function SyncedSideTicks(AHasSnap: Boolean; const ASnap: TSyncSnapshotEntry;
+  ASideTicks: Int64; AOtherEmpty: Boolean): Int64;
+begin
+  if AHasSnap and not AOtherEmpty and (ASnap.LeftUtcTicks <> 0) and
+     (ASnap.RightUtcTicks <> 0) then
+    Result := ASideTicks
+  else
+    Result := 0;
+end;
+
+// One key of CompareDirsTwoWay.
+procedure ClassifyTwoWaySyncPair(const ARel, ALeftPath, ARightPath: string;
+  ALeftExists, ARightExists, AHasSnap: Boolean; const ASnap: TSyncSnapshotEntry;
+  AByContent, ALeftEmpty, ARightEmpty: Boolean;
+  var ACopies, AConflicts: TArray<TSyncItem>;
+  const AProgress: ISyncProgress = nil);
+var
+  Item: TSyncItem;
+  Verdict: TPairVerdict;
+begin
+  if not (ALeftExists and ARightExists) then
+  begin
+    if ALeftExists then
+      Item := MakeOneSidedSyncItem(ARel, ALeftPath, ARightPath, srMissing,
+        SyncedSideTicks(AHasSnap, ASnap, ASnap.LeftUtcTicks, ARightEmpty))
+    else if ARightExists then
+      Item := MakeOneSidedSyncItem(ARel, ARightPath, ALeftPath, srMissingOnSrc,
+        SyncedSideTicks(AHasSnap, ASnap, ASnap.RightUtcTicks, ALeftEmpty))
+    else
+      Exit;
+    if Item.Peer = peDeletedChanged then
+      AppendSyncItem(AConflicts, Item)
+    else
+      AppendSyncItem(ACopies, Item);
+    Exit;
+  end;
+
+  if AHasSnap then
+    Verdict := SnapshotVerdict(ALeftPath, ARightPath, ASnap)
+  else
+    Verdict := TimeVerdict(ALeftPath, ARightPath);
+  case Verdict of
+    pvLeftNewer:
+      AppendSyncItem(ACopies, MakeSyncItem(ARel, ALeftPath, ARightPath, srNewer));
+    pvRightNewer:
+      AppendSyncItem(ACopies,
+        MakeSyncItem(ARel, ARightPath, ALeftPath, srNewerOnDst));
+    pvConflict:
+      AppendSyncItem(AConflicts,
+        MakeSyncItem(ARel, ALeftPath, ARightPath, srConflict));
+  else
+    if AByContent and
+       not FilesContentEqual(ALeftPath, ARightPath, AProgress) then
+      AppendSyncItem(ACopies,
+        MakeSyncItem(ARel, ALeftPath, ARightPath, srContentDiff));
   end;
 end;
 
@@ -843,7 +925,8 @@ begin
         RightPath := SafeCombinePath(Right, Rel);
 
       ClassifyTwoWaySyncPair(Rel, LeftPath, RightPath, LeftExists, RightExists,
-        HasSnap, Snap, AByContent, Copies, Conflicts, AProgress);
+        HasSnap, Snap, AByContent, LeftMap.Count = 0, RightMap.Count = 0,
+        Copies, Conflicts, AProgress);
     end;
 
     if (AProgress <> nil) and AProgress.Cancelled then
@@ -971,6 +1054,23 @@ begin
   end;
 end;
 
+// In two-way mode a deletion names the side the file is gone from.
+function PlanTag(const AItem: TSyncItem; ATwoWay: Boolean): string;
+var
+  Side: string;
+begin
+  if not ATwoWay or (AItem.Peer = peNone) then
+    Exit(PreviewTag(AItem.Reason));
+  if AItem.Reason = srMissing then
+    Side := 'R'
+  else
+    Side := 'L';
+  if AItem.Peer = peDeleted then
+    Result := '[-' + Side + ']'
+  else
+    Result := '[!' + Side + ']';
+end;
+
 function FormatSyncPlanLines(const AItems: TArray<TSyncItem>;
   ATwoWay, AOnlySkipped: Boolean; out AViewIdx: TArray<Integer>;
   AMirror: Boolean): TArray<string>;
@@ -993,8 +1093,8 @@ begin
     N := Length(Result);
     SetLength(Result, N + 1);
     SetLength(AViewIdx, N + 1);
-    Result[N] := SyncActionGlyph(Action) + Mark + PreviewTag(AItems[I].Reason) +
-      ' ' + AItems[I].RelPath;
+    Result[N] := SyncActionGlyph(Action) + Mark +
+      PlanTag(AItems[I], ATwoWay) + ' ' + AItems[I].RelPath;
     AViewIdx[N] := I;
   end;
 end;
@@ -1099,16 +1199,13 @@ var
   I, N: Integer;
 begin
   SetLength(Result, 0);
-  if ATwoWay then
-    Exit;
   for I := 0 to High(AItems) do
     if (EffectiveSyncAction(AItems[I], ATwoWay, AMirror) = saDelete) and
-       SyncActionAllowed(AItems[I], saDelete) then
+       SyncActionAllowed(AItems[I], saDelete, ATwoWay) then
     begin
       N := Length(Result);
       SetLength(Result, N + 1);
-      // The file that exists is the item's source: the item is listed as a
-      // copy from the target back to the source folder.
+      // In a one-sided item the file that exists is the source.
       Result[N] := AItems[I].SrcURI;
     end;
 end;
@@ -1340,6 +1437,26 @@ begin
   SaveDirSyncSnapshotToFile(DirSyncStateFilePath, ALeftRoot, ARightRoot, AEntries);
 end;
 
+function FileTicksIn(AMap: TDictionary<string, string>;
+  const ARel: string): Int64;
+var
+  Path: string;
+begin
+  if AMap.TryGetValue(ARel, Path) then
+    Result := FileUtcTicks(Path)
+  else
+    Result := 0;
+end;
+
+// A conflict stays as it was, and a deletion not carried out yet keeps the
+// entry that tells it apart from a new file.
+function KeepsPreviousEntry(const APrev: TSyncSnapshotEntry;
+  AIsConflict, AOneSided: Boolean): Boolean;
+begin
+  Result := AIsConflict or
+    (AOneSided and (APrev.LeftUtcTicks <> 0) and (APrev.RightUtcTicks <> 0));
+end;
+
 procedure CommitDirSyncSnapshotToFile(const AFile, ALeftRoot, ARightRoot: string;
   const AConflictRels: TArray<string>);
 var
@@ -1351,7 +1468,6 @@ var
   Entries: TArray<TSyncSnapshotEntry>;
   Ent, Prev: TSyncSnapshotEntry;
   I: Integer;
-  LeftPath, RightPath: string;
 begin
   Left := ExcludeTrailingPathDelimiter(ALeftRoot);
   Right := ExcludeTrailingPathDelimiter(ARightRoot);
@@ -1381,18 +1497,14 @@ begin
     begin
       Rel := Keys[I];
       Ent.RelPath := Rel;
-      if RelInList(Rel, AConflictRels) and OldMap.TryGetValue(Rel, Prev) then
+      if OldMap.TryGetValue(Rel, Prev) and
+         KeepsPreviousEntry(Prev, RelInList(Rel, AConflictRels),
+           LeftMap.ContainsKey(Rel) <> RightMap.ContainsKey(Rel)) then
         Ent := Prev
       else
       begin
-        if LeftMap.TryGetValue(Rel, LeftPath) then
-          Ent.LeftUtcTicks := FileUtcTicks(LeftPath)
-        else
-          Ent.LeftUtcTicks := 0;
-        if RightMap.TryGetValue(Rel, RightPath) then
-          Ent.RightUtcTicks := FileUtcTicks(RightPath)
-        else
-          Ent.RightUtcTicks := 0;
+        Ent.LeftUtcTicks := FileTicksIn(LeftMap, Rel);
+        Ent.RightUtcTicks := FileTicksIn(RightMap, Rel);
       end;
       Entries[I] := Ent;
     end;
@@ -1403,6 +1515,34 @@ begin
     RightMap.Free;
     LeftMap.Free;
   end;
+end;
+
+procedure PruneDirSyncSnapshotFile(const AFile, ALeftRoot, ARightRoot: string);
+var
+  Entries: TArray<TSyncSnapshotEntry>;
+  I, N: Integer;
+begin
+  // An absent root says nothing about the files under it.
+  if not TDirectory.Exists(ALeftRoot) or not TDirectory.Exists(ARightRoot) then
+    Exit;
+  Entries := LoadDirSyncSnapshotFromFile(AFile, ALeftRoot, ARightRoot);
+  N := 0;
+  for I := 0 to High(Entries) do
+    if TFile.Exists(WinApiPath(SafeCombinePath(ALeftRoot, Entries[I].RelPath))) or
+       TFile.Exists(WinApiPath(SafeCombinePath(ARightRoot, Entries[I].RelPath))) then
+    begin
+      Entries[N] := Entries[I];
+      Inc(N);
+    end;
+  if N = Length(Entries) then
+    Exit;
+  SetLength(Entries, N);
+  SaveDirSyncSnapshotToFile(AFile, ALeftRoot, ARightRoot, Entries);
+end;
+
+procedure PruneDirSyncSnapshot(const ALeftRoot, ARightRoot: string);
+begin
+  PruneDirSyncSnapshotFile(DirSyncStateFilePath, ALeftRoot, ARightRoot);
 end;
 
 procedure CommitDirSyncSnapshot(const ALeftRoot, ARightRoot: string;

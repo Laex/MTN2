@@ -30,6 +30,13 @@ type
     [Test] procedure TestCompareCountsFilesAndFolders;
     [Test] procedure TestCancelledCompareReturnsNothing;
     [Test] procedure TestProgressTextFollowsStage;
+    [Test] procedure TestDeletedSideProposesDeletion;
+    [Test] procedure TestChangedAfterDeletionStaysUnresolved;
+    [Test] procedure TestEmptySideProposesNoDeletion;
+    [Test] procedure TestFilteredFileIsNotTakenForDeleted;
+    [Test] procedure TestCommitKeepsPendingDeletion;
+    [Test] procedure TestPruneForgetsFilesGoneFromBothSides;
+    [Test] procedure TestManualDeleteFollowsSyncMode;
   end;
 
 implementation
@@ -40,6 +47,7 @@ uses
   System.IOUtils,
   uVfsTypes,
   uConfigLocation,
+  uSyncIgnore,
   uDualPanelSync;
 
 function FindReason(const AItems: TArray<TSyncItem>; const ARel: string;
@@ -61,6 +69,204 @@ begin
   ForceDirectories(TPath.GetDirectoryName(APath));
   TFile.WriteAllText(APath, AText, TEncoding.UTF8);
   TFile.SetLastWriteTimeUtc(APath, AUtc);
+end;
+
+type
+  // Leaves one file out of one of the two scans, as a skipped link does.
+  TSkipOnceFilter = class(TInterfacedObject, ISyncFilter)
+  private
+    FRel: string;
+    FSkipped: Boolean;
+  public
+    constructor Create(const ARel: string);
+    function Skip(const ARel: string; AIsDir, AIsLink: Boolean): Boolean;
+    procedure EnterDir(const ARel, ADir: string);
+  end;
+
+constructor TSkipOnceFilter.Create(const ARel: string);
+begin
+  inherited Create;
+  FRel := ARel;
+end;
+
+function TSkipOnceFilter.Skip(const ARel: string; AIsDir, AIsLink: Boolean): Boolean;
+begin
+  Result := not FSkipped and SameText(ARel, FRel);
+  if Result then
+    FSkipped := True;
+end;
+
+procedure TSkipOnceFilter.EnterDir(const ARel, ADir: string);
+begin
+end;
+
+// Two folders holding the same a.txt, b.txt and keep.txt, recorded as synced.
+procedure MakeSyncedPair(const AName: string; out ALeft, ARight, AState: string);
+var
+  Root, N: string;
+  T0: TDateTime;
+begin
+  Root := TPath.Combine(TPath.GetTempPath, AName);
+  if TDirectory.Exists(Root) then
+    TDirectory.Delete(Root, True);
+  ALeft := TPath.Combine(Root, 'left');
+  ARight := TPath.Combine(Root, 'right');
+  AState := TPath.Combine(Root, 'state.json');
+  T0 := EncodeDateTime(2020, 1, 1, 12, 0, 0, 0);
+  for N in TArray<string>.Create('a.txt', 'b.txt', 'keep.txt') do
+  begin
+    WriteFileUtc(TPath.Combine(ALeft, N), N, T0);
+    WriteFileUtc(TPath.Combine(ARight, N), N, T0);
+  end;
+  CommitDirSyncSnapshotToFile(AState, ALeft, ARight, nil);
+end;
+
+function CompareSynced(const ALeft, ARight, AState: string;
+  const AFilter: ISyncFilter = nil): TArray<TSyncItem>;
+begin
+  Result := CompareDirsTwoWay(ALeft, ARight,
+    LoadDirSyncSnapshotFromFile(AState, ALeft, ARight), False, nil, AFilter);
+end;
+
+function ItemByRel(const AItems: TArray<TSyncItem>; const ARel: string): TSyncItem;
+var
+  I: Integer;
+begin
+  Result := Default(TSyncItem);
+  for I := 0 to High(AItems) do
+    if SameText(AItems[I].RelPath, ARel) then
+      Exit(AItems[I]);
+  Assert.Fail(ARel + ' is not listed');
+end;
+
+function SamePath(const AUri, APath: string): Boolean;
+begin
+  Result := SameText(ExpandFileName(FileUriToPath(AUri)), ExpandFileName(APath));
+end;
+
+procedure TestDeletedSideProposesDeletion;
+var
+  Left, Right, State: string;
+  Items: TArray<TSyncItem>;
+  A, B: TSyncItem;
+  Deletes, Sources, Dests: TArray<string>;
+begin
+  MakeSyncedPair('mtn2-sync-deleted', Left, Right, State);
+  TFile.Delete(TPath.Combine(Right, 'a.txt'));
+  TFile.Delete(TPath.Combine(Left, 'b.txt'));
+  Items := CompareSynced(Left, Right, State);
+  Assert.AreEqual(2, Integer(Length(Items)), 'the two deletions are the only differences');
+  A := ItemByRel(Items, 'a.txt');
+  B := ItemByRel(Items, 'b.txt');
+  Assert.IsTrue(A.Peer = peDeleted, 'a.txt was deleted on the right');
+  Assert.IsTrue(B.Peer = peDeleted, 'b.txt was deleted on the left');
+  Assert.IsTrue(EffectiveSyncAction(A, True) = saDelete, 'the left copy is removed');
+  Assert.IsTrue(EffectiveSyncAction(B, True) = saDelete, 'the right copy is removed');
+  Assert.IsTrue(EffectiveSyncAction(A, False) = saCopyRight,
+    'one-way restores the file on the target');
+  CollectDirSyncJobPairs(Items, Sources, Dests, True);
+  Assert.AreEqual(0, Integer(Length(Sources)), 'nothing is copied back');
+  Deletes := CollectDirSyncDeletePaths(Items, True, False);
+  Assert.AreEqual(2, Integer(Length(Deletes)), 'both surviving copies are collected');
+  Assert.IsTrue(SamePath(Deletes[0], TPath.Combine(Left, 'a.txt')), 'surviving left copy');
+  Assert.IsTrue(SamePath(Deletes[1], TPath.Combine(Right, 'b.txt')), 'surviving right copy');
+end;
+
+procedure TestChangedAfterDeletionStaysUnresolved;
+var
+  Left, Right, State: string;
+  Items: TArray<TSyncItem>;
+  A: TSyncItem;
+begin
+  MakeSyncedPair('mtn2-sync-delchanged', Left, Right, State);
+  TFile.Delete(TPath.Combine(Right, 'a.txt'));
+  WriteFileUtc(TPath.Combine(Left, 'a.txt'), 'edited',
+    EncodeDateTime(2021, 1, 1, 12, 0, 0, 0));
+  Items := CompareSynced(Left, Right, State);
+  A := ItemByRel(Items, 'a.txt');
+  Assert.IsTrue(A.Peer = peDeletedChanged, 'deleted on one side, edited on the other');
+  Assert.IsTrue(EffectiveSyncAction(A, True) = saSkip, 'waits for a manual choice');
+  Assert.AreEqual(1, Integer(Length(CollectDirSyncUnresolvedRels(Items, True))),
+    'it is reported as unresolved');
+end;
+
+procedure TestEmptySideProposesNoDeletion;
+var
+  Left, Right, State, N: string;
+  Items: TArray<TSyncItem>;
+  Sources, Dests: TArray<string>;
+begin
+  MakeSyncedPair('mtn2-sync-emptied', Left, Right, State);
+  for N in TArray<string>.Create('a.txt', 'b.txt', 'keep.txt') do
+    TFile.Delete(TPath.Combine(Right, N));
+  Items := CompareSynced(Left, Right, State);
+  Assert.AreEqual(0, Integer(Length(CollectDirSyncDeletePaths(Items, True, False))),
+    'an empty folder does not empty the other one');
+  CollectDirSyncJobPairs(Items, Sources, Dests, True);
+  Assert.AreEqual(3, Integer(Length(Sources)), 'the files are copied back');
+end;
+
+procedure TestFilteredFileIsNotTakenForDeleted;
+var
+  Left, Right, State: string;
+  Items: TArray<TSyncItem>;
+begin
+  MakeSyncedPair('mtn2-sync-filtered', Left, Right, State);
+  Items := CompareSynced(Left, Right, State, TSkipOnceFilter.Create('a.txt'));
+  Assert.IsTrue(ItemByRel(Items, 'a.txt').Peer = peNone,
+    'a file that is still on disk was not deleted');
+  Assert.AreEqual(0, Integer(Length(CollectDirSyncDeletePaths(Items, True, False))),
+    'nothing is removed');
+end;
+
+procedure TestCommitKeepsPendingDeletion;
+var
+  Left, Right, State: string;
+begin
+  MakeSyncedPair('mtn2-sync-pending', Left, Right, State);
+  TFile.Delete(TPath.Combine(Right, 'a.txt'));
+  // The removal was declined or has not run yet.
+  CommitDirSyncSnapshotToFile(State, Left, Right, nil);
+  Assert.IsTrue(ItemByRel(CompareSynced(Left, Right, State), 'a.txt').Peer = peDeleted,
+    'the deletion is still known');
+end;
+
+procedure TestPruneForgetsFilesGoneFromBothSides;
+var
+  Left, Right, State: string;
+begin
+  MakeSyncedPair('mtn2-sync-prune', Left, Right, State);
+  TFile.Delete(TPath.Combine(Left, 'a.txt'));
+  TFile.Delete(TPath.Combine(Right, 'a.txt'));
+  TFile.Delete(TPath.Combine(Right, 'b.txt'));
+  PruneDirSyncSnapshotFile(State, Left, Right);
+  Assert.AreEqual(2, Integer(Length(LoadDirSyncSnapshotFromFile(State, Left, Right))),
+    'only the file gone from both sides is forgotten');
+  WriteFileUtc(TPath.Combine(Left, 'a.txt'), 'a.txt',
+    EncodeDateTime(2020, 1, 1, 12, 0, 0, 0));
+  Assert.IsTrue(ItemByRel(CompareSynced(Left, Right, State), 'a.txt').Peer = peNone,
+    'a restored file counts as new');
+end;
+
+procedure TestManualDeleteFollowsSyncMode;
+var
+  Items: TArray<TSyncItem>;
+begin
+  SetLength(Items, 1);
+  Items[0].RelPath := 'a.txt';
+  Items[0].SrcURI := 'file:///C:/L/a.txt';
+  Items[0].DstURI := 'file:///C:/R/a.txt';
+  Items[0].Reason := srMissing;
+  Assert.IsFalse(ApplySyncAction(Items[0], saDelete),
+    'one-way never deletes from the source');
+  Assert.IsTrue(ApplySyncAction(Items[0], saDelete, True),
+    'two-way may delete the only copy by hand');
+  Assert.AreEqual(1, Integer(Length(CollectDirSyncDeletePaths(Items, True, False))),
+    'the chosen deletion is collected');
+  Assert.IsTrue(EffectiveSyncAction(Items[0], False) = saSkip,
+    'the choice does not carry over to one-way');
+  Assert.AreEqual(0, Integer(Length(CollectDirSyncDeletePaths(Items, False, True))),
+    'and nothing is deleted there');
 end;
 
 procedure TestMirrorDeletesOnlyTargetExtras;
@@ -695,6 +901,41 @@ end;
 procedure TTestDualPanelSync.TestFitSyncPathKeepsBothEnds;
 begin
   TestDualPanelSync.TestFitSyncPathKeepsBothEnds;
+end;
+
+procedure TTestDualPanelSync.TestDeletedSideProposesDeletion;
+begin
+  TestDualPanelSync.TestDeletedSideProposesDeletion;
+end;
+
+procedure TTestDualPanelSync.TestChangedAfterDeletionStaysUnresolved;
+begin
+  TestDualPanelSync.TestChangedAfterDeletionStaysUnresolved;
+end;
+
+procedure TTestDualPanelSync.TestEmptySideProposesNoDeletion;
+begin
+  TestDualPanelSync.TestEmptySideProposesNoDeletion;
+end;
+
+procedure TTestDualPanelSync.TestFilteredFileIsNotTakenForDeleted;
+begin
+  TestDualPanelSync.TestFilteredFileIsNotTakenForDeleted;
+end;
+
+procedure TTestDualPanelSync.TestCommitKeepsPendingDeletion;
+begin
+  TestDualPanelSync.TestCommitKeepsPendingDeletion;
+end;
+
+procedure TTestDualPanelSync.TestPruneForgetsFilesGoneFromBothSides;
+begin
+  TestDualPanelSync.TestPruneForgetsFilesGoneFromBothSides;
+end;
+
+procedure TTestDualPanelSync.TestManualDeleteFollowsSyncMode;
+begin
+  TestDualPanelSync.TestManualDeleteFollowsSyncMode;
 end;
 
 initialization

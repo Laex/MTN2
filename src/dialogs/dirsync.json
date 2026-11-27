@@ -233,7 +233,7 @@
     {
       "type": "separator",
       "col": 0,
-      "row": 22,
+      "row": 21,
       "width": 108,
       "height": 1
     },
@@ -242,13 +242,22 @@
       "id": "hint_keys",
       "text": "",
       "col": 1,
-      "row": 23,
+      "row": 22,
       "width": 106,
       "height": 1
     },
     {
       "type": "label",
       "id": "hint_legend",
+      "text": "",
+      "col": 1,
+      "row": 23,
+      "width": 106,
+      "height": 1
+    },
+    {
+      "type": "label",
+      "id": "hint_deleted",
       "text": "",
       "col": 1,
       "row": 24,

@@ -40,7 +40,7 @@ var
 begin
   Result := 0;
   for I := 0 to ABuf.LineCount - 1 do
-    if ShellCwdFromPrompt('cmd', ABuf.GetLine(I), Path) then
+    if ShellCwdFromPrompt('cmd', ABuf.GetLogicalLine(I), Path) then
       Inc(Result);
 end;
 

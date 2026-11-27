@@ -265,6 +265,7 @@
       "show_extras": "&Extras to panel",
       "hint_keys": "On a row: Right / Left / Space / Del / X = copy ->, copy <-, skip, reset to automatic, delete (XX).",
       "hint_legend": "[+] new  [>] newer  [<+] only on target  [<] newer on target  [!] conflict  [!=] content differs  * manual",
+      "hint_deleted": "Two-way: [-L] [-R] deleted on the left / right (XX removes the other copy)  [!L] [!R] and changed since",
       "ok": "Synchronize",
       "cancel": "Cancel"
     },
@@ -2342,7 +2343,6 @@
     "Columns": "Columns",
     "Color": "Color",
     "Save list": "Save list",
-    "Code page": "Code page",
     "Console": "Console",
     "Drive": "Drive",
     "Tree": "Tree",
@@ -2356,7 +2356,6 @@
     "Cancel": "Cancel",
     "Close": "Close",
     "Create": "Create",
-    "Apply": "Apply",
     "Set": "Set",
     "Save": "Save",
     "Sync": "Sync",

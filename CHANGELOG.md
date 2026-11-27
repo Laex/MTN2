@@ -6,6 +6,24 @@ This file describes what changes for the user from version to version: new featu
 
 ## Unreleased
 
+## Dev v0.5.13.4 – 2026-11-27
+
+### New
+
+- Plugins menu, **Git: add to the index**, **remove from the index**, **commit...** and **switch branch...** (Git status plugin). The first two work on the marked files or the one under the cursor; the commit dialog lists what is in the index. Pull, push and stash stay in the console.
+- Plugins menu, **Mark duplicate copies...** (Temporary panel plugin): after a duplicate search, marks the spare copies so that F8 deletes them. In every group one copy stays unmarked - the newest, the oldest or the one with the shortest path - or all copies in a chosen folder stay. Files changed since the search are not marked.
+- Android devices open as panel folders through `adb` (the `mtn.adb` plugin, **Android** in the Change Drive list): the list of connected devices with their state and model, and the files of a device with copying to and from it, viewing, editing, renaming, new folders and deleting. When `adb` is not in PATH or the device is not authorized, the panel says so.
+
+### Fixed
+
+- In the dialogs **Panelize command output** and **Line filter** the shadow of the buttons no longer covers the bottom border of the dialog.
+- The status line under a plugin dialog with a list, and under other list dialogs without a line of their own, no longer says **Code page** and **Enter=Apply**; it reads **Dialog** and **Enter=OK**.
+- In a dialog, the colored status segments of plugins no longer cover the hints of the status line, **Esc=Cancel** among them.
+- The help of the Temporary panel said that F8 only removes files from the list. F7 does that; F8 deletes the files themselves.
+- Two-way folder synchronization no longer copies a deleted file back. A file that the previous synchronization saw on both sides and that is now missing on one is marked for deletion on the other (`XX`, `[-L]` / `[-R]`) and removed after the copying and a confirmation; a copy changed since waits for a manual choice. The `X` key can now delete a one-sided file in two-way mode: before, the row showed `XX` but nothing was removed.
+- A `cd` command, or a full path typed into the command line, that names nothing on disk no longer moves the panel to a "Path not found" folder. The panel stays where it is and the line goes to the console, which reports the error itself; a compound line such as `cd folder && git status` runs there too.
+- A console line that wraps onto the next row is read whole: a long typed command is no longer cut short in the history or when the arrows bring the draft back, is not glued to a command run from a menu, and a long path in a cmd or PowerShell prompt no longer hides the current folder and the end of a command.
+
 ## Dev v0.5.13.3 – 2026-11-26
 
 ### New

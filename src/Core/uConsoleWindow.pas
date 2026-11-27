@@ -369,7 +369,7 @@ begin
   Last := FHistory.LineCount - 1;
   // The prompt is the last prompt-looking line; blank grid rows may follow it.
   for I := Last downto Max(0, Last - cScanLines) do
-    if ShellCwdFromPrompt(ProfileId, FHistory.GetLine(I), Result) then
+    if ShellCwdFromPrompt(ProfileId, FHistory.GetLogicalLine(I), Result) then
       Exit;
   // No recognizable prompt (a Linux shell): ask the system where the shell is.
   if Assigned(FPty) then
@@ -395,7 +395,7 @@ begin
   Result := 0;
   Last := FHistory.LineCount - 1;
   for I := Max(0, Last - cScanLines) to Last do
-    if ShellCwdFromPrompt(ProfileId, FHistory.GetLine(I), Path) then
+    if ShellCwdFromPrompt(ProfileId, FHistory.GetLogicalLine(I), Path) then
       Inc(Result);
 end;
 

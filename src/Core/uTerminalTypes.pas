@@ -10,7 +10,10 @@ type
     ccaInsertCaret, ccaStrike,
     // A wide (two-cell) character sits in the first cell; the second cell is
     // its filler (a blank that the renderer skips).
-    ccaWide, ccaWideTail);
+    ccaWide, ccaWideTail,
+    // Set on the last cell of a row whose text goes on in the next row
+    // (auto-wrap). Overwriting or erasing that cell drops it.
+    ccaWrapped);
   TCharCellAttributes = set of TCharCellAttribute;
 
   /// <summary>Sides of a cell that carry a thin line along the cell's outer edge.</summary>

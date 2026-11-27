@@ -90,7 +90,7 @@ A short overview of the features; details are in the help (F1), the other docume
 - **File compare and merge** – `Ctrl+Alt+C`: a full-screen window, lines aligned by similarity, jumps between differences, copying differences both ways, undo and save.
 - **Group comparison** – with several files marked, files with the same names are compared in pairs, and a summary list leads to the differences.
 - **Folder comparison** – `Ctrl+Shift+C` by time, size or contents; contents are compared in the background.
-- **Folder synchronization** – `Ctrl+Alt+S`: an action per file (`->`, `<-`, `--`), conflict resolution, counts of copies and skips; the Mirror mode also deletes files that exist only on the target, after a dry run and a confirmation. A dialog before the comparison picks the mode and leaves out junctions, `.gitignore`-style files, a robocopy `exclude.rcj` and Obsidian ignore filters, adds extra patterns to skip and can limit the run to files matching masks (`*.md;*.txt`, groups such as `@Video`); the comparison shows its progress and can run in the background; modes and options can be saved as named presets.
+- **Folder synchronization** – `Ctrl+Alt+S`: an action per file (`->`, `<-`, `--`), conflict resolution, counts of copies and skips; two-way mode carries deletions over, after a confirmation; the Mirror mode also deletes files that exist only on the target, after a dry run and a confirmation. A dialog before the comparison picks the mode and leaves out junctions, `.gitignore`-style files, a robocopy `exclude.rcj` and Obsidian ignore filters, adds extra patterns to skip and can limit the run to files matching masks (`*.md;*.txt`, groups such as `@Video`); the comparison shows its progress and can run in the background; modes and options can be saved as named presets.
 
 ## Archives
 
@@ -113,6 +113,7 @@ A short overview of the features; details are in the help (F1), the other docume
 - **Everything** – Everything search results (Windows) open as a panel of real files.
 - **JSON and YAML tree** – `Enter` on `.json`, `.yaml`, `.yml` opens the file as a folder tree with values; `F5` copies a branch as text.
 - **Docker and Kubernetes** – containers and pods as folders with `info.txt`, `logs.txt` and their file system; start, stop and restart from the Plugins menu.
+- **Android devices** – through `adb`: the connected devices and their files as panel folders, with copying, viewing, editing, renaming and deleting.
 - **Registry, processes and services** – the Windows registry with value editing, processes with details and termination, services with start and stop control.
 - **Recycle Bin and system folders** – as panel folders, with restore and ".." navigation.
 
@@ -217,9 +218,9 @@ A short overview of the features; details are in the help (F1), the other docume
 - **Interface extensions** – own commands and keys, drive list entries, status line text and chips, JSON dialogs, image tabs.
 - **Intercepting and replacing built-ins** – command hooks (copy, view, save, etc.), opening files by type on `F3`/`F4`, replacing scheme and archive handlers with the user's permission.
 - **File and document access** – reading files through any scheme with the `vfs.read` permission, working with document text and panel rows.
-- **Git** – branch and change status in the status line, names colored by state, `Ctrl+Shift+G` for a file diff, file blame.
+- **Git** – branch and change status in the status line, names colored by state, `Ctrl+Shift+G` for a file diff, file blame; from the Plugins menu, adding to and removing from the index, commit and branch switch.
 - **File metadata** – image dimensions and camera, MP3 tags, program version and company in the status line and columns.
-- **Temporary panel** – a panel from command output (`rg -l`, `git ls-files`), duplicate file search by SHA-256.
+- **Temporary panel** – a panel from command output (`rg -l`, `git ls-files`), duplicate file search by SHA-256 with marking of the spare copies by rule (newest, oldest, shortest path, a folder).
 - **Line filter** – `Ctrl+Alt+J` in the viewer or editor opens the lines matching a text or regular expression.
 - **Plugin services** – plugins offer and call each other's JSON-RPC services (file search, text extraction and others), including from WebAssembly plugins; calling another plugin's service needs the `services.call` permission. The Find dialog (`Alt+F7`) lets you choose the provider of each search stage among the available ones.
 - **Service bridge** – the Service bridge plugin connects external programs (any language, JSON messages over stdin/stdout) or HTTP addresses as providers of JSON-RPC services; a server is started or contacted only after its full command line or address is approved in the plugin settings.
@@ -244,7 +245,7 @@ A short overview of the features; details are in the help (F1), the other docume
 - **Permissions and file properties** – mode, owner, group, `chattr` flags, creation time; properties through the system file manager.
 - **Desktop integration** – "Open with" on `Shift+F10`, a menu entry and icon, dropping files into the window.
 - **Retry as administrator** – through `sudo` with the password entered in a dialog.
-- **Plugins on Linux** – archives through an installed 7-Zip, processes and systemd services, Docker, PDF, documents, Lua, Git.
+- **Plugins on Linux** – archives through an installed 7-Zip, processes and systemd services, Docker, Android devices, PDF, documents, Lua, Git.
 - **Terminal progress** – background job progress on the tab or title of supporting terminals.
 - **Clean drive list** – without system mounts, with the mount point of every volume.
 

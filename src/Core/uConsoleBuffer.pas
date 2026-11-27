@@ -83,6 +83,9 @@ type
     function IsBlankLine(AIndex: Integer): Boolean;
     function LineCountLocked: Integer;
     function GetLineLocked(AIndex: Integer): string;
+    function IsRowWrappedLocked(AIndex: Integer): Boolean;
+    function LogicalStartLocked(AIndex: Integer): Integer;
+    function LogicalLineLocked(AIndex: Integer): string;
     function GetRowLocked(AIndex: Integer): TConsoleRow;
     /// <summary>One-time grid-mode activation, latched by FGridEnabled. See
     /// AppendOutputEx's "(not FGridEnabled) and (ACols>0) and (ARows>0)" gate.</summary>
@@ -166,6 +169,9 @@ type
     function GetRow(AIndex: Integer): TConsoleRow;
     /// <summary>Text typed after the shell prompt on a line (for line-buffered cmd input).</summary>
     function GetInputAfterPrompt(AIndex: Integer = -1): string;
+    /// <summary>The whole line that starts at row AIndex, rows it wrapped
+    /// onto included; '' for such a continuation row.</summary>
+    function GetLogicalLine(AIndex: Integer): string;
     /// <summary>After Enter: close the input line so PTY output starts below.</summary>
     procedure CommitInputLine;
     /// <summary>Write cursor on the active input line. Independent of FollowTail:
@@ -437,6 +443,76 @@ begin
   end
   else
     Result := nil;
+end;
+
+// True when the text of row AIndex goes on in the row after it.
+function TConsoleBuffer.IsRowWrappedLocked(AIndex: Integer): Boolean;
+var
+  Row: TConsoleRow;
+  GridRow: Integer;
+begin
+  Result := False;
+  if (AIndex < 0) or (AIndex >= LineCountLocked - 1) then
+    Exit;
+  if AIndex < FPlainLines.Count then
+  begin
+    Row := FCellLines[AIndex];
+    Result := (Length(Row) > 0) and (ccaWrapped in Row[High(Row)].Attributes);
+  end
+  else
+  begin
+    GridRow := AIndex - FPlainLines.Count;
+    Result := ccaWrapped in
+      FActiveGrid.Grid[GridRow][FActiveGrid.Cols - 1].Attributes;
+  end;
+end;
+
+// The first row of the line that row AIndex belongs to.
+function TConsoleBuffer.LogicalStartLocked(AIndex: Integer): Integer;
+begin
+  Result := AIndex;
+  while IsRowWrappedLocked(Result - 1) do
+    Dec(Result);
+end;
+
+// The line starting at row AIndex with its wrapped rows joined; '' for a
+// continuation row, so a scan over all rows sees every line once.
+function TConsoleBuffer.LogicalLineLocked(AIndex: Integer): string;
+var
+  Row, Next: TConsoleRow;
+  I, Len: Integer;
+  Part: string;
+begin
+  if IsRowWrappedLocked(AIndex - 1) then
+    Exit('');
+  Result := '';
+  while IsRowWrappedLocked(AIndex) do
+  begin
+    // Every cell counts here: blanks at the end of a wrapped row are text.
+    Row := GetRowLocked(AIndex);
+    Next := GetRowLocked(AIndex + 1);
+    Len := Length(Row);
+    // Except the one left empty because a wide character did not fit.
+    if (Row[Len - 1].CharValue = ' ') and (Length(Next) > 0) and
+       (ccaWide in Next[0].Attributes) then
+      Dec(Len);
+    SetLength(Part, Len);
+    for I := 0 to Len - 1 do
+      Part[I + 1] := Row[I].CharValue;
+    Result := Result + Part;
+    Inc(AIndex);
+  end;
+  Result := TrimRight(Result + GetLineLocked(AIndex));
+end;
+
+function TConsoleBuffer.GetLogicalLine(AIndex: Integer): string;
+begin
+  FLock.Enter;
+  try
+    Result := LogicalLineLocked(AIndex);
+  finally
+    FLock.Leave;
+  end;
 end;
 
 function TConsoleBuffer.IsBlankLine(AIndex: Integer): Boolean;
@@ -1443,7 +1519,7 @@ end;
 
 function TConsoleBuffer.GetInputAfterPrompt(AIndex: Integer): string;
 var
-  I, PromptEnd, LineIdx, Total, ScanFloor: Integer;
+  I, PromptEnd, LineIdx, PrevIdx, Total, ScanFloor: Integer;
   Line, Prev: string;
 begin
   Result := '';
@@ -1452,11 +1528,11 @@ begin
     Total := LineCountLocked;
     // With a screen grid the input line is the cursor row; blank rows may
     // follow it. Output further up must not be read as typed input, so the
-    // upward scan covers only the cursor row and the rows a wrapped command
-    // can occupy above it.
+    // upward scan covers only the line holding the cursor and the one above it.
     ScanFloor := 0;
     if FGridEnabled then
-      ScanFloor := FPlainLines.Count + FActiveGrid.CursorRow - cInputScanRows;
+      ScanFloor := LogicalStartLocked(
+        FPlainLines.Count + FActiveGrid.CursorRow - cInputScanRows);
     if AIndex < 0 then
       LineIdx := Total - 1
     else
@@ -1465,7 +1541,8 @@ begin
       Exit;
 
     // Text typed on the same line as the prompt (D:\path>dir).
-    Line := GetLineLocked(LineIdx);
+    LineIdx := LogicalStartLocked(LineIdx);
+    Line := LogicalLineLocked(LineIdx);
     PromptEnd := FindPromptProtectedEnd(Line);
     if PromptEnd > 0 then
     begin
@@ -1477,7 +1554,8 @@ begin
     // Local echo on the line after a bare prompt (shell emitted "D:\path>" + CRLF).
     if (LineIdx >= 1) and (LineIdx - 1 >= FInputLineStart) then
     begin
-      Prev := GetLineLocked(LineIdx - 1);
+      PrevIdx := LogicalStartLocked(LineIdx - 1);
+      Prev := LogicalLineLocked(PrevIdx);
       PromptEnd := FindPromptProtectedEnd(Prev);
       // A line that is itself a prompt is the next prompt, not echoed input.
       if (PromptEnd > 0) and (Trim(Copy(Prev, PromptEnd + 1, MaxInt)) = '') and
@@ -1495,7 +1573,9 @@ begin
     if AIndex < 0 then
       for I := Total - 1 downto Max(Max(0, FInputLineStart), ScanFloor) do
       begin
-        Line := GetLineLocked(I);
+        if IsRowWrappedLocked(I - 1) then
+          Continue;
+        Line := LogicalLineLocked(I);
         PromptEnd := FindPromptProtectedEnd(Line);
         if PromptEnd > 0 then
         begin
@@ -1505,7 +1585,7 @@ begin
         end;
         if (I >= 1) then
         begin
-          Prev := GetLineLocked(I - 1);
+          Prev := LogicalLineLocked(LogicalStartLocked(I - 1));
           PromptEnd := FindPromptProtectedEnd(Prev);
           if (PromptEnd > 0) and (Trim(Copy(Prev, PromptEnd + 1, MaxInt)) = '') and
              (Trim(Line) <> '') and (FindPromptProtectedEnd(Line) = 0) then

@@ -3,7 +3,8 @@ library GitPlugin;
 { Native MTN2 plugin: git statistics of the active panel's folder in the status
   line (branch, ahead/behind, staged, changed, untracked, conflicts). A worker
   thread follows the active panel and runs git; the segment is set on the main
-  thread through PostToMain. }
+  thread through PostToMain. Also shows the diff and blame of a file, adds to
+  and removes from the index, commits and switches branches. }
 
 uses
   System.SysUtils, System.Classes, System.SyncObjs,
@@ -14,6 +15,8 @@ uses
   uGitSettings in 'uGitSettings.pas',
   uGitRepo in 'uGitRepo.pas',
   uGitDiff in 'uGitDiff.pas',
+  uGitOps in 'uGitOps.pas',
+  uGitActions in 'uGitActions.pas',
   uGitMarks in 'uGitMarks.pas';
 
 const
@@ -637,6 +640,49 @@ begin
   end;
 end;
 
+{ Main thread: git changed something, so the badges and the marks are read again. }
+procedure RereadRepo;
+begin
+  GLock.Enter;
+  try
+    GDirty := True;
+  finally
+    GLock.Leave;
+  end;
+  if Assigned(GWorker) then
+    GWorker.Wake;
+end;
+
+procedure RegisterMenuCommand(const ACommand, ACaption: string;
+  ACallback: THostCommandCallback; APriority: Integer);
+var
+  Id, Command: UTF8String;
+begin
+  Id := UTF8String(cPluginId);
+  Command := UTF8String(ACommand);
+  GHostApi.RegisterCommand(PAnsiChar(Id), PAnsiChar(Command), ACallback, nil);
+  if Assigned(GHostApi.RegisterMenuItem) then
+    GHostApi.RegisterMenuItem(PAnsiChar(Id), 'Plugins', PAnsiChar(Command),
+      PAnsiChar(UTF8String(ACaption)), ACallback, nil, APriority);
+end;
+
+{ The commands that change the repository need the rows of the panel and a dialog. }
+procedure RegisterRepoCommands;
+begin
+  if not (Assigned(GHostApi.PanelList) and Assigned(GHostApi.ShowDialog)) then
+    Exit;
+  GOnRepoChanged :=
+    procedure
+    begin
+      RereadRepo;
+    end;
+  RegisterMenuCommand('git.stage', Tr('ui.menu.stage', 'Git: add to the index'), CmdStage, 72);
+  RegisterMenuCommand('git.unstage', Tr('ui.menu.unstage', 'Git: remove from the index'),
+    CmdUnstage, 73);
+  RegisterMenuCommand('git.commit', Tr('ui.menu.commit', 'Git: commit...'), CmdCommit, 74);
+  RegisterMenuCommand('git.switch', Tr('ui.menu.switch', 'Git: switch branch...'), CmdSwitch, 75);
+end;
+
 function mtn_plugin_get_abi_version: Int64; cdecl;
 begin
   Result := cNeededAbi;
@@ -681,6 +727,7 @@ begin
     if Assigned(GHostApi.RegisterMenuItem) then
       GHostApi.RegisterMenuItem(PAnsiChar(Id), 'Plugins', cBlameCommand,
         PAnsiChar(UTF8String(Tr('ui.menu.blame', 'Git blame of the file'))), @CmdBlame, nil, 71);
+    RegisterRepoCommands;
   end;
   LoadLabels;
   ReadActiveUri;
@@ -706,8 +753,10 @@ begin
     GAppliedMarkUris := nil;
   end;
   SetSegment('', '');
-  FreeAndNil(GLock);
+  // Waits for a running command, which is told to stop.
   SdkDetach;
+  GOnRepoChanged := nil;
+  FreeAndNil(GLock);
 end;
 
 exports

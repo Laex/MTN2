@@ -10,6 +10,10 @@ interface
 uses
   System.SysUtils, uGitStatus;
 
+const
+  /// <summary>The time limit of a command that only reads.</summary>
+  cGitTimeoutMs = 8000;
+
 type
   TGitReadResult = (grOk, grNotRepo, grError);
 
@@ -22,17 +26,16 @@ function ReadGitStatus(const ADir: string; const ACancelled: TFunc<Boolean>;
   out AStatus: TGitStatus): TGitReadResult;
 
 /// <summary>Runs "git" with AArgs; True when git ran (any exit code), AOutput is
-/// its merged stdout and stderr.</summary>
+/// its merged stdout and stderr. ATimeoutMs = 0 waits until git ends or
+/// ACancelled says stop.</summary>
 function RunGit(const AArgs: TArray<string>; const ACancelled: TFunc<Boolean>;
-  out AOutput: string; out AExitCode: Cardinal): Boolean;
+  out AOutput: string; out AExitCode: Cardinal;
+  ATimeoutMs: Cardinal = cGitTimeoutMs): Boolean;
 
 implementation
 
 uses
   System.IOUtils, uVfsTypes, uPlatformProcess;
-
-const
-  cGitTimeoutMs = 8000;
 
 type
   /// <summary>Cancel token that asks a function.</summary>
@@ -80,9 +83,9 @@ begin
 end;
 
 function RunGit(const AArgs: TArray<string>; const ACancelled: TFunc<Boolean>;
-  out AOutput: string; out AExitCode: Cardinal): Boolean;
+  out AOutput: string; out AExitCode: Cardinal; ATimeoutMs: Cardinal): Boolean;
 begin
-  Result := PlatformRunCaptured('git', AArgs, '', cGitTimeoutMs,
+  Result := PlatformRunCaptured('git', AArgs, '', ATimeoutMs,
     TFuncCancelToken.Create(ACancelled), AOutput, AExitCode) = srOk;
 end;
 

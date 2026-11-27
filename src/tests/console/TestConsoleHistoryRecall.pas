@@ -77,6 +77,14 @@ begin
   Assert.AreEqual(AExpected, AWin.InputLine, AStep);
 end;
 
+// The prompt shows the current folder. A short one keeps the test independent
+// of where the sources are: when a prompt fills the 80-column row to the last
+// cell, the pseudoconsole draws the second typed character over the first.
+function ShortDir: string;
+begin
+  Result := IncludeTrailingPathDelimiter(ExtractFileDrive(GetCurrentDir));
+end;
+
 function NewConsole: TProbeConsole;
 begin
   Result := TProbeConsole.Create(CreateThemeByName('NDN'), 1, 'cmd');
@@ -86,7 +94,7 @@ begin
       Result := ['echo two', 'echo one'];
     end;
   Result.Resize(100, 30);
-  Assert.IsTrue(Result.EnsureShell(GetCurrentDir), 'the shell starts');
+  Assert.IsTrue(Result.EnsureShell(ShortDir), 'the shell starts');
   Pump(3000);
 end;
 

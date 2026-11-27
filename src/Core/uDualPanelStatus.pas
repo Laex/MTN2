@@ -94,8 +94,11 @@ function AssembleStatusSegments(const AHost: TDualPanelStatusHost;
 function AssembleStatusLine(const AHost: TDualPanelStatusHost;
   const ASnap: TPanelStatusSnapshot; out AKinds: TArray<TStatusSegKind>): TArray<string>;
 /// <summary>Colored parts for ASegs of a panel status line: plugin segments are the
-/// last ones, the host's own sections have none. ASegCount = Length(ASegs).</summary>
-function PluginStatusSpans(ASegCount: Integer): TArray<TStatusSpans>;
+/// last ones, the host's own sections have none. ASegCount = Length(ASegs);
+/// AKinds is what AssembleStatusLine returned: empty means a line without
+/// plugin segments, which gets no parts.</summary>
+function PluginStatusSpans(ASegCount: Integer;
+  const AKinds: TArray<TStatusSegKind>): TArray<TStatusSpans>;
 /// <summary>The plugins' status segments in compact form (each span's short
 /// text when it has one), as consecutive runs with blank runs between segments,
 /// fitting AWidth columns; later segments are dropped first. ASegOfRun[i] is the
@@ -332,7 +335,8 @@ begin
     hdkCompareOptions:
       Result := TArray<string>.Create(S('Compare folders'), H('Enter', 'OK', '='), H('Esc', 'Cancel', '='));
   else
-    Result := TArray<string>.Create(S('Code page'), S('^v select'), H('Enter', 'Apply', '='), H('Esc', 'Cancel', '='));
+    // Plugin dialogs and the rest: the dialog's own title says what it is.
+    Result := TArray<string>.Create(S('Dialog'), S('^v select'), H('Enter', 'OK', '='), H('Esc', 'Cancel', '='));
   end;
 end;
 
@@ -514,14 +518,16 @@ begin
     Result := Result + PluginChrome.StatusSegments;
 end;
 
-function PluginStatusSpans(ASegCount: Integer): TArray<TStatusSpans>;
+function PluginStatusSpans(ASegCount: Integer;
+  const AKinds: TArray<TStatusSegKind>): TArray<TStatusSpans>;
 var
   Own: TArray<TStatusSpans>;
   I, First: Integer;
 begin
   Own := PluginChrome.StatusSegmentSpans;
   First := ASegCount - Length(Own);
-  if First < 0 then
+  // A dialog's line carries no plugin segments: their parts would cover its hints.
+  if (Length(AKinds) = 0) or (First < 0) then
     Exit(nil);
   SetLength(Result, ASegCount);
   for I := 0 to High(Own) do

@@ -25,6 +25,16 @@ type
   end;
   TDupProgressCallback = reference to procedure(const AProgress: TDupProgress);
 
+  /// <summary>Which copy of a duplicate group stays unmarked.</summary>
+  TDupKeepRule = (dkNewest, dkOldest, dkShortestPath, dkFolder);
+
+  /// <summary>A file of a duplicate group as the search saw it.</summary>
+  TDupFile = record
+    Path: string;
+    Size: Int64;
+    Written: TDateTime;
+  end;
+
 /// <summary>The existing file or folder a line of command output names, as a full
 /// path; '' when the line names nothing that exists. A relative path is taken from
 /// ABaseDir, "file:" URIs and forward slashes are accepted, and a trailing
@@ -42,6 +52,19 @@ function ParsePanelizeOutput(const AOutput, ABaseDir: string): TArray<string>;
 function FindDuplicateGroups(const ARoot: string; AMinSize: Int64;
   const ACancelled: TCancelCheck;
   const AProgress: TDupProgressCallback = nil): TArray<TArray<string>>;
+
+/// <summary>AGroups with the size and write time of every file.</summary>
+function StampDuplicateGroups(
+  const AGroups: TArray<TArray<string>>): TArray<TArray<TDupFile>>;
+
+/// <summary>The copies to mark for deletion. Only files that are in AListed and
+/// unchanged since the stamp take part, so at least one of them stays unmarked
+/// in every group. dkNewest, dkOldest and dkShortestPath keep one file; dkFolder
+/// keeps every file under AKeepFolder and leaves a group with none there alone.
+/// AGroupCount is the number of groups something was picked from.</summary>
+function PickDuplicateCopies(const AGroups: TArray<TArray<TDupFile>>;
+  const AListed: TArray<string>; ARule: TDupKeepRule;
+  const AKeepFolder: string; out AGroupCount: Integer): TArray<string>;
 
 implementation
 
@@ -364,6 +387,138 @@ begin
     Found.Free;
     Sizes.Free;
     BySize.Free;
+  end;
+end;
+
+// False when the file cannot be read, e.g. it is gone.
+function TryStamp(const APath: string; out AFile: TDupFile): Boolean;
+begin
+  AFile.Path := APath;
+  try
+    AFile.Size := TFile.GetSize(APath);
+    AFile.Written := TFile.GetLastWriteTimeUtc(APath);
+    Result := True;
+  except
+    Result := False;
+  end;
+end;
+
+function StampDuplicateGroups(
+  const AGroups: TArray<TArray<string>>): TArray<TArray<TDupFile>>;
+var
+  I, J, N: Integer;
+begin
+  SetLength(Result, Length(AGroups));
+  for I := 0 to High(AGroups) do
+  begin
+    SetLength(Result[I], Length(AGroups[I]));
+    N := 0;
+    for J := 0 to High(AGroups[I]) do
+      if TryStamp(AGroups[I][J], Result[I][N]) then
+        Inc(N);
+    SetLength(Result[I], N);
+  end;
+end;
+
+// The members of AGroup that are listed and still as the search saw them.
+function CurrentCopies(const AGroup: TArray<TDupFile>;
+  AListed: TDictionary<string, Boolean>): TArray<TDupFile>;
+var
+  F, Now: TDupFile;
+begin
+  Result := nil;
+  for F in AGroup do
+    if AListed.ContainsKey(F.Path) and TryStamp(F.Path, Now) and
+       (Now.Size = F.Size) and (Now.Written = F.Written) then
+      Result := Result + [F];
+end;
+
+// Negative when A is the better one to keep; ties go to the shorter path, then
+// to the first one by name.
+function CompareKeep(const A, B: TDupFile; ARule: TDupKeepRule): Integer;
+begin
+  Result := 0;
+  case ARule of
+    dkNewest: Result := CompareValue(B.Written, A.Written);
+    dkOldest: Result := CompareValue(A.Written, B.Written);
+  end;
+  if Result = 0 then
+    Result := Length(A.Path) - Length(B.Path);
+  if Result = 0 then
+    Result := CompareText(A.Path, B.Path);
+end;
+
+function AllButBest(const ACopies: TArray<TDupFile>;
+  ARule: TDupKeepRule): TArray<string>;
+var
+  I, Best: Integer;
+begin
+  Result := nil;
+  Best := 0;
+  for I := 1 to High(ACopies) do
+    if CompareKeep(ACopies[I], ACopies[Best], ARule) < 0 then
+      Best := I;
+  for I := 0 to High(ACopies) do
+    if I <> Best then
+      Result := Result + [ACopies[I].Path];
+end;
+
+// The copies outside AFolder, or nothing when none lies inside it.
+function OutsideFolder(const ACopies: TArray<TDupFile>;
+  const AFolder: string): TArray<string>;
+var
+  F: TDupFile;
+  Prefix: string;
+begin
+  Result := nil;
+  if AFolder = '' then
+    Exit;
+  Prefix := IncludeTrailingPathDelimiter(AFolder);
+  for F in ACopies do
+{$IFDEF MSWINDOWS}
+    if not SameText(Copy(F.Path, 1, Length(Prefix)), Prefix) then
+{$ELSE}
+    if Copy(F.Path, 1, Length(Prefix)) <> Prefix then
+{$ENDIF}
+      Result := Result + [F.Path];
+  if Length(Result) = Length(ACopies) then
+    Result := nil;
+end;
+
+function PickDuplicateCopies(const AGroups: TArray<TArray<TDupFile>>;
+  const AListed: TArray<string>; ARule: TDupKeepRule;
+  const AKeepFolder: string; out AGroupCount: Integer): TArray<string>;
+var
+  Listed: TDictionary<string, Boolean>;
+  Group, Copies: TArray<TDupFile>;
+  Picked: TArray<string>;
+  List: TList<string>;
+  Path: string;
+begin
+  AGroupCount := 0;
+  Listed := TDictionary<string, Boolean>.Create;
+  List := TList<string>.Create;
+  try
+    for Path in AListed do
+      Listed.AddOrSetValue(Path, True);
+    for Group in AGroups do
+    begin
+      Copies := CurrentCopies(Group, Listed);
+      if Length(Copies) < 2 then
+        Continue;
+      if ARule = dkFolder then
+        Picked := OutsideFolder(Copies, AKeepFolder)
+      else
+        Picked := AllButBest(Copies, ARule);
+      if Length(Picked) = 0 then
+        Continue;
+      Inc(AGroupCount);
+      List.AddRange(Picked);
+    end;
+    Result := List.ToArray;
+  finally
+    List.Free;
+    Listed.Free;
   end;
 end;
 
