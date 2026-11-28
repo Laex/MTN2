@@ -1,6 +1,6 @@
 # Modern Terminal Navigator 2 (MTN2)
 
-[English](README.md) | [Русский](README.ru.md) | [Deutsch](README.de.md) | **中文**
+[English](README.md) | [Русский](README.ru.md) | [Deutsch](README.de.md) | **中文** | [Türkçe](README.tr.md)
 
 基于 **Necromancer's DOS Navigator** 与 **Far Manager** 理念的双面板文件管理器，内置控制台、终端、文件查看器和编辑器。界面为文本用户界面（TUI），但在常规 GUI 窗口中渲染：基于 Delphi FireMonkey 画布（Skia 渲染，支持通过 `--no-skia` 回退到标准画布）的虚拟字符网格，支持 TrueType 字体、Unicode 与 32 位色彩。中日韩（CJK）表意文字占用两列宽度（双宽），与其他现代终端表现一致。
 

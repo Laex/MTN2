@@ -1,6 +1,6 @@
 # Modern Terminal Navigator 2 (MTN2)
 
-**English** | [Русский](README.ru.md) | [Deutsch](README.de.md) | [中文](README.zh.md)
+**English** | [Русский](README.ru.md) | [Deutsch](README.de.md) | [中文](README.zh.md) | [Türkçe](README.tr.md)
 
 A dual-panel file manager inspired by **Necromancer's DOS Navigator** and **Far Manager**, featuring a built-in console,
 terminals, file viewer, and editor. The user interface is text-based (TUI), but rendered inside a standard GUI window:
