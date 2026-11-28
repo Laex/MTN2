@@ -26,11 +26,11 @@ sondern ist ein weiterer Zweipanel-Manager mit eigenen Gewohnheiten.
 ## Warum MTN2
 
 - **Dateimanager und echtes Terminal in einem Fenster.** Panels, ConPTY-Terminal-Tabs (cmd, PowerShell, WSL, SSH); Vim, htop und andere TUI-Programme laufen wie in einem normalen Terminal.
-- **Alles ist ein Ordner.** Archive (zip, 7z u. a.), SFTP, FTP/FTPS, WebDAV, S3 und Plugin-Dateisysteme lassen sich wie gewöhnliche Verzeichnisse öffnen und kopieren.
+- **Alles ist ein Ordner.** Archive (zip, 7z u. a.), SFTP, FTP/FTPS, WebDAV, S3, Docker-Container, Android-Geräte und andere Plugin-Dateisysteme lassen sich wie gewöhnliche Verzeichnisse öffnen und kopieren.
 - **Bleibt bei großen Datenmengen schnell.** Kopieren, Verschieben und Löschen laufen als Hintergrundaufträge; die Suche liefert bis zu 50.000 Treffer direkt in ein Panel; große Dateien werden gestreamt gelesen.
 - **Mächtige Suche.** Nach Maske, Text (UTF-8, UTF-16, Windows-1251, CP866), Bytes mit Platzhalter `??`, Größe, Datum und Attributen.
 - **Anzeigen und Bearbeiten ohne Zusatzprogramme.** Hex, Markdown, Syntaxhervorhebung, Log-Verfolgung, Bilder in der Schnellansicht, rechteckige Blöcke und Lesezeichen im Editor.
-- **Vergleichen und Synchronisieren.** Ordner nach Zeit, Größe und Inhalt; zwei Dateien mit zeilenweisem Unterschied.
+- **Vergleichen und Synchronisieren.** Ordner nach Zeit, Größe und Inhalt; zwei Dateien mit zeilenweisem Unterschied; Zwei-Wege-Synchronisierung, die auch Löschungen überträgt.
 - **Nichts auswendig lernen.** Befehlspalette (**Umschalt+F9**) mit Erklärungen, Tastenhinweise in neuen Situationen, kontextbezogene Hilfe auf **F1**.
 - **Ihr Aussehen, Ihre Tasten.** Mehr als zehn Themes (Far, Norton, Midnight, Total Commander, Dracula, Nord u. a.), Theme-Editor, Farbgruppen für Dateien, frei änderbare Tastenbelegung.
 - **Windows und Linux.** Grafisches Fenster unter Windows; unter Linux `mtn2-tui` (über SSH und in `tmux`) und ein SDL2-Fenster; Pakete `tar.gz`, `.deb`, `.rpm`.
@@ -100,19 +100,19 @@ Für Linux (`mtn2-tui`, `mtn2-sdl`) siehe „Installation“ unten. Das Programm
   bleibt auf dem Bildschirm erhalten (`Ctrl+O`).
 - **Anzeigen und Bearbeiten:** integrierter Viewer (Text, Hex, Streaming großer Dateien), Editor,
   Quick View (`Ctrl+Q`), Markdown-Vorschau, externer Viewer/Editor.
-- **Virtuelle Dateisysteme:** Archive als Ordner (zip, 7z über `7z.dll`), SFTP über SSH, FTP / FTPS / WebDAV / S3 (Plugin „Netzwerkverbindungen“), Plugin-VFS.
+- **Virtuelle Dateisysteme:** Archive als Ordner (zip, 7z über `7z.dll`), SFTP über SSH, FTP / FTPS / WebDAV / S3 (Plugin „Netzwerkverbindungen“); Container und Pods von Docker und Kubernetes; Android-Geräte über `adb` (aus `PATH` oder dem Android SDK); weitere Plugin-VFS.
 - **Suche (`Alt+F7`):** nach Maske, Inhalt (UTF-8, UTF-16, Windows-1251, CP866), Hex-Bytes mit Platzhalter `??`, Größe, Datum und Attributen.
   Treffer erscheinen schon während der Suche in einem Panel (bis zu 50.000 Dateien) und verhalten sich wie ein normaler Ordner. Eine laufende Suche lässt sich in den Hintergrund schicken (ein Chip in der Tab-Zeile zählt die gefundenen Dateien) oder im Panel behalten, wo die Liste weiterwächst.
 - **Vergleichen und Synchronisieren:** Ordner nach Zeit, Größe oder Inhalt (im Hintergrund, abbrechbar); zwei Dateien oder Gruppen markierter Dateien mit zeilenweisem Unterschied
-  (`Ctrl+Alt+C`); Verzeichnissynchronisierung; Sprung zur gleichnamigen Datei im anderen Panel (`Ctrl+Alt+M`).
+  (`Ctrl+Alt+C`); Verzeichnissynchronisierung (der Zwei-Wege-Modus überträgt nach Bestätigung auch Löschungen); Suche nach doppelten Dateien per SHA-256, die überzählige Kopien nach einer Regel markiert (es bleibt die neueste, die älteste, die mit dem kürzesten Pfad oder die aus einem Ordner); Sprung zur gleichnamigen Datei im anderen Panel (`Ctrl+Alt+M`).
 - **Logs und Binärdateien:** dem Ende einer wachsenden Datei folgen (`Ctrl+Shift+F`, mit Log-Rotation), Bytesuche im Hex-Modus,
   Hervorhebung von Textdateien und Bilder in der Schnellansicht.
 - **Befehlszeile und Automatisierung:** Liste früherer Befehle, die mit der Eingabe beginnen, Umgebungsprofile für Shells (`environment.json`),
   `MTN2 Pfad1 Pfad2` öffnet Tabs, `--view` und `--edit` öffnen Viewer und Editor, `--update` aktualisiert ohne Fenster, Dateilisten als Markdown oder CSV.
 - **Makros:** das Plugin „Makros“ führt in Lua geschriebene Makros aus. `Strg+.` zeichnet die gedrückten Tasten in eine Makrodatei auf; ein Makro startet über eine eigene Taste oder das Menü „Makros“ in Panels, Viewer, Editor und Konsole und kann vorher den Zustand des Programms prüfen (Bereich, markierte Dateien, Auswahl). Makros sind einfache Textdateien; drei Beispiele liegen bei (`samples\macros`). Beschreibung: F1-Hilfe in den Makro-Dialogen.
-- **Git und mehr:** das Plugin „Git status“ zeigt Branch und Änderungszahlen in der Statuszeile, färbt die Dateinamen in den Panels nach ihrem Git-Zustand, und Strg+Umschalt+D öffnet das `git diff` einer Datei im eingebauten Viewer; Strg+Umschalt+F12 springt zu häufigen Ordnern; optional Vim-Tasten im Panel (`hjkl`, `g`, `G`, `/`, `:`); Farbgruppen mit Prioritäten; Bildschirmschoner mit Haien bei Inaktivität.
+- **Git und mehr:** das Plugin „Git status“ zeigt Branch und Änderungszahlen in der Statuszeile, färbt die Dateinamen in den Panels nach ihrem Git-Zustand, und Strg+Umschalt+G öffnet das `git diff` einer Datei im eingebauten Viewer; über das Menü „Plugins“ werden Dateien in den Index aufgenommen und daraus entfernt, Commits erstellt und Branches gewechselt; Strg+Umschalt+F12 springt zu häufigen Ordnern; optional Vim-Tasten im Panel (`hjkl`, `g`, `G`, `/`, `:`); Farbgruppen mit Prioritäten; Bildschirmschoner mit Haien bei Inaktivität.
 - **Anpassung:** anpassbare Tastenbelegung (`keymap.json`), dateibasierte Themes (Far Classic, Norton Commander, Midnight Commander, Total Commander, Gruvbox, Tokyo Night, Dracula, Nord, Solarized, Light, High Contrast usw.; eigene Themes im Theme-Editor),
-  Benutzermenü (F2), Befehlspalette (`Umschalt+F9`) zur Suche in den Menüeinträgen, Dateizuordnungen, kontextbezogene F1-Hilfe.
+  Benutzermenü (F2), Befehlspalette (`Umschalt+F9`) zur Suche in Menüeinträgen, Einstellungsfeldern und Einträgen der Laufwerksliste, Dateizuordnungen, kontextbezogene F1-Hilfe.
 - **Sprachen:** Oberfläche und Hilfe auf Deutsch, Englisch, Russisch und Chinesisch (vereinfacht); Sprache wird unter **Optionen → Oberfläche...**
   ausgewählt und ohne Neustart angewendet; beim ersten Start wird die Windows-Sprache verwendet, sofern eine Übersetzung vorliegt. Eine eigene Sprache wird als Ordner `resource\<sprache>\` neben `MTN2.exe` hinzugefügt (`locale.json`, `strings.json`, Hilfe in `help\`); ein Neukompilieren ist nicht nötig. Nur Englisch ist im Programm eingebaut.
 - **Unicode:** CJK-Schriftzeichen (BMP), Hiragana, Katakana, Hangeul und vollbreite Zeichen

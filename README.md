@@ -26,11 +26,11 @@ it is one more two-panel manager with its own habits.
 ## Why MTN2
 
 - **A file manager and a real terminal in one window.** Panels, ConPTY terminal tabs (cmd, PowerShell, WSL, SSH); Vim, htop and other TUI programs run as in a regular terminal.
-- **Everything is a folder.** Archives (zip, 7z and more), SFTP, FTP/FTPS, WebDAV, S3 and plugin file systems open and copy like ordinary directories.
+- **Everything is a folder.** Archives (zip, 7z and more), SFTP, FTP/FTPS, WebDAV, S3, Docker containers, Android devices and other plugin file systems open and copy like ordinary directories.
 - **Stays fast on big data.** Copy, move and delete run as background jobs; search streams up to 50,000 results straight into a panel; large files are read as a stream.
 - **Powerful search.** By mask, text (UTF-8, UTF-16, Windows-1251, CP866), bytes with `??` wildcards, size, date and attributes.
 - **View and edit without external tools.** Hex, Markdown, syntax highlighting, log following, images in quick view, rectangular blocks and bookmarks in the editor.
-- **Compare and synchronize.** Folders by time, size and content; two files with a line-by-line diff.
+- **Compare and synchronize.** Folders by time, size and content; two files with a line-by-line diff; two-way synchronization that carries deletions over.
 - **Nothing to memorize.** A command palette (**Shift+F9**) with explanations, key hints in new situations, context help on **F1**.
 - **Your look, your keys.** More than ten themes (Far, Norton, Midnight, Total Commander, Dracula, Nord and more), a theme editor, file color groups, a fully remappable key layout.
 - **Windows and Linux.** A graphical window on Windows; on Linux `mtn2-tui` (over SSH and in `tmux`) and an SDL2 window; `tar.gz`, `.deb` and `.rpm` packages.
@@ -101,19 +101,19 @@ For Linux (`mtn2-tui`, `mtn2-sdl`) see "Installation" below. The program also na
 - **View and edit:** built-in Viewer (text, hex, streamed reading of large files), Editor,
   Quick View (`Ctrl+Q`), Markdown preview, external viewer/editor support. The editor has line commands,
   rectangular blocks, bookmarks, and auto-indent.
-- **Virtual file systems:** archives as folders (zip, 7z via `7z.dll`), SFTP over SSH, FTP / FTPS / WebDAV / S3 (the Network connections plugin), plugin VFS.
+- **Virtual file systems:** archives as folders (zip, 7z via `7z.dll`), SFTP over SSH, FTP / FTPS / WebDAV / S3 (the Network connections plugin); Docker and Kubernetes containers and pods; Android devices over `adb` (taken from `PATH` or the Android SDK); other plugin VFS.
 - **Search (`Alt+F7`):** by mask, content (UTF-8, UTF-16, Windows-1251, CP866), hex bytes with `??` wildcards, size, date and attributes.
   Results appear in a panel while the search runs (up to 50,000 files) and behave like an ordinary folder. A running search can be sent to the background (a chip in the tab row counts the files found) or kept in the panel, where the list keeps growing.
 - **Compare and synchronize:** folders by time, size or content (in the background, can be interrupted); two files or groups of marked files with a line-by-line diff
-  (`Ctrl+Alt+C`); directory synchronization; jump to the same-named file in the other panel (`Ctrl+Alt+M`).
+  (`Ctrl+Alt+C`); directory synchronization (the two-way mode also propagates deletions, after a confirmation); duplicate file search by SHA-256 that can mark the extra copies by a rule (newest, oldest, shortest path or a folder stays); jump to the same-named file in the other panel (`Ctrl+Alt+M`).
 - **Logs and binaries:** follow the end of a growing file (`Ctrl+Shift+F`, handles log rotation), byte search in hex mode,
   highlighting of plain text files and pictures in quick view.
 - **Command line and automation:** a list of earlier commands that start with what you typed, environment profiles for shells (`environment.json`),
   `MTN2 path1 path2` opens tabs, `--view` and `--edit` open the viewer and editor, `--update` updates without a window, file lists exported to Markdown or CSV.
 - **Macros:** the Macros plugin runs macros written in Lua. `Ctrl+.` records the keys you press into a macro file; a macro starts from its own key or from the Macros menu in the panels, viewer, editor and console, and can check the state of the program (area, marked files, selection) before it starts. Macros are plain text files; three samples ship with the program (`samples\macros`). See F1 help in the macro dialogs.
-- **Git and extras:** the Git status plugin shows the branch and change counts in the status bar, colors the file names in the panels by their git state, Ctrl+Shift+G opens the `git diff` of a file in the built-in viewer, and "Git blame of the file" shows the commit and author of each line; Ctrl+Shift+F12 jumps to frequent folders; optional Vim keys on the panel (`hjkl`, `g`, `G`, `/`, `:`); color groups with priorities; a screensaver with sharks when idle.
+- **Git and extras:** the Git status plugin shows the branch and change counts in the status bar, colors the file names in the panels by their git state, Ctrl+Shift+G opens the `git diff` of a file in the built-in viewer, and "Git blame of the file" shows the commit and author of each line; the Plugins menu adds files to the index and removes them, commits and switches branches; Ctrl+Shift+F12 jumps to frequent folders; optional Vim keys on the panel (`hjkl`, `g`, `G`, `/`, `:`); color groups with priorities; a screensaver with sharks when idle.
 - **Customization:** remappable key bindings (`keymap.json`), file-based themes (Far Classic, Norton Commander, Midnight Commander, Total Commander, Gruvbox, Tokyo Night, Dracula, Nord, Solarized, Light, High Contrast, etc.; custom themes via built-in theme editor),
-  user menu (F2), command palette (`Shift+F9`) to search the menu items, file associations, F1 context help.
+  user menu (F2), command palette (`Shift+F9`) to search the menu items, settings fields and Change Drive items, file associations, F1 context help.
 - **Languages:** UI and help available in English, Russian, German, and Simplified Chinese; language is selected in **Options → User interface...**
   and applied on the fly without restarting; the first start uses the Windows language when a translation for it exists. A custom language is added as a `resource\<language>\` folder next to `MTN2.exe` (`locale.json`, `strings.json`, help in `help\`); no recompilation is needed. Only English is built into the program.
 - **Unicode:** CJK ideographs (BMP), Hiragana, Katakana, Hangul, and full-width forms
